@@ -8,7 +8,10 @@ import {
   insertSaleSchema,
   insertFeedInventorySchema,
   insertHealthRecordSchema,
-  insertExpenseSchema
+  insertExpenseSchema,
+  insertCustomerSchema,
+  insertBookingSchema,
+  insertDemandRequestSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -237,6 +240,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating expense:", error);
         res.status(500).json({ message: "Failed to create expense" });
       }
+    }
+  });
+
+  // Marketplace routes - Customer management
+  app.get('/api/customers', isAuthenticated, async (req, res) => {
+    try {
+      const customers = await storage.getCustomers();
+      res.json(customers);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
+  app.post('/api/customers', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertCustomerSchema.parse(req.body);
+      const customer = await storage.createCustomer(validatedData);
+      res.status(201).json(customer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating customer:", error);
+        res.status(500).json({ message: "Failed to create customer" });
+      }
+    }
+  });
+
+  app.get('/api/customers/:id', isAuthenticated, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.params.id);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      res.json(customer);
+    } catch (error) {
+      console.error("Error fetching customer:", error);
+      res.status(500).json({ message: "Failed to fetch customer" });
+    }
+  });
+
+  app.put('/api/customers/:id', isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertCustomerSchema.partial().parse(req.body);
+      const customer = await storage.updateCustomer(req.params.id, validatedData);
+      res.json(customer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error updating customer:", error);
+        res.status(500).json({ message: "Failed to update customer" });
+      }
+    }
+  });
+
+  // Marketplace routes - Booking management
+  app.get('/api/bookings', isAuthenticated, async (req, res) => {
+    try {
+      const bookings = await storage.getBookings();
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      res.status(500).json({ message: "Failed to fetch bookings" });
+    }
+  });
+
+  app.post('/api/bookings', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertBookingSchema.parse({
+        ...req.body,
+        userId: req.user.claims.sub
+      });
+      const booking = await storage.createBooking(validatedData);
+      res.status(201).json(booking);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating booking:", error);
+        res.status(500).json({ message: "Failed to create booking" });
+      }
+    }
+  });
+
+  app.get('/api/customers/:customerId/bookings', isAuthenticated, async (req, res) => {
+    try {
+      const bookings = await storage.getBookingsByCustomer(req.params.customerId);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching customer bookings:", error);
+      res.status(500).json({ message: "Failed to fetch customer bookings" });
+    }
+  });
+
+  app.put('/api/bookings/:id/status', isAuthenticated, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      const booking = await storage.updateBookingStatus(req.params.id, status);
+      res.json(booking);
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      res.status(500).json({ message: "Failed to update booking status" });
+    }
+  });
+
+  // Marketplace routes - Demand request management
+  app.get('/api/demand-requests', isAuthenticated, async (req, res) => {
+    try {
+      const requests = await storage.getDemandRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching demand requests:", error);
+      res.status(500).json({ message: "Failed to fetch demand requests" });
+    }
+  });
+
+  app.get('/api/demand-requests/open', isAuthenticated, async (req, res) => {
+    try {
+      const requests = await storage.getOpenDemandRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching open demand requests:", error);
+      res.status(500).json({ message: "Failed to fetch open demand requests" });
+    }
+  });
+
+  app.post('/api/demand-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertDemandRequestSchema.parse(req.body);
+      const request = await storage.createDemandRequest(validatedData);
+      res.status(201).json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating demand request:", error);
+        res.status(500).json({ message: "Failed to create demand request" });
+      }
+    }
+  });
+
+  app.put('/api/demand-requests/:id/status', isAuthenticated, async (req, res) => {
+    try {
+      const { status, matchedBookingId } = req.body;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      const request = await storage.updateDemandRequestStatus(req.params.id, status, matchedBookingId);
+      res.json(request);
+    } catch (error) {
+      console.error("Error updating demand request status:", error);
+      res.status(500).json({ message: "Failed to update demand request status" });
     }
   });
 
