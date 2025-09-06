@@ -147,6 +147,57 @@ export const expenses = pgTable("expenses", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Customers table for marketplace
+export const customers = pgTable("customers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  email: varchar("email").unique(),
+  phone: varchar("phone").notNull(),
+  address: text("address"),
+  businessType: varchar("business_type"), // retailer, restaurant, individual, distributor
+  preferredContactMethod: varchar("preferred_contact_method").default("phone"), // phone, email, whatsapp
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Advance bookings table
+export const bookings = pgTable("bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").notNull(),
+  userId: varchar("user_id").notNull(), // farm user who manages this booking
+  bookingDate: date("booking_date").notNull(),
+  deliveryDate: date("delivery_date").notNull(),
+  cratesRequested: integer("crates_requested").notNull(),
+  pricePerCrate: decimal("price_per_crate", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  deposit: decimal("deposit", { precision: 10, scale: 2 }).default("0"),
+  status: varchar("status").notNull().default("pending"), // pending, confirmed, fulfilled, cancelled
+  priority: varchar("priority").default("normal"), // high, normal, low
+  specialRequirements: text("special_requirements"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Customer demand/requests table
+export const demandRequests = pgTable("demand_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").notNull(),
+  requestDate: date("request_date").notNull(),
+  urgencyLevel: varchar("urgency_level").notNull().default("normal"), // urgent, normal, flexible
+  cratesNeeded: integer("crates_needed").notNull(),
+  maxPricePerCrate: decimal("max_price_per_crate", { precision: 10, scale: 2 }),
+  preferredDeliveryDate: date("preferred_delivery_date"),
+  flexibleDelivery: boolean("flexible_delivery").default(false),
+  description: text("description"),
+  status: varchar("status").notNull().default("open"), // open, matched, fulfilled, expired
+  matchedBookingId: varchar("matched_booking_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const flocksRelations = relations(flocks, ({ many }) => ({
   dailyRecords: many(dailyRecords),
@@ -204,6 +255,33 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
   }),
 }));
 
+export const customersRelations = relations(customers, ({ many }) => ({
+  bookings: many(bookings),
+  demandRequests: many(demandRequests),
+}));
+
+export const bookingsRelations = relations(bookings, ({ one }) => ({
+  customer: one(customers, {
+    fields: [bookings.customerId],
+    references: [customers.id],
+  }),
+  user: one(users, {
+    fields: [bookings.userId],
+    references: [users.id],
+  }),
+}));
+
+export const demandRequestsRelations = relations(demandRequests, ({ one }) => ({
+  customer: one(customers, {
+    fields: [demandRequests.customerId],
+    references: [customers.id],
+  }),
+  matchedBooking: one(bookings, {
+    fields: [demandRequests.matchedBookingId],
+    references: [bookings.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFlockSchema = createInsertSchema(flocks).omit({ id: true, createdAt: true, updatedAt: true });
@@ -212,6 +290,9 @@ export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, creat
 export const insertFeedInventorySchema = createInsertSchema(feedInventory).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertHealthRecordSchema = createInsertSchema(healthRecords).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDemandRequestSchema = createInsertSchema(demandRequests).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -228,3 +309,9 @@ export type InsertHealthRecord = z.infer<typeof insertHealthRecordSchema>;
 export type HealthRecord = typeof healthRecords.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
+export type Customer = typeof customers.$inferSelect;
+export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type Booking = typeof bookings.$inferSelect;
+export type InsertDemandRequest = z.infer<typeof insertDemandRequestSchema>;
+export type DemandRequest = typeof demandRequests.$inferSelect;
