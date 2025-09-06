@@ -1,0 +1,298 @@
+import {
+  users,
+  flocks,
+  dailyRecords,
+  sales,
+  feedInventory,
+  healthRecords,
+  expenses,
+  type User,
+  type UpsertUser,
+  type InsertFlock,
+  type Flock,
+  type InsertDailyRecord,
+  type DailyRecord,
+  type InsertSale,
+  type Sale,
+  type InsertFeedInventory,
+  type FeedInventory,
+  type InsertHealthRecord,
+  type HealthRecord,
+  type InsertExpense,
+  type Expense,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+
+// Interface for storage operations
+export interface IStorage {
+  // User operations (mandatory for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+
+  // Flock operations
+  createFlock(flock: InsertFlock): Promise<Flock>;
+  getFlocks(): Promise<Flock[]>;
+  getFlockById(id: string): Promise<Flock | undefined>;
+  updateFlock(id: string, updates: Partial<InsertFlock>): Promise<Flock>;
+
+  // Daily record operations
+  createDailyRecord(record: InsertDailyRecord): Promise<DailyRecord>;
+  getDailyRecords(flockId?: string, limit?: number): Promise<DailyRecord[]>;
+  getDailyRecordsByDateRange(startDate: string, endDate: string): Promise<DailyRecord[]>;
+  updateDailyRecord(id: string, updates: Partial<InsertDailyRecord>): Promise<DailyRecord>;
+
+  // Sales operations
+  createSale(sale: InsertSale): Promise<Sale>;
+  getSales(limit?: number): Promise<Sale[]>;
+  getSalesByDateRange(startDate: string, endDate: string): Promise<Sale[]>;
+
+  // Feed inventory operations
+  createFeedInventory(feed: InsertFeedInventory): Promise<FeedInventory>;
+  getFeedInventory(): Promise<FeedInventory[]>;
+  updateFeedInventory(id: string, updates: Partial<InsertFeedInventory>): Promise<FeedInventory>;
+  deleteFeedInventory(id: string): Promise<void>;
+
+  // Health record operations
+  createHealthRecord(record: InsertHealthRecord): Promise<HealthRecord>;
+  getHealthRecords(flockId?: string, limit?: number): Promise<HealthRecord[]>;
+
+  // Expense operations
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  getExpenses(limit?: number): Promise<Expense[]>;
+  getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]>;
+
+  // Dashboard analytics
+  getDashboardMetrics(): Promise<any>;
+  getRecentActivity(limit?: number): Promise<any[]>;
+}
+
+export class DatabaseStorage implements IStorage {
+  // User operations (mandatory for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Flock operations
+  async createFlock(flock: InsertFlock): Promise<Flock> {
+    const [newFlock] = await db.insert(flocks).values(flock).returning();
+    return newFlock;
+  }
+
+  async getFlocks(): Promise<Flock[]> {
+    return await db.select().from(flocks).orderBy(desc(flocks.createdAt));
+  }
+
+  async getFlockById(id: string): Promise<Flock | undefined> {
+    const [flock] = await db.select().from(flocks).where(eq(flocks.id, id));
+    return flock;
+  }
+
+  async updateFlock(id: string, updates: Partial<InsertFlock>): Promise<Flock> {
+    const [updatedFlock] = await db
+      .update(flocks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(flocks.id, id))
+      .returning();
+    return updatedFlock;
+  }
+
+  // Daily record operations
+  async createDailyRecord(record: InsertDailyRecord): Promise<DailyRecord> {
+    const [newRecord] = await db.insert(dailyRecords).values(record).returning();
+    return newRecord;
+  }
+
+  async getDailyRecords(flockId?: string, limit = 50): Promise<DailyRecord[]> {
+    let query = db.select().from(dailyRecords);
+    
+    if (flockId) {
+      query = query.where(eq(dailyRecords.flockId, flockId));
+    }
+    
+    return await query.orderBy(desc(dailyRecords.recordDate)).limit(limit);
+  }
+
+  async getDailyRecordsByDateRange(startDate: string, endDate: string): Promise<DailyRecord[]> {
+    return await db
+      .select()
+      .from(dailyRecords)
+      .where(
+        and(
+          gte(dailyRecords.recordDate, startDate),
+          lte(dailyRecords.recordDate, endDate)
+        )
+      )
+      .orderBy(desc(dailyRecords.recordDate));
+  }
+
+  async updateDailyRecord(id: string, updates: Partial<InsertDailyRecord>): Promise<DailyRecord> {
+    const [updatedRecord] = await db
+      .update(dailyRecords)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(dailyRecords.id, id))
+      .returning();
+    return updatedRecord;
+  }
+
+  // Sales operations
+  async createSale(sale: InsertSale): Promise<Sale> {
+    const [newSale] = await db.insert(sales).values(sale).returning();
+    return newSale;
+  }
+
+  async getSales(limit = 50): Promise<Sale[]> {
+    return await db.select().from(sales).orderBy(desc(sales.saleDate)).limit(limit);
+  }
+
+  async getSalesByDateRange(startDate: string, endDate: string): Promise<Sale[]> {
+    return await db
+      .select()
+      .from(sales)
+      .where(
+        and(
+          gte(sales.saleDate, startDate),
+          lte(sales.saleDate, endDate)
+        )
+      )
+      .orderBy(desc(sales.saleDate));
+  }
+
+  // Feed inventory operations
+  async createFeedInventory(feed: InsertFeedInventory): Promise<FeedInventory> {
+    const [newFeed] = await db.insert(feedInventory).values(feed).returning();
+    return newFeed;
+  }
+
+  async getFeedInventory(): Promise<FeedInventory[]> {
+    return await db.select().from(feedInventory).orderBy(desc(feedInventory.createdAt));
+  }
+
+  async updateFeedInventory(id: string, updates: Partial<InsertFeedInventory>): Promise<FeedInventory> {
+    const [updatedFeed] = await db
+      .update(feedInventory)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(feedInventory.id, id))
+      .returning();
+    return updatedFeed;
+  }
+
+  async deleteFeedInventory(id: string): Promise<void> {
+    await db.delete(feedInventory).where(eq(feedInventory.id, id));
+  }
+
+  // Health record operations
+  async createHealthRecord(record: InsertHealthRecord): Promise<HealthRecord> {
+    const [newRecord] = await db.insert(healthRecords).values(record).returning();
+    return newRecord;
+  }
+
+  async getHealthRecords(flockId?: string, limit = 50): Promise<HealthRecord[]> {
+    let query = db.select().from(healthRecords);
+    
+    if (flockId) {
+      query = query.where(eq(healthRecords.flockId, flockId));
+    }
+    
+    return await query.orderBy(desc(healthRecords.recordDate)).limit(limit);
+  }
+
+  // Expense operations
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    const [newExpense] = await db.insert(expenses).values(expense).returning();
+    return newExpense;
+  }
+
+  async getExpenses(limit = 50): Promise<Expense[]> {
+    return await db.select().from(expenses).orderBy(desc(expenses.expenseDate)).limit(limit);
+  }
+
+  async getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]> {
+    return await db
+      .select()
+      .from(expenses)
+      .where(
+        and(
+          gte(expenses.expenseDate, startDate),
+          lte(expenses.expenseDate, endDate)
+        )
+      )
+      .orderBy(desc(expenses.expenseDate));
+  }
+
+  // Dashboard analytics
+  async getDashboardMetrics(): Promise<any> {
+    // Get total birds from all active flocks
+    const activeFlocks = await db.select().from(flocks).where(eq(flocks.status, 'laying'));
+    const totalBirds = activeFlocks.reduce((sum, flock) => sum + flock.currentCount, 0);
+
+    // Get today's egg production
+    const today = new Date().toISOString().split('T')[0];
+    const todayRecords = await db
+      .select()
+      .from(dailyRecords)
+      .where(eq(dailyRecords.recordDate, today));
+    
+    const todayEggs = todayRecords.reduce((sum, record) => sum + (record.eggsCollected || 0), 0);
+    const todayCrates = todayRecords.reduce((sum, record) => sum + (record.cratesProduced || 0), 0);
+
+    // Get feed inventory total
+    const feedInventoryData = await this.getFeedInventory();
+    const totalFeedStock = feedInventoryData.reduce((sum, feed) => sum + parseFloat(feed.quantityKg || '0'), 0);
+
+    // Get monthly revenue
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+    const monthlySales = await this.getSalesByDateRange(monthStart, monthEnd);
+    const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || '0'), 0);
+
+    return {
+      totalBirds,
+      todayEggs,
+      todayCrates,
+      totalFeedStock,
+      monthlyRevenue,
+      layingRate: totalBirds > 0 ? (todayEggs / totalBirds * 100).toFixed(1) : '0'
+    };
+  }
+
+  async getRecentActivity(limit = 10): Promise<any[]> {
+    // Combine recent records from different tables
+    const recentRecords = await db
+      .select({
+        id: dailyRecords.id,
+        type: sql`'daily_record'`.as('type'),
+        description: sql`CASE 
+          WHEN ${dailyRecords.eggsCollected} IS NOT NULL THEN CONCAT('Recorded ', ${dailyRecords.eggsCollected}, ' eggs')
+          WHEN ${dailyRecords.mortalityCount} > 0 THEN CONCAT('Recorded ', ${dailyRecords.mortalityCount}, ' mortality')
+          WHEN ${dailyRecords.feedConsumed} IS NOT NULL THEN CONCAT('Updated feed consumption: ', ${dailyRecords.feedConsumed}, 'kg')
+          ELSE 'Daily record updated'
+        END`.as('description'),
+        createdAt: dailyRecords.createdAt,
+        userId: dailyRecords.userId
+      })
+      .from(dailyRecords)
+      .orderBy(desc(dailyRecords.createdAt))
+      .limit(limit);
+
+    return recentRecords;
+  }
+}
+
+export const storage = new DatabaseStorage();

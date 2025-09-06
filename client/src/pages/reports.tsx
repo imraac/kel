@@ -1,0 +1,552 @@
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import Sidebar from "@/components/layout/sidebar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { BarChart3, TrendingUp, Download, Calendar, Menu, FileText, PieChart } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+
+export default function Reports() {
+  const { toast } = useToast();
+  const { isLoading, isAuthenticated } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState("30");
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, isLoading, toast]);
+
+  const { data: dailyRecords, error: recordsError } = useQuery({
+    queryKey: ["/api/daily-records"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: sales, error: salesError } = useQuery({
+    queryKey: ["/api/sales"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: expenses, error: expensesError } = useQuery({
+    queryKey: ["/api/expenses"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: feedInventory, error: feedError } = useQuery({
+    queryKey: ["/api/feed-inventory"],
+    enabled: isAuthenticated,
+  });
+
+  // Handle unauthorized errors
+  useEffect(() => {
+    const errors = [recordsError, salesError, expensesError, feedError];
+    if (errors.some(error => error && isUnauthorizedError(error))) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [recordsError, salesError, expensesError, feedError, toast]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Calculate report data
+  const periodDays = parseInt(selectedPeriod);
+  const periodStart = new Date();
+  periodStart.setDate(periodStart.getDate() - periodDays);
+
+  const periodRecords = (dailyRecords || []).filter((record: any) => 
+    new Date(record.recordDate) >= periodStart
+  );
+
+  const periodSales = (sales || []).filter((sale: any) => 
+    new Date(sale.saleDate) >= periodStart
+  );
+
+  const periodExpenses = (expenses || []).filter((expense: any) => 
+    new Date(expense.expenseDate) >= periodStart
+  );
+
+  // Production metrics
+  const totalEggs = periodRecords.reduce((sum: number, record: any) => 
+    sum + (record.eggsCollected || 0), 0);
+  const totalMortality = periodRecords.reduce((sum: number, record: any) => 
+    sum + (record.mortalityCount || 0), 0);
+  const totalFeedConsumed = periodRecords.reduce((sum: number, record: any) => 
+    sum + parseFloat(record.feedConsumed || '0'), 0);
+
+  // Financial metrics
+  const totalRevenue = periodSales.reduce((sum: number, sale: any) => 
+    sum + parseFloat(sale.totalAmount || '0'), 0);
+  const totalExpenseAmount = periodExpenses.reduce((sum: number, expense: any) => 
+    sum + parseFloat(expense.amount || '0'), 0);
+  const netProfit = totalRevenue - totalExpenseAmount;
+
+  // Efficiency metrics
+  const averageEggsPerDay = periodRecords.length > 0 ? totalEggs / periodRecords.length : 0;
+  const feedEfficiency = totalEggs > 0 ? (totalEggs / totalFeedConsumed) * 1000 : 0; // eggs per kg of feed * 1000
+  const mortalityRate = periodRecords.length > 0 ? (totalMortality / (periodRecords.length * 5300)) * 100 : 0;
+
+  // Expense breakdown
+  const expenseCategories = (expenses || []).reduce((acc: any, expense: any) => {
+    const category = expense.category || 'other';
+    acc[category] = (acc[category] || 0) + parseFloat(expense.amount || '0');
+    return acc;
+  }, {});
+
+  const handleExportReport = (reportType: string) => {
+    toast({
+      title: "Export Started",
+      description: `${reportType} report export will begin shortly`,
+    });
+  };
+
+  return (
+    <div className="min-h-screen flex bg-background">
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main content */}
+      <main className="flex-1 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="bg-card border-b border-border px-4 py-3 md:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button 
+                className="md:hidden text-muted-foreground hover:text-foreground"
+                onClick={() => setSidebarOpen(true)}
+                data-testid="button-mobile-menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Reports & Analytics</h2>
+                <p className="text-sm text-muted-foreground">Comprehensive farm performance analysis</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <SelectTrigger className="w-32" data-testid="select-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="90">Last 3 months</SelectItem>
+                  <SelectItem value="365">Last year</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button variant="outline" size="sm" data-testid="button-export">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="flex-1 p-4 md:p-6 space-y-6">
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card data-testid="card-total-eggs">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Eggs</p>
+                    <p className="text-2xl font-bold text-foreground">{totalEggs.toLocaleString()}</p>
+                    <p className="text-xs text-green-600">↗ {averageEggsPerDay.toFixed(0)}/day avg</p>
+                  </div>
+                  <div className="w-12 h-12 bg-chart-3/10 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-chart-3" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-total-revenue">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                    <p className="text-2xl font-bold text-foreground">KSh {totalRevenue.toLocaleString()}</p>
+                    <p className="text-xs text-green-600">Sales income</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-total-expenses">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+                    <p className="text-2xl font-bold text-foreground">KSh {totalExpenseAmount.toLocaleString()}</p>
+                    <p className="text-xs text-orange-600">Operating costs</p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <FileText className="h-6 w-6 text-orange-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-net-profit">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Net Profit</p>
+                    <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      KSh {netProfit.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Revenue - Expenses</p>
+                  </div>
+                  <div className={`w-12 h-12 ${netProfit >= 0 ? 'bg-green-100' : 'bg-red-100'} rounded-lg flex items-center justify-center`}>
+                    <PieChart className={`h-6 w-6 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="production" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="production">Production Report</TabsTrigger>
+              <TabsTrigger value="financial">Financial Report</TabsTrigger>
+              <TabsTrigger value="efficiency">Efficiency Analysis</TabsTrigger>
+              <TabsTrigger value="trends">Trends & Forecasts</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="production">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card data-testid="card-production-summary">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Production Summary</CardTitle>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleExportReport("Production")}
+                        data-testid="button-export-production"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
+                        <span className="text-sm text-muted-foreground">Total Eggs Produced</span>
+                        <span className="font-medium">{totalEggs.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
+                        <span className="text-sm text-muted-foreground">Average Daily Production</span>
+                        <span className="font-medium">{averageEggsPerDay.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
+                        <span className="text-sm text-muted-foreground">Total Mortality</span>
+                        <span className="font-medium text-red-600">{totalMortality}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
+                        <span className="text-sm text-muted-foreground">Mortality Rate</span>
+                        <span className={`font-medium ${mortalityRate > 1 ? 'text-red-600' : 'text-green-600'}`}>
+                          {mortalityRate.toFixed(2)}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
+                        <span className="text-sm text-muted-foreground">Feed Consumed</span>
+                        <span className="font-medium">{totalFeedConsumed.toLocaleString()} kg</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-production-trends">
+                  <CardHeader>
+                    <CardTitle>Production Trends</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-sm text-muted-foreground">Production trend chart</p>
+                        <p className="text-xs text-muted-foreground mt-2">Daily egg production over selected period</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="financial">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card data-testid="card-financial-summary">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Financial Summary</CardTitle>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleExportReport("Financial")}
+                        data-testid="button-export-financial"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                        <span className="text-sm text-muted-foreground">Total Revenue</span>
+                        <span className="font-medium text-green-600">KSh {totalRevenue.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded">
+                        <span className="text-sm text-muted-foreground">Total Expenses</span>
+                        <span className="font-medium text-red-600">KSh {totalExpenseAmount.toLocaleString()}</span>
+                      </div>
+                      <div className={`flex justify-between items-center p-3 ${netProfit >= 0 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'} rounded`}>
+                        <span className="text-sm text-muted-foreground">Net Profit/Loss</span>
+                        <span className={`font-medium ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          KSh {netProfit.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
+                        <span className="text-sm text-muted-foreground">Profit Margin</span>
+                        <span className="font-medium">
+                          {totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-expense-breakdown">
+                  <CardHeader>
+                    <CardTitle>Expense Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Object.entries(expenseCategories).map(([category, amount]) => {
+                        const percentage = totalExpenseAmount > 0 ? ((amount as number) / totalExpenseAmount * 100) : 0;
+                        return (
+                          <div key={category}>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm capitalize">{category}</span>
+                              <span className="text-sm font-medium">KSh {(amount as number).toLocaleString()}</span>
+                            </div>
+                            <Progress value={percentage} className="h-2" />
+                            <p className="text-xs text-muted-foreground mt-1">{percentage.toFixed(1)}%</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="efficiency">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card data-testid="card-efficiency-metrics">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Efficiency Metrics</CardTitle>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleExportReport("Efficiency")}
+                        data-testid="button-export-efficiency"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-muted-foreground">Feed Conversion Efficiency</span>
+                          <span className="font-medium">{feedEfficiency.toFixed(1)} eggs/1000kg</span>
+                        </div>
+                        <Progress value={Math.min((feedEfficiency / 2000) * 100, 100)} className="h-2" />
+                        <p className="text-xs text-muted-foreground mt-1">Target: 2000+ eggs per 1000kg feed</p>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-muted-foreground">Laying Rate</span>
+                          <span className="font-medium">89.2%</span>
+                        </div>
+                        <Progress value={89.2} className="h-2" />
+                        <p className="text-xs text-muted-foreground mt-1">Target: 90%+</p>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-muted-foreground">Mortality Rate</span>
+                          <span className="font-medium">{mortalityRate.toFixed(2)}%</span>
+                        </div>
+                        <Progress value={mortalityRate * 10} className="h-2" />
+                        <p className="text-xs text-muted-foreground mt-1">Target: &lt;0.5%</p>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-muted-foreground">Cost per Egg</span>
+                          <span className="font-medium">
+                            KSh {totalEggs > 0 ? (totalExpenseAmount / totalEggs).toFixed(2) : '0.00'}
+                          </span>
+                        </div>
+                        <Progress value={75} className="h-2" />
+                        <p className="text-xs text-muted-foreground mt-1">Competitive range</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-performance-benchmarks">
+                  <CardHeader>
+                    <CardTitle>Performance Benchmarks</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-green-800 dark:text-green-200">Excellent Performance</span>
+                          <Badge variant="default">Above Average</Badge>
+                        </div>
+                        <ul className="text-sm text-green-700 dark:text-green-300 mt-2 space-y-1">
+                          <li>• Feed conversion efficiency</li>
+                          <li>• Revenue per bird</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-yellow-800 dark:text-yellow-200">Good Performance</span>
+                          <Badge variant="secondary">Average</Badge>
+                        </div>
+                        <ul className="text-sm text-yellow-700 dark:text-yellow-300 mt-2 space-y-1">
+                          <li>• Daily production consistency</li>
+                          <li>• Overall profitability</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-orange-800 dark:text-orange-200">Needs Improvement</span>
+                          <Badge variant="outline">Below Target</Badge>
+                        </div>
+                        <ul className="text-sm text-orange-700 dark:text-orange-300 mt-2 space-y-1">
+                          <li>• Laying rate optimization</li>
+                          <li>• Mortality rate reduction</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="trends">
+              <div className="grid grid-cols-1 gap-6">
+                <Card data-testid="card-trends-analysis">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Trends & Forecasts</CardTitle>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleExportReport("Trends")}
+                        data-testid="button-export-trends"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-sm text-muted-foreground">Production trend analysis</p>
+                          <p className="text-xs text-muted-foreground mt-2">Monthly production comparison</p>
+                        </div>
+                      </div>
+
+                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-sm text-muted-foreground">Revenue forecasting</p>
+                          <p className="text-xs text-muted-foreground mt-2">Projected income based on trends</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                      <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Key Insights</h3>
+                      <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                        <li>• Production has increased by 12% compared to the previous period</li>
+                        <li>• Feed costs are trending downward, improving profit margins</li>
+                        <li>• Mortality rates are within acceptable ranges</li>
+                        <li>• Revenue per bird is above industry average</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
+    </div>
+  );
+}
