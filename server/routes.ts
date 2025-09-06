@@ -400,6 +400,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Smart matching endpoint
+  app.post('/api/marketplace/smart-match', isAuthenticated, async (req, res) => {
+    try {
+      const result = await storage.runSmartMatching();
+      res.json(result);
+    } catch (error) {
+      console.error("Error running smart matching:", error);
+      res.status(500).json({ message: "Failed to run smart matching" });
+    }
+  });
+
+  app.get('/api/marketplace/production-capacity', isAuthenticated, async (req, res) => {
+    try {
+      const capacity = await storage.getAvailableEggProduction();
+      res.json(capacity);
+    } catch (error) {
+      console.error("Error fetching production capacity:", error);
+      res.status(500).json({ message: "Failed to fetch production capacity" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
