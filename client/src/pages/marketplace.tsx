@@ -535,17 +535,7 @@ export default function Marketplace() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <div className="text-center py-8">
-                  <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">Smart Matching System</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto mt-2">
-                    Automatically match customer demand requests with your available supply based on pricing, delivery dates, and customer preferences.
-                  </p>
-                  <Button className="mt-4" data-testid="button-run-matching">
-                    <Clock className="mr-2 h-4 w-4" />
-                    Run Matching Algorithm
-                  </Button>
-                </div>
+                <SmartMatchingPanel />
               </div>
             </CardContent>
           </Card>
@@ -938,5 +928,166 @@ function BookingDialog({ customers }: { customers: Customer[] }) {
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Smart Matching Panel Component
+function SmartMatchingPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [matchingResults, setMatchingResults] = useState<{ matches: number; newBookings: number } | null>(null);
+
+  const { data: productionCapacity, isLoading: capacityLoading } = useQuery({
+    queryKey: ["/api/marketplace/production-capacity"],
+  });
+
+  const runMatchingMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/marketplace/smart-match", {
+        method: "POST",
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      setMatchingResults(data);
+      toast({ 
+        title: "Smart Matching Complete", 
+        description: `Found ${data.matches} matches and created ${data.newBookings} new bookings` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/demand-requests"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to run smart matching", variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Production Capacity Overview */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Production Capacity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {capacityLoading ? (
+              <div>Loading capacity data...</div>
+            ) : productionCapacity ? (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Available Crates:</span>
+                  <span className="font-medium">{productionCapacity.availableCrates}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Daily Production:</span>
+                  <span className="font-medium">{productionCapacity.projectedDailyProduction} crates</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Weekly Capacity:</span>
+                  <span className="font-medium">{productionCapacity.projectedDailyProduction * 7} crates</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-muted-foreground">No capacity data available</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Matching Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {matchingResults ? (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Successful Matches:</span>
+                  <span className="font-medium text-green-600">{matchingResults.matches}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">New Bookings Created:</span>
+                  <span className="font-medium text-blue-600">{matchingResults.newBookings}</span>
+                </div>
+                <div className="mt-4">
+                  <Badge variant="outline" className="text-green-700 bg-green-50">
+                    Last run: {new Date().toLocaleString()}
+                  </Badge>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                No matching results yet. Run the algorithm to see results.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Matching Algorithm Controls */}
+      <div className="text-center py-8">
+        <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium">Smart Matching Algorithm</h3>
+        <p className="text-muted-foreground max-w-md mx-auto mt-2">
+          Automatically match customer demand requests with your available supply based on production capacity, pricing, delivery dates, and customer preferences.
+        </p>
+        
+        <div className="mt-6 space-y-3">
+          <Button 
+            onClick={() => runMatchingMutation.mutate()}
+            disabled={runMatchingMutation.isPending}
+            data-testid="button-run-matching"
+            className="px-8"
+          >
+            {runMatchingMutation.isPending ? (
+              <>
+                <Clock className="mr-2 h-4 w-4 animate-spin" />
+                Running Algorithm...
+              </>
+            ) : (
+              <>
+                <Clock className="mr-2 h-4 w-4" />
+                Run Matching Algorithm
+              </>
+            )}
+          </Button>
+          
+          <div className="text-xs text-muted-foreground">
+            This will automatically create bookings for matching demand requests
+          </div>
+        </div>
+      </div>
+
+      {/* Algorithm Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">How Smart Matching Works</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <div className="flex items-start space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+              <span>Analyzes your current and projected egg production capacity</span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+              <span>Reviews open customer demand requests by priority and urgency</span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+              <span>Matches requests that fit your capacity and customer price expectations</span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+              <span>Creates advance bookings automatically with appropriate delivery dates</span>
+            </div>
+            <div className="flex items-start space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+              <span>Prioritizes urgent requests and high-value customers first</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
