@@ -332,19 +332,19 @@ export default function ChickBrooding() {
                       <h3 className="font-semibold mb-4">Temperature Schedule</h3>
                       <div className="space-y-3">
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 0-1</span>
+                          <span>Week 0-1 (0-7 days)</span>
                           <span className="font-medium">35-32°C</span>
                         </div>
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 2-3</span>
+                          <span>Week 2-3 (8-21 days)</span>
                           <span className="font-medium">32-29°C</span>
                         </div>
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 4-5</span>
+                          <span>Week 4-5 (22-35 days)</span>
                           <span className="font-medium">29-26°C</span>
                         </div>
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 6-8</span>
+                          <span>Week 6-8 (36-56 days)</span>
                           <span className="font-medium">26-21°C</span>
                         </div>
                       </div>
@@ -354,23 +354,161 @@ export default function ChickBrooding() {
                       <h3 className="font-semibold mb-4">Lighting Schedule</h3>
                       <div className="space-y-3">
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 0-1</span>
+                          <span>Week 0-1 (0-7 days)</span>
                           <span className="font-medium">24 hours</span>
                         </div>
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 2-3</span>
+                          <span>Week 2-3 (8-21 days)</span>
                           <span className="font-medium">20 hours</span>
                         </div>
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 4-5</span>
+                          <span>Week 4-5 (22-35 days)</span>
                           <span className="font-medium">16 hours</span>
                         </div>
                         <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 6-8</span>
+                          <span>Week 6-8 (36-56 days)</span>
                           <span className="font-medium">14 hours</span>
                         </div>
                       </div>
                     </div>
+
+                    <div>
+                      <h3 className="font-semibold mb-4">Feed Guide by Age</h3>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium">Week 0-1 (0-7 days)</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <div>• 15g per bird/day</div>
+                            <div>• Chick Starter (22-24% protein)</div>
+                            <div>• Crumbled or mash feed</div>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium">Week 2 (8-14 days)</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <div>• 25g per bird/day</div>
+                            <div>• Chick Starter (20-22% protein)</div>
+                            <div>• Small pellets or crumbles</div>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium">Week 3 (15-21 days)</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <div>• 35g per bird/day</div>
+                            <div>• Chick Grower (18-20% protein)</div>
+                            <div>• Transition to pellets</div>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium">Week 4-5 (22-35 days)</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <div>• 45-55g per bird/day</div>
+                            <div>• Grower Feed (16-18% protein)</div>
+                            <div>• Standard pellets</div>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium">Week 6+ (36+ days)</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <div>• 60-70g per bird/day</div>
+                            <div>• Developer Feed (15-17% protein)</div>
+                            <div>• Prepare for layer transition</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold mb-4">Expected Weight by Age</h3>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Week 0-1</span>
+                            <span className="text-sm font-medium">35-45g</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Critical growth period - monitor closely
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Week 2</span>
+                            <span className="text-sm font-medium">65-85g</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Rapid growth phase begins
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Week 3</span>
+                            <span className="text-sm font-medium">120-150g</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Feed transition period
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Week 4</span>
+                            <span className="text-sm font-medium">190-230g</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Feather development peak
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Week 5</span>
+                            <span className="text-sm font-medium">270-320g</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Steady growth continues
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Week 6</span>
+                            <span className="text-sm font-medium">360-420g</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Prepare for grower phase
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Week 7-8</span>
+                            <span className="text-sm font-medium">450-620g</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Ready to transition to grower facility
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Additional Tips Section */}
+                  <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">💡 Pro Tips for Successful Brooding</h4>
+                    <ul className="text-sm space-y-1 text-blue-800 dark:text-blue-200">
+                      <li>• Monitor feed consumption daily - sudden changes indicate health issues</li>
+                      <li>• Weigh a sample of 10-20 birds weekly to track growth rates</li>
+                      <li>• Adjust temperature gradually - never drop more than 2-3°C per week</li>
+                      <li>• Ensure adequate ventilation while maintaining temperature</li>
+                      <li>• Keep feed fresh - replace any wet or moldy feed immediately</li>
+                      <li>• Provide adequate feeder and drinker space (2.5cm per bird)</li>
+                    </ul>
                   </div>
                 </CardContent>
               </Card>
