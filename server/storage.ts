@@ -1,5 +1,6 @@
 import {
   users,
+  farms,
   flocks,
   dailyRecords,
   sales,
@@ -13,6 +14,8 @@ import {
   deliveries,
   type User,
   type UpsertUser,
+  type InsertFarm,
+  type Farm,
   type InsertFlock,
   type Flock,
   type InsertDailyRecord,
@@ -41,6 +44,16 @@ import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
+  // Farm operations
+  createFarm(farm: InsertFarm): Promise<Farm>;
+  createFarmWithOwner(farm: InsertFarm, userId: string): Promise<{ farm: Farm; user: User }>;
+  getFarms(): Promise<Farm[]>;
+  getFarmsByUserAccess(userId: string, userRole: string): Promise<Farm[]>;
+  getFarmById(id: string): Promise<Farm | undefined>;
+  updateFarm(id: string, updates: Partial<InsertFarm>): Promise<Farm>;
+  updateFarmOwnerFields(id: string, updates: Partial<InsertFarm>): Promise<Farm>;
+  getFarmsByUserId(userId: string): Promise<Farm[]>;
+
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
@@ -108,6 +121,7 @@ export interface IStorage {
 
   // SECURE: Atomic order creation with server-side pricing and inventory validation
   createOrderWithItems(orderData: {
+    farmId: string;
     customerId: string;
     userId: string;
     requiredDate?: string;
@@ -133,6 +147,114 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Farm operations
+  async createFarm(farm: InsertFarm): Promise<Farm> {
+    const [newFarm] = await db.insert(farms).values(farm).returning();
+    return newFarm;
+  }
+
+  // SECURE: Atomic farm creation with user binding - prevents tenant orphaning
+  async createFarmWithOwner(farm: InsertFarm, userId: string): Promise<{ farm: Farm; user: User }> {
+    return await db.transaction(async (tx) => {
+      // Step 1: Create the farm
+      const [newFarm] = await tx.insert(farms).values(farm).returning();
+
+      // Step 2: Atomically bind user to farm and upgrade role to farm_owner
+      const [updatedUser] = await tx
+        .update(users)
+        .set({
+          farmId: newFarm.id,
+          role: 'farm_owner',
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        throw new Error('Failed to bind user to farm - user not found');
+      }
+
+      return { farm: newFarm, user: updatedUser };
+    });
+  }
+
+  async getFarms(): Promise<Farm[]> {
+    return await db.select().from(farms).orderBy(desc(farms.createdAt));
+  }
+
+  // SECURE: Get farms based on user access permissions
+  async getFarmsByUserAccess(userId: string, userRole: string): Promise<Farm[]> {
+    if (userRole === 'admin') {
+      // Admins can see all farms
+      return await db.select().from(farms).orderBy(desc(farms.createdAt));
+    } else {
+      // Non-admins can only see their own farm
+      const user = await this.getUser(userId);
+      if (!user?.farmId) {
+        return [];
+      }
+      return await db
+        .select()
+        .from(farms)
+        .where(eq(farms.id, user.farmId))
+        .orderBy(desc(farms.createdAt));
+    }
+  }
+
+  async getFarmById(id: string): Promise<Farm | undefined> {
+    const [farm] = await db.select().from(farms).where(eq(farms.id, id));
+    return farm;
+  }
+
+  async updateFarm(id: string, updates: Partial<InsertFarm>): Promise<Farm> {
+    const [updatedFarm] = await db
+      .update(farms)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(farms.id, id))
+      .returning();
+    return updatedFarm;
+  }
+
+  // SECURE: Update farm with only owner-editable fields to prevent privilege escalation
+  async updateFarmOwnerFields(id: string, updates: Partial<InsertFarm>): Promise<Farm> {
+    // Only allow farm owners to update specific fields, excluding admin-only fields
+    const ownerUpdatableFields = {
+      name: updates.name,
+      description: updates.description,
+      location: updates.location,
+      address: updates.address,
+      contactEmail: updates.contactEmail,
+      contactPhone: updates.contactPhone,
+      website: updates.website,
+      totalBirds: updates.totalBirds,
+      avgEggsPerDay: updates.avgEggsPerDay,
+      specialization: updates.specialization,
+      businessRegistration: updates.businessRegistration,
+      certifications: updates.certifications
+    };
+
+    // Remove undefined fields
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(ownerUpdatableFields).filter(([_, value]) => value !== undefined)
+    );
+
+    const [updatedFarm] = await db
+      .update(farms)
+      .set({ ...cleanUpdates, updatedAt: new Date() })
+      .where(eq(farms.id, id))
+      .returning();
+    return updatedFarm;
+  }
+
+  async getFarmsByUserId(userId: string): Promise<Farm[]> {
+    return await db
+      .select()
+      .from(farms)
+      .innerJoin(users, eq(users.farmId, farms.id))
+      .where(eq(users.id, userId))
+      .then(results => results.map(r => r.farms));
+  }
+
   // User operations (mandatory for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -531,13 +653,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Marketplace operations - Orders
-  async createOrder(order: InsertOrder): Promise<Order> {
+  async createOrder(order: typeof orders.$inferInsert): Promise<Order> {
     const [newOrder] = await db.insert(orders).values(order).returning();
     return newOrder;
   }
 
   // SECURE: Atomic order creation with server-side pricing and inventory validation
   async createOrderWithItems(orderData: {
+    farmId: string;
     customerId: string;
     userId: string;
     requiredDate?: string;
@@ -563,9 +686,11 @@ export class DatabaseStorage implements IStorage {
 
     // Step 2: Create order with server-calculated total amount
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    const totalAmountStr = validation.totalAmount.toFixed(2);
     
     const orderInsertData = {
       orderNumber,
+      farmId: orderData.farmId,
       customerId: orderData.customerId,
       userId: orderData.userId,
       requiredDate: orderData.requiredDate,
@@ -573,8 +698,8 @@ export class DatabaseStorage implements IStorage {
       deliveryAddress: orderData.deliveryAddress,
       notes: orderData.notes,
       status: 'pending' as const,
-      totalAmount: validation.totalAmount.toString(),
-      paidAmount: '0',
+      totalAmount: totalAmountStr,
+      paidAmount: '0.00',
       paymentStatus: 'pending' as const
     };
 
@@ -586,12 +711,14 @@ export class DatabaseStorage implements IStorage {
     try {
       for (const validatedItem of validation.validatedItems) {
         // Create order item with server-calculated prices
+        const unitPriceStr = validatedItem.unitPrice.toFixed(2);
+        const totalPriceStr = validatedItem.totalPrice.toFixed(2);
         const orderItemData = {
           orderId: newOrder.id,
           productId: validatedItem.productId,
           quantity: validatedItem.quantity,
-          unitPrice: validatedItem.unitPrice.toString(),
-          totalPrice: validatedItem.totalPrice.toString()
+          unitPrice: unitPriceStr,
+          totalPrice: totalPriceStr
         };
 
         const [orderItem] = await db.insert(orderItems).values(orderItemData).returning();
@@ -641,7 +768,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Marketplace operations - Order Items
-  async createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem> {
+  async createOrderItem(orderItem: typeof orderItems.$inferInsert): Promise<OrderItem> {
     const [newOrderItem] = await db.insert(orderItems).values(orderItem).returning();
     return newOrderItem;
   }

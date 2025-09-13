@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
+  insertFarmSchema,
   insertFlockSchema,
   insertDailyRecordSchema,
   insertSaleSchema,
@@ -46,6 +47,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Farm routes
+  app.post('/api/farms', isAuthenticated, async (req: any, res) => {
+    try {
+      const farmData = insertFarmSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      
+      // SECURITY: Use atomic transaction to create farm and bind user
+      const result = await storage.createFarmWithOwner(farmData, userId);
+      
+      res.status(201).json({
+        farm: result.farm,
+        user: result.user,
+        message: "Farm registered successfully and user promoted to farm owner"
+      });
+    } catch (error) {
+      console.error("Error creating farm:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid farm data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create farm" });
+    }
+  });
+
+  app.get('/api/farms', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(403).json({ message: "User not found" });
+      }
+      
+      // SECURITY: Filter farms based on user access permissions
+      const farms = await storage.getFarmsByUserAccess(userId, currentUser.role);
+      res.json(farms);
+    } catch (error) {
+      console.error("Error fetching farms:", error);
+      res.status(500).json({ message: "Failed to fetch farms" });
+    }
+  });
+
+  app.get('/api/farms/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(403).json({ message: "User not found" });
+      }
+      
+      const farm = await storage.getFarmById(req.params.id);
+      if (!farm) {
+        return res.status(404).json({ message: "Farm not found" });
+      }
+      
+      // SECURITY: Only allow admin OR users whose farmId matches the farm
+      if (currentUser.role !== 'admin' && currentUser.farmId !== farm.id) {
+        return res.status(403).json({ message: "Access denied. You can only view your own farm." });
+      }
+      
+      res.json(farm);
+    } catch (error) {
+      console.error("Error fetching farm:", error);
+      res.status(500).json({ message: "Failed to fetch farm" });
+    }
+  });
+
+  app.patch('/api/farms/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(403).json({ message: "User not found" });
+      }
+      
+      const farm = await storage.getFarmById(req.params.id);
+      if (!farm) {
+        return res.status(404).json({ message: "Farm not found" });
+      }
+      
+      // SECURITY: Only allow admin OR users whose farmId matches the farm
+      if (currentUser.role !== 'admin' && currentUser.farmId !== farm.id) {
+        return res.status(403).json({ message: "Access denied. You can only update your own farm." });
+      }
+      
+      const updates = insertFarmSchema.partial().parse(req.body);
+      
+      let updatedFarm: any;
+      if (currentUser.role === 'admin') {
+        // SECURITY: Admins can update all fields including status and isApproved
+        updatedFarm = await storage.updateFarm(req.params.id, updates);
+      } else {
+        // SECURITY: Farm owners can only update specific fields to prevent privilege escalation
+        updatedFarm = await storage.updateFarmOwnerFields(req.params.id, updates);
+      }
+      
+      res.json(updatedFarm);
+    } catch (error) {
+      console.error("Error updating farm:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid farm data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update farm" });
+    }
+  });
+
+  // SECURITY: Replace vulnerable user-specific endpoint with secure /me endpoint
+  app.get('/api/farms/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const farms = await storage.getFarmsByUserId(userId);
+      res.json(farms);
+    } catch (error) {
+      console.error("Error fetching user farms:", error);
+      res.status(500).json({ message: "Failed to fetch user farms" });
     }
   });
 
