@@ -94,17 +94,17 @@ export default function SimpleBroodingForm({ onSuccess }: SimpleBroodingFormProp
       return;
     }
 
-    // Prepare data with proper type coercion
+    // Prepare data with proper type coercion - decimal fields need to be strings
     const payload = {
       recordDate,
       flockId,
-      temperature: temperature ? parseFloat(temperature) : undefined,
-      lightingHours: lightingHours ? parseFloat(lightingHours) : undefined,
+      temperature: temperature || undefined, // Keep as string for decimal field
+      lightingHours: lightingHours || undefined, // Keep as string for decimal field
       mortalityCount: parseInt(mortalityCount) || 0,
       mortalityReason: mortalityReason || undefined,
-      feedConsumed: feedConsumed ? parseFloat(feedConsumed) : undefined,
+      feedConsumed: feedConsumed || undefined, // Keep as string for decimal field
       feedType: feedType || undefined,
-      averageWeight: averageWeight ? parseFloat(averageWeight) : undefined,
+      averageWeight: averageWeight || undefined, // Keep as string for decimal field
       sampleSize: parseInt(sampleSize) || 0,
       notes: notes || undefined,
       // Required egg production fields (defaults for brooding records)
