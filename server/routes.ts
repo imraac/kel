@@ -33,6 +33,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Users routes (for driver assignment)
+  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      // Only admins can view all users for driver assignment
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied. Admin role required." });
+      }
+      const users = await storage.getUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // Dashboard routes
   app.get('/api/dashboard/metrics', isAuthenticated, async (req, res) => {
     try {
@@ -499,6 +515,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error("Error creating delivery:", error);
         res.status(500).json({ message: "Failed to create delivery" });
+      }
+    }
+  });
+
+  app.patch('/api/deliveries/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const updates = insertDeliverySchema.partial().parse(req.body);
+      const delivery = await storage.updateDelivery(req.params.id, updates);
+      res.json(delivery);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error updating delivery:", error);
+        res.status(500).json({ message: "Failed to update delivery" });
       }
     }
   });

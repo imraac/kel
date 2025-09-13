@@ -356,7 +356,10 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
   totalPrice: true      // Server-calculated: quantity * unitPrice
 });
 
-export const insertDeliverySchema = createInsertSchema(deliveries).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDeliverySchema = createInsertSchema(deliveries).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  scheduledDate: z.union([z.date(), z.string().transform((str) => str ? new Date(str) : undefined)]).optional(),
+  actualDate: z.union([z.date(), z.string().transform((str) => str ? new Date(str) : undefined)]).optional(),
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Eye, Truck, Clock, CheckCircle, XCircle, Filter, Menu } from "lucide-react";
+import { Plus, Search, Eye, Truck, Clock, CheckCircle, XCircle, Filter, Menu, MapPin, User as UserIcon, Calendar, Package, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/sidebar";
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertOrderSchema, type Order, type Customer, type Product } from "@shared/schema";
+import { insertOrderSchema, insertDeliverySchema, type Order, type Customer, type Product, type Delivery, type User } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -30,6 +30,21 @@ const orderFormSchema = insertOrderSchema.extend({
   })).min(1, "At least one item is required"),
 });
 
+// Delivery form schemas
+const deliveryFormSchema = insertDeliverySchema.extend({
+  orderId: z.string().min(1, "Order is required"),
+  driverId: z.string().optional(),
+  scheduledDate: z.string().min(1, "Scheduled date is required"),
+});
+
+const deliveryUpdateSchema = z.object({
+  status: z.enum(["scheduled", "in_transit", "delivered", "failed"]),
+  deliveryNotes: z.string().optional(),
+  recipientName: z.string().optional(),
+  recipientPhone: z.string().optional(),
+  actualDate: z.string().optional(),
+});
+
 export default function MarketplaceOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -37,6 +52,9 @@ export default function MarketplaceOrders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState([{ productId: "", quantity: 1 }]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
+  const [isDeliveryUpdateDialogOpen, setIsDeliveryUpdateDialogOpen] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
 
@@ -84,6 +102,18 @@ export default function MarketplaceOrders() {
     enabled: isAuthenticated,
   });
 
+  // Query for all deliveries
+  const { data: deliveries = [] } = useQuery<Delivery[]>({
+    queryKey: ["/api/deliveries"],
+    enabled: isAuthenticated,
+  });
+
+  // Query for users (for driver assignment)
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+
   const createOrderMutation = useMutation({
     mutationFn: (data: any) => apiRequest("/api/orders", "POST", data),
     onSuccess: () => {
@@ -104,6 +134,48 @@ export default function MarketplaceOrders() {
     },
   });
 
+  // Delivery mutations
+  const createDeliveryMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("/api/deliveries", "POST", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      setIsDeliveryDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Delivery scheduled successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to schedule delivery",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateDeliveryMutation = useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & any) => 
+      apiRequest(`/api/deliveries/${id}`, "PATCH", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      setIsDeliveryUpdateDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Delivery updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update delivery",
+        variant: "destructive",
+      });
+    },
+  });
+
   const form = useForm<z.infer<typeof orderFormSchema>>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
@@ -113,6 +185,31 @@ export default function MarketplaceOrders() {
       deliveryAddress: "",
       notes: "",
       items: [{ productId: "", quantity: 1 }],
+    },
+  });
+
+  // Delivery forms
+  const deliveryForm = useForm<z.infer<typeof deliveryFormSchema>>({
+    resolver: zodResolver(deliveryFormSchema),
+    defaultValues: {
+      orderId: "",
+      driverId: "",
+      vehicleInfo: "",
+      scheduledDate: "",
+      deliveryNotes: "",
+      recipientName: "",
+      recipientPhone: "",
+    },
+  });
+
+  const deliveryUpdateForm = useForm<z.infer<typeof deliveryUpdateSchema>>({
+    resolver: zodResolver(deliveryUpdateSchema),
+    defaultValues: {
+      status: "scheduled",
+      deliveryNotes: "",
+      recipientName: "",
+      recipientPhone: "",
+      actualDate: "",
     },
   });
 
@@ -182,6 +279,82 @@ export default function MarketplaceOrders() {
 
   const getTotalAmount = (order: Order) => {
     return parseFloat(order.totalAmount).toLocaleString();
+  };
+
+  // Delivery helper functions
+  const getDeliveryForOrder = (orderId: string) => {
+    return deliveries.find((d: Delivery) => d.orderId === orderId);
+  };
+
+  const getDeliveryStatusColor = (status: string) => {
+    switch (status) {
+      case "scheduled": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+      case "in_transit": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
+      case "delivered": return "bg-green-600 text-white";
+      case "failed": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+    }
+  };
+
+  const getDeliveryStatusIcon = (status: string) => {
+    switch (status) {
+      case "scheduled": return <Calendar className="h-4 w-4" />;
+      case "in_transit": return <Truck className="h-4 w-4" />;
+      case "delivered": return <CheckCircle className="h-4 w-4" />;
+      case "failed": return <AlertCircle className="h-4 w-4" />;
+      default: return <Package className="h-4 w-4" />;
+    }
+  };
+
+  const getDriverName = (driverId: string | null) => {
+    if (!driverId) return "Not assigned";
+    const driver = users.find((u: User) => u.id === driverId);
+    return driver ? `${driver.firstName} ${driver.lastName}` : "Unknown";
+  };
+
+  // Form submission handlers
+  const onDeliverySubmit = (data: z.infer<typeof deliveryFormSchema>) => {
+    const deliveryData = {
+      ...data,
+      scheduledDate: new Date(data.scheduledDate).toISOString(),
+    };
+    createDeliveryMutation.mutate(deliveryData);
+  };
+
+  const onDeliveryUpdateSubmit = (data: z.infer<typeof deliveryUpdateSchema>) => {
+    if (!selectedDelivery) return;
+    const updateData = {
+      id: selectedDelivery.id,
+      ...data,
+      actualDate: data.actualDate ? new Date(data.actualDate).toISOString() : undefined,
+    };
+    updateDeliveryMutation.mutate(updateData);
+  };
+
+  const openDeliveryDialog = (order: Order) => {
+    deliveryForm.reset({
+      orderId: order.id,
+      driverId: "",
+      vehicleInfo: "",
+      scheduledDate: "",
+      deliveryNotes: "",
+      recipientName: "",
+      recipientPhone: "",
+    });
+    setSelectedOrder(order);
+    setIsDeliveryDialogOpen(true);
+  };
+
+  const openDeliveryUpdateDialog = (delivery: Delivery) => {
+    deliveryUpdateForm.reset({
+      status: delivery.status,
+      deliveryNotes: delivery.deliveryNotes || "",
+      recipientName: delivery.recipientName || "",
+      recipientPhone: delivery.recipientPhone || "",
+      actualDate: delivery.actualDate ? new Date(delivery.actualDate).toISOString().split('T')[0] : "",
+    });
+    setSelectedDelivery(delivery);
+    setIsDeliveryUpdateDialogOpen(true);
   };
 
   if (isLoading) {
@@ -531,11 +704,104 @@ export default function MarketplaceOrders() {
                     </div>
                   )}
 
-                  <div className="flex justify-end space-x-2">
+                  {/* Delivery Tracking Section */}
+                  {order.deliveryMethod === "delivery" && (() => {
+                    const delivery = getDeliveryForOrder(order.id);
+                    return (
+                      <div className="mb-4 p-3 bg-muted/30 rounded-lg border">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium flex items-center">
+                            <Truck className="mr-2 h-4 w-4" />
+                            Delivery Tracking
+                          </h4>
+                          {delivery && (
+                            <Badge className={getDeliveryStatusColor(delivery.status)}>
+                              <span className="flex items-center space-x-1">
+                                {getDeliveryStatusIcon(delivery.status)}
+                                <span className="capitalize">{delivery.status.replace('_', ' ')}</span>
+                              </span>
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {delivery ? (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Driver</p>
+                              <p className="font-medium flex items-center">
+                                <UserIcon className="mr-1 h-3 w-3" />
+                                {getDriverName(delivery.driverId)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Scheduled Date</p>
+                              <p className="font-medium">
+                                {delivery.scheduledDate ? new Date(delivery.scheduledDate).toLocaleDateString() : 'Not scheduled'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Vehicle</p>
+                              <p className="font-medium">{delivery.vehicleInfo || 'Not specified'}</p>
+                            </div>
+                            {delivery.actualDate && (
+                              <div>
+                                <p className="text-muted-foreground">Delivered Date</p>
+                                <p className="font-medium text-green-600">
+                                  {new Date(delivery.actualDate).toLocaleDateString()}
+                                </p>
+                              </div>
+                            )}
+                            {delivery.deliveryNotes && (
+                              <div className="md:col-span-2">
+                                <p className="text-muted-foreground">Delivery Notes</p>
+                                <p className="font-medium">{delivery.deliveryNotes}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            <MapPin className="inline mr-1 h-3 w-3" />
+                            Delivery not scheduled yet
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  <div className="flex justify-end space-x-2 flex-wrap gap-2">
                     <Button variant="outline" size="sm" data-testid={`button-view-order-${order.id}`}>
                       <Eye className="mr-2 h-4 w-4" />
                       View Details
                     </Button>
+                    
+                    {/* Delivery Management Buttons */}
+                    {order.deliveryMethod === "delivery" && (() => {
+                      const delivery = getDeliveryForOrder(order.id);
+                      return delivery ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => openDeliveryUpdateDialog(delivery)}
+                          data-testid={`button-update-delivery-${order.id}`}
+                        >
+                          <Truck className="mr-2 h-4 w-4" />
+                          Update Delivery
+                        </Button>
+                      ) : (
+                        order.status !== "cancelled" && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => openDeliveryDialog(order)}
+                            data-testid={`button-schedule-delivery-${order.id}`}
+                          >
+                            <Calendar className="mr-2 h-4 w-4" />
+                            Schedule Delivery
+                          </Button>
+                        )
+                      );
+                    })()}
+                    
                     {order.status !== "delivered" && order.status !== "cancelled" && (
                       <Button variant="outline" size="sm" data-testid={`button-update-order-${order.id}`}>
                         Update Status
@@ -547,6 +813,232 @@ export default function MarketplaceOrders() {
             ))
           )}
         </div>
+
+        {/* Delivery Management Dialogs */}
+        
+        {/* Schedule Delivery Dialog */}
+        <Dialog open={isDeliveryDialogOpen} onOpenChange={setIsDeliveryDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Schedule Delivery</DialogTitle>
+            </DialogHeader>
+            <Form {...deliveryForm}>
+              <form onSubmit={deliveryForm.handleSubmit(onDeliverySubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={deliveryForm.control}
+                    name="driverId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver (Optional)</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-driver">
+                              <SelectValue placeholder="Select driver" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">No driver assigned</SelectItem>
+                            {users.filter((u: User) => u.role === 'admin' || u.role === 'staff').map((user: User) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.firstName} {user.lastName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={deliveryForm.control}
+                    name="scheduledDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Scheduled Date</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="datetime-local" data-testid="input-scheduled-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="vehicleInfo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vehicle Information (Optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} placeholder="e.g., Truck KCA 123A" data-testid="input-vehicle-info" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={deliveryForm.control}
+                    name="recipientName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Recipient Name (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} data-testid="input-recipient-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={deliveryForm.control}
+                    name="recipientPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Recipient Phone (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} placeholder="e.g., +254..." data-testid="input-recipient-phone" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="deliveryNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delivery Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} rows={2} placeholder="Special instructions..." data-testid="input-delivery-notes" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDeliveryDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createDeliveryMutation.isPending} data-testid="button-save-delivery">
+                    {createDeliveryMutation.isPending ? "Scheduling..." : "Schedule Delivery"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Update Delivery Status Dialog */}
+        <Dialog open={isDeliveryUpdateDialogOpen} onOpenChange={setIsDeliveryUpdateDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update Delivery Status</DialogTitle>
+            </DialogHeader>
+            <Form {...deliveryUpdateForm}>
+              <form onSubmit={deliveryUpdateForm.handleSubmit(onDeliveryUpdateSubmit)} className="space-y-4">
+                <FormField
+                  control={deliveryUpdateForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delivery Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-delivery-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                          <SelectItem value="in_transit">In Transit</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="failed">Failed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {deliveryUpdateForm.watch("status") === "delivered" && (
+                  <FormField
+                    control={deliveryUpdateForm.control}
+                    name="actualDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Delivery Date</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="datetime-local" data-testid="input-actual-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={deliveryUpdateForm.control}
+                    name="recipientName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Recipient Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} data-testid="input-update-recipient-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={deliveryUpdateForm.control}
+                    name="recipientPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Recipient Phone</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} data-testid="input-update-recipient-phone" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={deliveryUpdateForm.control}
+                  name="deliveryNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delivery Notes</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} rows={3} placeholder="Update notes, delivery status, issues..." data-testid="input-update-delivery-notes" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDeliveryUpdateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={updateDeliveryMutation.isPending} data-testid="button-update-delivery">
+                    {updateDeliveryMutation.isPending ? "Updating..." : "Update Delivery"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
         </div>
       </main>
     </div>
