@@ -7,7 +7,7 @@ import AlertPanel from "@/components/dashboard/alert-panel";
 import QuickActions from "@/components/dashboard/quick-actions";
 import ActivityFeed from "@/components/dashboard/activity-feed";
 import PerformanceSummary from "@/components/dashboard/performance-summary";
-import DailyRecordForm from "@/components/forms/daily-record-form";
+import ComprehensiveDailyRecordForm from "@/components/forms/comprehensive-daily-record-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -305,7 +305,7 @@ export default function Home() {
                         Record comprehensive daily farm activities including eggs, mortality, feed, and environmental data
                       </DialogDescription>
                     </DialogHeader>
-                    <DailyRecordForm onSuccess={() => setDailyRecordDialogOpen(false)} />
+                    <ComprehensiveDailyRecordForm onSuccess={() => setDailyRecordDialogOpen(false)} />
                   </DialogContent>
                 </Dialog>
               </div>
