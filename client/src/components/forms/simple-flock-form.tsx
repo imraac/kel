@@ -44,11 +44,20 @@ export default function SimpleFlockForm({ onSuccess }: SimpleFlockFormProps) {
     },
     onError: (error: any) => {
       console.error("Create flock error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create flock",
-        variant: "destructive",
-      });
+      
+      if (error.message?.includes("must be associated with a farm")) {
+        toast({
+          title: "Farm Registration Required",
+          description: "You need to register your farm first. Go to /farm-registration to get started.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to create flock",
+          variant: "destructive",
+        });
+      }
     },
   });
 
