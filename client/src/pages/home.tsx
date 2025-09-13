@@ -34,12 +34,12 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: metrics, error: metricsError } = useQuery({
+  const { data: metrics = {}, error: metricsError } = useQuery<any>({
     queryKey: ["/api/dashboard/metrics"],
     enabled: isAuthenticated,
   });
 
-  const { data: activity, error: activityError } = useQuery({
+  const { data: activity = [], error: activityError } = useQuery<any[]>({
     queryKey: ["/api/dashboard/activity"],
     enabled: isAuthenticated,
   });

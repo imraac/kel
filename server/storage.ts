@@ -184,13 +184,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDailyRecords(flockId?: string, limit = 50): Promise<DailyRecord[]> {
-    let query = db.select().from(dailyRecords);
-    
     if (flockId) {
-      query = query.where(eq(dailyRecords.flockId, flockId));
+      return await db
+        .select()
+        .from(dailyRecords)
+        .where(eq(dailyRecords.flockId, flockId))
+        .orderBy(desc(dailyRecords.recordDate))
+        .limit(limit);
     }
     
-    return await query.orderBy(desc(dailyRecords.recordDate)).limit(limit);
+    return await db
+      .select()
+      .from(dailyRecords)
+      .orderBy(desc(dailyRecords.recordDate))
+      .limit(limit);
   }
 
   async getDailyRecordsByDateRange(startDate: string, endDate: string): Promise<DailyRecord[]> {
@@ -268,13 +275,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getHealthRecords(flockId?: string, limit = 50): Promise<HealthRecord[]> {
-    let query = db.select().from(healthRecords);
-    
     if (flockId) {
-      query = query.where(eq(healthRecords.flockId, flockId));
+      return await db
+        .select()
+        .from(healthRecords)
+        .where(eq(healthRecords.flockId, flockId))
+        .orderBy(desc(healthRecords.recordDate))
+        .limit(limit);
     }
     
-    return await query.orderBy(desc(healthRecords.recordDate)).limit(limit);
+    return await db
+      .select()
+      .from(healthRecords)
+      .orderBy(desc(healthRecords.recordDate))
+      .limit(limit);
   }
 
   // Expense operations
