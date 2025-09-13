@@ -64,7 +64,7 @@ export function FarmRegistrationPage() {
         title: "Farm registered successfully!",
         description: `Welcome to RoblePoultryPilot, ${(farm as any)?.name || 'your farm'}! You can now start managing your poultry operations.`,
       });
-      setLocation("/dashboard");
+      setLocation("/");
     },
     onError: (error: any) => {
       toast({
