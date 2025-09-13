@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Sprout, BarChart3, Baby, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck } from "lucide-react";
+import { Sprout, BarChart3, Baby, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -35,6 +35,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
 
   const managementItems = [
     { path: "/users", icon: Users, label: "Users & Permissions", id: "users", adminOnly: true },
+    { path: "/farm-registration", icon: Store, label: "Farm Registration", id: "farm-registration" },
     { path: "/settings", icon: Settings, label: "Settings", id: "settings" },
   ];
 
