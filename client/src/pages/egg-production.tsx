@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Egg, TrendingUp, AlertCircle, Plus, Menu, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import DailyRecordForm from "@/components/forms/daily-record-form";
+import SimpleEggProductionForm from "@/components/forms/simple-egg-production-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -231,10 +231,10 @@ export default function EggProduction() {
                   <DialogHeader>
                     <DialogTitle>Add Egg Production Record</DialogTitle>
                     <DialogDescription>
-                      Record daily egg production, mortality, and feed consumption data.
+                      Record daily egg collection data including total eggs, broken eggs, and crates produced.
                     </DialogDescription>
                   </DialogHeader>
-                  <DailyRecordForm onSuccess={() => setRecordDialogOpen(false)} />
+                  <SimpleEggProductionForm onSuccess={() => setRecordDialogOpen(false)} />
                 </DialogContent>
               </Dialog>
               
