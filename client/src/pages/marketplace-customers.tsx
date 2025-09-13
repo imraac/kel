@@ -67,7 +67,7 @@ export default function MarketplaceCustomers() {
 
   const createCustomerMutation = useMutation({
     mutationFn: (data: z.infer<typeof customerFormSchema>) => 
-      apiRequest("/api/customers", "POST", data),
+      apiRequest("POST", "/api/customers", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       setIsDialogOpen(false);

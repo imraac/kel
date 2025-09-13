@@ -115,7 +115,7 @@ export default function MarketplaceOrders() {
   });
 
   const createOrderMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/orders", "POST", data),
+    mutationFn: (data: any) => apiRequest("POST", "/api/orders", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       setIsDialogOpen(false);
@@ -136,7 +136,7 @@ export default function MarketplaceOrders() {
 
   // Delivery mutations
   const createDeliveryMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/deliveries", "POST", data),
+    mutationFn: (data: any) => apiRequest("POST", "/api/deliveries", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deliveries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -157,7 +157,7 @@ export default function MarketplaceOrders() {
 
   const updateDeliveryMutation = useMutation({
     mutationFn: ({ id, ...data }: { id: string } & any) => 
-      apiRequest(`/api/deliveries/${id}`, "PATCH", data),
+      apiRequest("PATCH", `/api/deliveries/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deliveries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -347,7 +347,7 @@ export default function MarketplaceOrders() {
 
   const openDeliveryUpdateDialog = (delivery: Delivery) => {
     deliveryUpdateForm.reset({
-      status: delivery.status,
+      status: delivery.status as "scheduled" | "in_transit" | "delivered" | "failed",
       deliveryNotes: delivery.deliveryNotes || "",
       recipientName: delivery.recipientName || "",
       recipientPhone: delivery.recipientPhone || "",
