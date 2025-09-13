@@ -15,6 +15,7 @@ import HealthRecords from "@/pages/health-records";
 import Reports from "@/pages/reports";
 import Expenses from "@/pages/expenses";
 import Users from "@/pages/users";
+import Settings from "@/pages/settings";
 import MarketplaceCustomers from "@/pages/marketplace-customers";
 import MarketplaceProducts from "@/pages/marketplace-products";
 import MarketplaceOrders from "@/pages/marketplace-orders";
@@ -36,6 +37,7 @@ function Router() {
           <Route path="/reports" component={Reports} />
           <Route path="/expenses" component={Expenses} />
           <Route path="/users" component={Users} />
+          <Route path="/settings" component={Settings} />
           <Route path="/marketplace/customers" component={MarketplaceCustomers} />
           <Route path="/marketplace/products" component={MarketplaceProducts} />
           <Route path="/marketplace/orders" component={MarketplaceOrders} />
