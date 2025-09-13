@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Menu } from "lucide-react";
 import BroodingRecordForm from "@/components/forms/brooding-record-form";
 import FlockForm from "@/components/forms/flock-form";
+import SimpleFlockForm from "@/components/forms/simple-flock-form";
 
 export default function ChickBrooding() {
   const { toast } = useToast();
@@ -212,7 +213,7 @@ export default function ChickBrooding() {
                             Add a new flock to your farm for tracking throughout its lifecycle.
                           </DialogDescription>
                         </DialogHeader>
-                        <FlockForm onSuccess={() => setFlockDialogOpen(false)} />
+                        <SimpleFlockForm onSuccess={() => setFlockDialogOpen(false)} />
                       </DialogContent>
                     </Dialog>
                   </div>
