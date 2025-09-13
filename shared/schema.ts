@@ -338,8 +338,24 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true,
 // Marketplace insert schemas
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true, createdAt: true });
+
+// SECURITY: Remove client-supplied pricing fields - these must be server-calculated only
+export const insertOrderSchema = createInsertSchema(orders).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  totalAmount: true,    // Server-calculated from order items
+  paidAmount: true      // Managed separately for payment tracking
+});
+
+// SECURITY: Remove client-supplied pricing fields - these must be server-calculated only
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ 
+  id: true, 
+  createdAt: true,
+  unitPrice: true,      // Server-fetched from current product price
+  totalPrice: true      // Server-calculated: quantity * unitPrice
+});
+
 export const insertDeliverySchema = createInsertSchema(deliveries).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
