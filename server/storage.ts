@@ -6,9 +6,6 @@ import {
   feedInventory,
   healthRecords,
   expenses,
-  customers,
-  bookings,
-  demandRequests,
   type User,
   type UpsertUser,
   type InsertFlock,
@@ -23,12 +20,6 @@ import {
   type HealthRecord,
   type InsertExpense,
   type Expense,
-  type InsertCustomer,
-  type Customer,
-  type InsertBooking,
-  type Booking,
-  type InsertDemandRequest,
-  type DemandRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
@@ -74,28 +65,6 @@ export interface IStorage {
   // Dashboard analytics
   getDashboardMetrics(): Promise<any>;
   getRecentActivity(limit?: number): Promise<any[]>;
-
-  // Customer operations
-  createCustomer(customer: InsertCustomer): Promise<Customer>;
-  getCustomers(): Promise<Customer[]>;
-  getCustomerById(id: string): Promise<Customer | undefined>;
-  updateCustomer(id: string, updates: Partial<InsertCustomer>): Promise<Customer>;
-
-  // Booking operations
-  createBooking(booking: InsertBooking): Promise<Booking>;
-  getBookings(): Promise<Booking[]>;
-  getBookingsByCustomer(customerId: string): Promise<Booking[]>;
-  updateBookingStatus(id: string, status: string): Promise<Booking>;
-
-  // Demand request operations
-  createDemandRequest(request: InsertDemandRequest): Promise<DemandRequest>;
-  getDemandRequests(): Promise<DemandRequest[]>;
-  getOpenDemandRequests(): Promise<DemandRequest[]>;
-  updateDemandRequestStatus(id: string, status: string, matchedBookingId?: string): Promise<DemandRequest>;
-
-  // Smart matching operations
-  runSmartMatching(): Promise<{ matches: number; newBookings: number }>;
-  getAvailableEggProduction(): Promise<{ availableCrates: number; projectedDailyProduction: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -323,158 +292,6 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
 
     return recentRecords;
-  }
-
-  // Customer operations
-  async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    const [newCustomer] = await db.insert(customers).values(customer).returning();
-    return newCustomer;
-  }
-
-  async getCustomers(): Promise<Customer[]> {
-    return await db.select().from(customers).orderBy(desc(customers.createdAt));
-  }
-
-  async getCustomerById(id: string): Promise<Customer | undefined> {
-    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
-    return customer;
-  }
-
-  async updateCustomer(id: string, updates: Partial<InsertCustomer>): Promise<Customer> {
-    const [updatedCustomer] = await db
-      .update(customers)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(customers.id, id))
-      .returning();
-    return updatedCustomer;
-  }
-
-  // Booking operations
-  async createBooking(booking: InsertBooking): Promise<Booking> {
-    const [newBooking] = await db.insert(bookings).values(booking).returning();
-    return newBooking;
-  }
-
-  async getBookings(): Promise<Booking[]> {
-    return await db.select().from(bookings).orderBy(desc(bookings.createdAt));
-  }
-
-  async getBookingsByCustomer(customerId: string): Promise<Booking[]> {
-    return await db.select().from(bookings).where(eq(bookings.customerId, customerId)).orderBy(desc(bookings.createdAt));
-  }
-
-  async updateBookingStatus(id: string, status: string): Promise<Booking> {
-    const [updatedBooking] = await db
-      .update(bookings)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(bookings.id, id))
-      .returning();
-    return updatedBooking;
-  }
-
-  // Demand request operations
-  async createDemandRequest(request: InsertDemandRequest): Promise<DemandRequest> {
-    const [newRequest] = await db.insert(demandRequests).values(request).returning();
-    return newRequest;
-  }
-
-  async getDemandRequests(): Promise<DemandRequest[]> {
-    return await db.select().from(demandRequests).orderBy(desc(demandRequests.createdAt));
-  }
-
-  async getOpenDemandRequests(): Promise<DemandRequest[]> {
-    return await db.select().from(demandRequests).where(eq(demandRequests.status, 'open')).orderBy(desc(demandRequests.createdAt));
-  }
-
-  async updateDemandRequestStatus(id: string, status: string, matchedBookingId?: string): Promise<DemandRequest> {
-    const updateData: any = { status, updatedAt: new Date() };
-    if (matchedBookingId) {
-      updateData.matchedBookingId = matchedBookingId;
-    }
-    
-    const [updatedRequest] = await db
-      .update(demandRequests)
-      .set(updateData)
-      .where(eq(demandRequests.id, id))
-      .returning();
-    return updatedRequest;
-  }
-
-  // Smart matching algorithm
-  async runSmartMatching(): Promise<{ matches: number; newBookings: number }> {
-    const openDemands = await this.getOpenDemandRequests();
-    const availableProduction = await this.getAvailableEggProduction();
-    
-    let matches = 0;
-    let newBookings = 0;
-
-    for (const demand of openDemands) {
-      // Check if we can fulfill this demand based on production capacity
-      if (availableProduction.availableCrates >= demand.cratesNeeded) {
-        // Create automatic booking for this demand
-        const customer = await this.getCustomerById(demand.customerId);
-        if (customer) {
-          const deliveryDate = demand.preferredDeliveryDate || 
-            new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 7 days from now
-          
-          const pricePerCrate = demand.maxPricePerCrate || 450; // Default price
-          const totalAmount = demand.cratesNeeded * pricePerCrate;
-          
-          const booking = await this.createBooking({
-            customerId: demand.customerId,
-            userId: 'system', // System-generated booking
-            bookingDate: new Date().toISOString().split('T')[0],
-            deliveryDate,
-            cratesRequested: demand.cratesNeeded,
-            pricePerCrate,
-            totalAmount,
-            deposit: 0,
-            status: 'pending',
-            priority: demand.urgencyLevel === 'urgent' ? 'high' : 'normal',
-            specialRequirements: null,
-            notes: `Auto-generated from demand request: ${demand.description || ''}`
-          });
-
-          // Update demand request as matched
-          await this.updateDemandRequestStatus(demand.id, 'matched', booking.id);
-          
-          matches++;
-          newBookings++;
-        }
-      }
-    }
-
-    return { matches, newBookings };
-  }
-
-  // Get available egg production capacity
-  async getAvailableEggProduction(): Promise<{ availableCrates: number; projectedDailyProduction: number }> {
-    // Get current inventory and daily production
-    const today = new Date().toISOString().split('T')[0];
-    const todayRecords = await db
-      .select()
-      .from(dailyRecords)
-      .where(eq(dailyRecords.recordDate, today));
-    
-    const todayProduction = todayRecords.reduce((sum, record) => sum + (record.cratesProduced || 0), 0);
-    
-    // Get pending bookings to calculate committed inventory
-    const pendingBookings = await db
-      .select()
-      .from(bookings)
-      .where(sql`${bookings.status} IN ('pending', 'confirmed')`);
-    
-    const committedCrates = pendingBookings.reduce((sum, booking) => sum + booking.cratesRequested, 0);
-    
-    // Estimate available capacity based on daily production (assuming 7 days ahead planning)
-    const projectedDailyProduction = todayProduction || 150; // Default to 150 crates per day
-    const projectedWeeklyProduction = projectedDailyProduction * 7;
-    const availableCrates = Math.max(0, projectedWeeklyProduction - committedCrates);
-    
-    return {
-      availableCrates,
-      projectedDailyProduction
-    };
   }
 }
 

@@ -15,7 +15,6 @@ import HealthRecords from "@/pages/health-records";
 import Reports from "@/pages/reports";
 import Expenses from "@/pages/expenses";
 import Users from "@/pages/users";
-import Marketplace from "@/pages/marketplace";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -31,7 +30,6 @@ function Router() {
           <Route path="/egg-production" component={EggProduction} />
           <Route path="/feed-management" component={FeedManagement} />
           <Route path="/health-records" component={HealthRecords} />
-          <Route path="/marketplace" component={Marketplace} />
           <Route path="/reports" component={Reports} />
           <Route path="/expenses" component={Expenses} />
           <Route path="/users" component={Users} />
