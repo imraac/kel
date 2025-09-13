@@ -8,7 +8,12 @@ import {
   insertSaleSchema,
   insertFeedInventorySchema,
   insertHealthRecordSchema,
-  insertExpenseSchema
+  insertExpenseSchema,
+  insertCustomerSchema,
+  insertProductSchema,
+  insertOrderSchema,
+  insertOrderItemSchema,
+  insertDeliverySchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -236,6 +241,264 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error("Error creating expense:", error);
         res.status(500).json({ message: "Failed to create expense" });
+      }
+    }
+  });
+
+  // Marketplace routes - Customers
+  app.get('/api/customers', isAuthenticated, async (req, res) => {
+    try {
+      const customers = await storage.getCustomers();
+      res.json(customers);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
+  app.post('/api/customers', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertCustomerSchema.parse(req.body);
+      const customer = await storage.createCustomer(validatedData);
+      res.status(201).json(customer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating customer:", error);
+        res.status(500).json({ message: "Failed to create customer" });
+      }
+    }
+  });
+
+  app.get('/api/customers/:id', isAuthenticated, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.params.id);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      res.json(customer);
+    } catch (error) {
+      console.error("Error fetching customer:", error);
+      res.status(500).json({ message: "Failed to fetch customer" });
+    }
+  });
+
+  app.patch('/api/customers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const updates = insertCustomerSchema.partial().parse(req.body);
+      const customer = await storage.updateCustomer(req.params.id, updates);
+      res.json(customer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error updating customer:", error);
+        res.status(500).json({ message: "Failed to update customer" });
+      }
+    }
+  });
+
+  // Marketplace routes - Products
+  app.get('/api/products', isAuthenticated, async (req, res) => {
+    try {
+      const products = await storage.getProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.post('/api/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct(validatedData);
+      res.status(201).json(product);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating product:", error);
+        res.status(500).json({ message: "Failed to create product" });
+      }
+    }
+  });
+
+  app.get('/api/products/:id', isAuthenticated, async (req, res) => {
+    try {
+      const product = await storage.getProductById(req.params.id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      res.status(500).json({ message: "Failed to fetch product" });
+    }
+  });
+
+  app.patch('/api/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const updates = insertProductSchema.partial().parse(req.body);
+      const product = await storage.updateProduct(req.params.id, updates);
+      res.json(product);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error updating product:", error);
+        res.status(500).json({ message: "Failed to update product" });
+      }
+    }
+  });
+
+  // Marketplace routes - Orders  
+  app.get('/api/orders', isAuthenticated, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const orders = await storage.getOrders(limit);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // SECURE: New order creation with server-side pricing and inventory validation
+  app.post('/api/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const { items, ...orderData } = req.body;
+      
+      // Validate the order data structure
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "Order must contain at least one item" });
+      }
+
+      // Validate required fields
+      if (!orderData.customerId) {
+        return res.status(400).json({ message: "Customer ID is required" });
+      }
+      if (!orderData.deliveryMethod) {
+        return res.status(400).json({ message: "Delivery method is required" });
+      }
+
+      // Validate items structure
+      for (const item of items) {
+        if (!item.productId || !item.quantity || item.quantity <= 0) {
+          return res.status(400).json({ message: "Each item must have a valid productId and positive quantity" });
+        }
+      }
+
+      // Create order with server-side pricing and inventory validation
+      const result = await storage.createOrderWithItems({
+        ...orderData,
+        userId: req.user.claims.sub,
+        items
+      });
+
+      res.status(201).json({
+        message: "Order created successfully",
+        order: result.order,
+        orderItems: result.orderItems,
+        totalAmount: result.totalAmount
+      });
+
+    } catch (error) {
+      console.error("Error creating order:", error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('validation failed') || 
+            error.message.includes('Insufficient stock') ||
+            error.message.includes('not found')) {
+          res.status(400).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: "Failed to create order" });
+        }
+      } else {
+        res.status(500).json({ message: "Failed to create order" });
+      }
+    }
+  });
+
+  app.get('/api/orders/:id', isAuthenticated, async (req, res) => {
+    try {
+      const order = await storage.getOrderById(req.params.id);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      res.json(order);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  app.patch('/api/orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      // Only allow updating certain fields for security
+      const allowedUpdates = ['status', 'paymentStatus', 'paidAmount', 'deliveryMethod', 'deliveryAddress', 'notes'];
+      const updates = Object.keys(req.body).reduce((acc: any, key) => {
+        if (allowedUpdates.includes(key)) {
+          acc[key] = req.body[key];
+        }
+        return acc;
+      }, {});
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const order = await storage.updateOrder(req.params.id, updates);
+      res.json(order);
+    } catch (error) {
+      console.error("Error updating order:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  // Marketplace routes - Order Items
+  app.get('/api/orders/:orderId/items', isAuthenticated, async (req, res) => {
+    try {
+      const orderItems = await storage.getOrderItems(req.params.orderId);
+      res.json(orderItems);
+    } catch (error) {
+      console.error("Error fetching order items:", error);
+      res.status(500).json({ message: "Failed to fetch order items" });
+    }
+  });
+
+  // SECURITY: Disabled separate order item creation to prevent pricing manipulation
+  // Order items must now be created through the secure /api/orders endpoint
+  app.post('/api/order-items', isAuthenticated, async (req: any, res) => {
+    res.status(400).json({ 
+      message: "Direct order item creation is disabled for security. Create orders with items using POST /api/orders endpoint.",
+      error: "PRICING_SECURITY_POLICY"
+    });
+  });
+
+  // Marketplace routes - Deliveries
+  app.get('/api/deliveries', isAuthenticated, async (req, res) => {
+    try {
+      const deliveries = await storage.getDeliveries();
+      res.json(deliveries);
+    } catch (error) {
+      console.error("Error fetching deliveries:", error);
+      res.status(500).json({ message: "Failed to fetch deliveries" });
+    }
+  });
+
+  app.post('/api/deliveries', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertDeliverySchema.parse(req.body);
+      const delivery = await storage.createDelivery(validatedData);
+      res.status(201).json(delivery);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating delivery:", error);
+        res.status(500).json({ message: "Failed to create delivery" });
       }
     }
   });
