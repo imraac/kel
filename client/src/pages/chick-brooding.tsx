@@ -12,7 +12,7 @@ import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus } from "lucide-reac
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Menu } from "lucide-react";
-import BroodingRecordForm from "@/components/forms/brooding-record-form";
+import SimpleBroodingForm from "@/components/forms/simple-brooding-form";
 import FlockForm from "@/components/forms/flock-form";
 import SimpleFlockForm from "@/components/forms/simple-flock-form";
 
@@ -128,7 +128,7 @@ export default function ChickBrooding() {
                     Record daily brooding data including temperature, lighting, feed, and chick mortality.
                   </DialogDescription>
                 </DialogHeader>
-                <BroodingRecordForm onSuccess={() => setRecordDialogOpen(false)} />
+                <SimpleBroodingForm onSuccess={() => setRecordDialogOpen(false)} />
               </DialogContent>
             </Dialog>
           </div>
@@ -279,7 +279,7 @@ export default function ChickBrooding() {
                             Record daily brooding data including temperature, lighting, feed, and chick mortality.
                           </DialogDescription>
                         </DialogHeader>
-                        <BroodingRecordForm onSuccess={() => setRecordDialogOpen(false)} />
+                        <SimpleBroodingForm onSuccess={() => setRecordDialogOpen(false)} />
                       </DialogContent>
                     </Dialog>
                   </div>
