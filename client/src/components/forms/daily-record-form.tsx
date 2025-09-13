@@ -45,7 +45,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
     },
   });
 
-  const { data: flocks } = useQuery({
+  const { data: flocks = [] } = useQuery<any[]>({
     queryKey: ["/api/flocks"],
   });
 
@@ -116,7 +116,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {flocks?.map((flock: any) => (
+                        {flocks.map((flock: any) => (
                           <SelectItem key={flock.id} value={flock.id}>
                             {flock.name}
                           </SelectItem>
@@ -143,6 +143,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                         <Input 
                           type="number" 
                           {...field} 
+                          value={field.value || 0}
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           data-testid="input-eggs-collected"
                         />
@@ -162,6 +163,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                         <Input 
                           type="number" 
                           {...field} 
+                          value={field.value || 0}
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           data-testid="input-broken-eggs"
                         />
@@ -181,6 +183,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                         <Input 
                           type="number" 
                           {...field} 
+                          value={field.value || 0}
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           data-testid="input-crates-produced"
                         />
@@ -206,6 +209,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                         <Input 
                           type="number" 
                           {...field} 
+                          value={field.value || 0}
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           data-testid="input-mortality-count"
                         />
@@ -222,7 +226,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                     <FormItem>
                       <FormLabel>Mortality Reason</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="e.g., Disease, Injury" data-testid="input-mortality-reason" />
+                        <Input {...field} value={field.value || ""} placeholder="e.g., Disease, Injury" data-testid="input-mortality-reason" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -246,6 +250,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                           type="number" 
                           step="0.01" 
                           {...field} 
+                          value={field.value || ""}
                           data-testid="input-feed-consumed"
                         />
                       </FormControl>
@@ -260,7 +265,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Feed Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                         <FormControl>
                           <SelectTrigger data-testid="select-feed-type">
                             <SelectValue placeholder="Select feed type" />
@@ -288,7 +293,7 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} data-testid="textarea-notes" />
+                    <Textarea {...field} value={field.value || ""} rows={3} data-testid="textarea-notes" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
