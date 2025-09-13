@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import MetricCard from "@/components/dashboard/metric-card";
 import AlertPanel from "@/components/dashboard/alert-panel";
-import QuickActions from "@/components/dashboard/quick-actions";
+import SimpleQuickActions from "@/components/dashboard/simple-quick-actions";
 import ActivityFeed from "@/components/dashboard/activity-feed";
 import PerformanceSummary from "@/components/dashboard/performance-summary";
 import ComprehensiveDailyRecordForm from "@/components/forms/comprehensive-daily-record-form";
@@ -22,6 +22,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Bell, Menu, Plus, ClipboardList } from "lucide-react";
 import { z } from "zod";
+import SimpleQuickEggForm from "@/components/forms/simple-quick-egg-form";
 
 // Schema for quick egg entry
 const eggEntrySchema = z.object({
@@ -216,104 +217,7 @@ export default function Home() {
                         Record today's egg collection quickly
                       </DialogDescription>
                     </DialogHeader>
-                    <Form {...eggForm}>
-                      <form onSubmit={eggForm.handleSubmit(onSubmitEggs)} className="space-y-4">
-                        <FormField
-                          control={eggForm.control}
-                          name="flockId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Flock</FormLabel>
-                              <FormControl>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <SelectTrigger data-testid="select-quick-egg-flock">
-                                    <SelectValue placeholder="Select flock" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {flocks.map((flock) => (
-                                      <SelectItem key={flock.id} value={flock.id}>
-                                        {flock.name} ({flock.currentCount} birds)
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={eggForm.control}
-                          name="recordDate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} data-testid="input-egg-date" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={eggForm.control}
-                          name="eggsCollected"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Eggs Collected</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  {...field} 
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                  data-testid="input-eggs-collected"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={eggForm.control}
-                          name="brokenEggs"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Broken Eggs</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  {...field} 
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                  data-testid="input-broken-eggs"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={eggForm.control}
-                          name="notes"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Notes (Optional)</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="Any notes about today's collection" data-testid="input-egg-notes" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button 
-                          type="submit" 
-                          disabled={createEggRecordMutation.isPending}
-                          data-testid="button-submit-eggs"
-                          className="w-full"
-                        >
-                          {createEggRecordMutation.isPending ? "Recording..." : "Record Eggs"}
-                        </Button>
-                      </form>
-                    </Form>
+                    <SimpleQuickEggForm onSuccess={() => setEggDialogOpen(false)} />
                   </DialogContent>
                 </Dialog>
                 
@@ -378,7 +282,7 @@ export default function Home() {
             <div className="lg:col-span-2">
               <AlertPanel />
             </div>
-            <QuickActions />
+            <SimpleQuickActions />
           </div>
 
           {/* Charts Section */}
