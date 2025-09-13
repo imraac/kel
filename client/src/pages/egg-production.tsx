@@ -13,7 +13,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { Egg, TrendingUp, AlertCircle, Plus, Menu, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import DailyRecordForm from "@/components/forms/daily-record-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -32,6 +33,7 @@ export default function EggProduction() {
   const { isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
+  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Redirect to login if not authenticated
@@ -49,12 +51,12 @@ export default function EggProduction() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: dailyRecords, error: recordsError } = useQuery({
+  const { data: dailyRecords = [], error: recordsError } = useQuery<any[]>({
     queryKey: ["/api/daily-records"],
     enabled: isAuthenticated,
   });
 
-  const { data: sales, error: salesError } = useQuery({
+  const { data: sales = [], error: salesError } = useQuery<any[]>({
     queryKey: ["/api/sales"],
     enabled: isAuthenticated,
   });
@@ -141,7 +143,7 @@ export default function EggProduction() {
     return null;
   }
 
-  const eggRecords = dailyRecords?.filter((record: any) => record.eggsCollected > 0) || [];
+  const eggRecords = dailyRecords.filter((record: any) => record.eggsCollected > 0);
   const todayRecords = eggRecords.filter((record: any) => 
     record.recordDate === new Date().toISOString().split('T')[0]
   );
@@ -157,13 +159,13 @@ export default function EggProduction() {
   const weekAverage = weekTotal / 7;
   const todayCrates = todayRecords.reduce((sum: number, record: any) => sum + (record.cratesProduced || 0), 0);
 
-  const recentSales = sales?.slice(0, 5) || [];
-  const weekSales = sales?.filter((sale: any) => {
+  const recentSales = sales.slice(0, 5);
+  const weekSales = sales.filter((sale: any) => {
     const saleDate = new Date(sale.saleDate);
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     return saleDate >= weekAgo;
-  }) || [];
+  });
   const weekRevenue = weekSales.reduce((sum: number, sale: any) => sum + parseFloat(sale.totalAmount || '0'), 0);
 
   const onSubmitSale = (data: SaleFormData) => {
@@ -201,16 +203,38 @@ export default function EggProduction() {
               </div>
             </div>
             
-            <Dialog open={saleDialogOpen} onOpenChange={setSaleDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-record-sale">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Record Sale
-                </Button>
-              </DialogTrigger>
+            <div className="flex space-x-2">
+              <Dialog open={recordDialogOpen} onOpenChange={setRecordDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-add-egg-record">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Egg Record
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add Egg Production Record</DialogTitle>
+                    <DialogDescription>
+                      Record daily egg production, mortality, and feed consumption data.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DailyRecordForm onSuccess={() => setRecordDialogOpen(false)} />
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={saleDialogOpen} onOpenChange={setSaleDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-record-sale">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Record Sale
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Record Egg Sale</DialogTitle>
+                  <DialogDescription>
+                    Record egg sales including customer details and payment information.
+                  </DialogDescription>
                 </DialogHeader>
                 <Form {...saleForm}>
                   <form onSubmit={saleForm.handleSubmit(onSubmitSale)} className="space-y-4">
@@ -235,7 +259,7 @@ export default function EggProduction() {
                         <FormItem>
                           <FormLabel>Customer Name</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Enter customer name" data-testid="input-customer-name" />
+                            <Input {...field} value={field.value || ""} placeholder="Enter customer name" data-testid="input-customer-name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -338,6 +362,7 @@ export default function EggProduction() {
                 </Form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </header>
 

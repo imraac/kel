@@ -10,11 +10,15 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Menu } from "lucide-react";
+import DailyRecordForm from "@/components/forms/daily-record-form";
 
 export default function ChickBrooding() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Redirect to login if not authenticated
@@ -99,7 +103,7 @@ export default function ChickBrooding() {
                 onClick={() => setSidebarOpen(true)}
                 data-testid="button-mobile-menu"
               >
-                <Baby className="h-5 w-5" />
+                <Menu className="h-5 w-5" />
               </button>
               <div>
                 <h2 className="text-xl font-semibold text-foreground">Chick Brooding</h2>
@@ -107,10 +111,23 @@ export default function ChickBrooding() {
               </div>
             </div>
             
-            <Button data-testid="button-add-brooding-record">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Record
-            </Button>
+            <Dialog open={recordDialogOpen} onOpenChange={setRecordDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-brooding-record">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Record
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add Brooding Record</DialogTitle>
+                  <DialogDescription>
+                    Record daily brooding data including temperature, lighting, feed, and chick mortality.
+                  </DialogDescription>
+                </DialogHeader>
+                <DailyRecordForm onSuccess={() => setRecordDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
           </div>
         </header>
 
@@ -228,10 +245,14 @@ export default function ChickBrooding() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Recent Brooding Records</CardTitle>
-                    <Button size="sm" data-testid="button-add-record">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Record
-                    </Button>
+                    <Dialog open={recordDialogOpen} onOpenChange={setRecordDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" data-testid="button-add-record">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Record
+                        </Button>
+                      </DialogTrigger>
+                    </Dialog>
                   </div>
                 </CardHeader>
                 <CardContent>
