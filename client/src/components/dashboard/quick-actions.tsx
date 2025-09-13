@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Egg, Skull, Wheat, Coins } from "lucide-react";
@@ -47,6 +47,7 @@ const actions = [
 
 // Quick action schemas
 const eggRecordSchema = z.object({
+  flockId: z.string().min(1, "Flock selection is required"),
   eggsCollected: z.number().min(0),
   brokenEggs: z.number().min(0).default(0),
   recordDate: z.string().min(1),
@@ -54,6 +55,7 @@ const eggRecordSchema = z.object({
 });
 
 const mortalitySchema = z.object({
+  flockId: z.string().min(1, "Flock selection is required"),
   recordDate: z.string().min(1),
   mortalityCount: z.number().min(0),
   mortalityReason: z.string().min(1, "Reason is required"),
@@ -61,6 +63,7 @@ const mortalitySchema = z.object({
 });
 
 const feedUpdateSchema = z.object({
+  flockId: z.string().min(1, "Flock selection is required"),
   recordDate: z.string().min(1),
   feedConsumed: z.string().min(1),
   feedType: z.string().min(1),
@@ -85,20 +88,24 @@ export default function QuickActions() {
   const [feedDialogOpen, setFeedDialogOpen] = useState(false);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
 
+  const { data: flocks = [] } = useQuery<any[]>({
+    queryKey: ["/api/flocks"],
+  });
+
   // Forms
   const eggForm = useForm({
     resolver: zodResolver(eggRecordSchema),
-    defaultValues: { eggsCollected: 0, brokenEggs: 0, recordDate: new Date().toISOString().split('T')[0], notes: "" },
+    defaultValues: { flockId: "", eggsCollected: 0, brokenEggs: 0, recordDate: new Date().toISOString().split('T')[0], notes: "" },
   });
 
   const mortalityForm = useForm({
     resolver: zodResolver(mortalitySchema),
-    defaultValues: { recordDate: new Date().toISOString().split('T')[0], mortalityCount: 0, mortalityReason: "", notes: "" },
+    defaultValues: { flockId: "", recordDate: new Date().toISOString().split('T')[0], mortalityCount: 0, mortalityReason: "", notes: "" },
   });
 
   const feedForm = useForm({
     resolver: zodResolver(feedUpdateSchema),
-    defaultValues: { recordDate: new Date().toISOString().split('T')[0], feedConsumed: "", feedType: "", notes: "" },
+    defaultValues: { flockId: "", recordDate: new Date().toISOString().split('T')[0], feedConsumed: "", feedType: "", notes: "" },
   });
 
   const saleForm = useForm({
@@ -118,6 +125,7 @@ export default function QuickActions() {
   const createEggRecord = useMutation({
     mutationFn: async (data: z.infer<typeof eggRecordSchema>) => {
       const recordData = {
+        flockId: data.flockId,
         recordDate: data.recordDate,
         eggsCollected: data.eggsCollected,
         brokenEggs: data.brokenEggs,
@@ -148,6 +156,7 @@ export default function QuickActions() {
   const createMortalityRecord = useMutation({
     mutationFn: async (data: z.infer<typeof mortalitySchema>) => {
       const recordData = {
+        flockId: data.flockId,
         recordDate: data.recordDate,
         eggsCollected: 0, brokenEggs: 0, cratesProduced: 0,
         mortalityCount: data.mortalityCount,
@@ -177,6 +186,7 @@ export default function QuickActions() {
   const createFeedRecord = useMutation({
     mutationFn: async (data: z.infer<typeof feedUpdateSchema>) => {
       const recordData = {
+        flockId: data.flockId,
         recordDate: data.recordDate,
         eggsCollected: 0, brokenEggs: 0, cratesProduced: 0,
         mortalityCount: 0, mortalityReason: null,
@@ -268,6 +278,20 @@ export default function QuickActions() {
                         </DialogHeader>
                         <Form {...eggForm}>
                           <form onSubmit={eggForm.handleSubmit((data) => createEggRecord.mutate(data))} className="space-y-4">
+                            <FormField control={eggForm.control} name="flockId" render={({ field }) => (
+                              <FormItem><FormLabel>Flock</FormLabel><FormControl>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <SelectTrigger data-testid="select-egg-flock"><SelectValue placeholder="Select flock" /></SelectTrigger>
+                                  <SelectContent>
+                                    {flocks.map((flock) => (
+                                      <SelectItem key={flock.id} value={flock.id}>
+                                        {flock.name} ({flock.currentCount} birds)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl><FormMessage /></FormItem>
+                            )} />
                             <FormField control={eggForm.control} name="recordDate" render={({ field }) => (
                               <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} data-testid="input-egg-record-date" /></FormControl><FormMessage /></FormItem>
                             )} />
@@ -309,6 +333,20 @@ export default function QuickActions() {
                         </DialogHeader>
                         <Form {...mortalityForm}>
                           <form onSubmit={mortalityForm.handleSubmit((data) => createMortalityRecord.mutate(data))} className="space-y-4">
+                            <FormField control={mortalityForm.control} name="flockId" render={({ field }) => (
+                              <FormItem><FormLabel>Flock</FormLabel><FormControl>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <SelectTrigger data-testid="select-mortality-flock"><SelectValue placeholder="Select flock" /></SelectTrigger>
+                                  <SelectContent>
+                                    {flocks.map((flock) => (
+                                      <SelectItem key={flock.id} value={flock.id}>
+                                        {flock.name} ({flock.currentCount} birds)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl><FormMessage /></FormItem>
+                            )} />
                             <FormField control={mortalityForm.control} name="recordDate" render={({ field }) => (
                               <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} data-testid="input-mortality-date" /></FormControl><FormMessage /></FormItem>
                             )} />
@@ -362,6 +400,20 @@ export default function QuickActions() {
                         </DialogHeader>
                         <Form {...feedForm}>
                           <form onSubmit={feedForm.handleSubmit((data) => createFeedRecord.mutate(data))} className="space-y-4">
+                            <FormField control={feedForm.control} name="flockId" render={({ field }) => (
+                              <FormItem><FormLabel>Flock</FormLabel><FormControl>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <SelectTrigger data-testid="select-feed-flock"><SelectValue placeholder="Select flock" /></SelectTrigger>
+                                  <SelectContent>
+                                    {flocks.map((flock) => (
+                                      <SelectItem key={flock.id} value={flock.id}>
+                                        {flock.name} ({flock.currentCount} birds)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl><FormMessage /></FormItem>
+                            )} />
                             <FormField control={feedForm.control} name="recordDate" render={({ field }) => (
                               <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} data-testid="input-feed-date" /></FormControl><FormMessage /></FormItem>
                             )} />
