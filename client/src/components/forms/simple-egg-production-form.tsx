@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,13 @@ export default function SimpleEggProductionForm({ onSuccess }: SimpleEggProducti
   const { data: flocks = [] } = useQuery<any[]>({
     queryKey: ["/api/flocks"],
   });
+
+  // Automatically calculate crates produced (30 eggs per crate)
+  useEffect(() => {
+    const eggs = parseInt(eggsCollected) || 0;
+    const calculatedCrates = Math.floor(eggs / 30);
+    setCratesProduced(calculatedCrates.toString());
+  }, [eggsCollected]);
 
   const createRecordMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -175,12 +182,13 @@ export default function SimpleEggProductionForm({ onSuccess }: SimpleEggProducti
                   id="cratesProduced"
                   type="number"
                   value={cratesProduced}
-                  onChange={(e) => setCratesProduced(e.target.value)}
-                  placeholder="0"
+                  readOnly
+                  className="bg-muted"
+                  placeholder="Auto-calculated"
                   data-testid="input-crates-produced"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Standard crate = 30 eggs
+                  Auto-calculated: 30 eggs = 1 crate
                 </p>
               </div>
             </div>
