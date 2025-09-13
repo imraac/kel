@@ -258,12 +258,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/daily-records', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(403).json({ message: "User not found" });
+      }
+
+      if (!currentUser.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to create records" });
+      }
+
       const validatedData = insertDailyRecordSchema.parse({
         ...req.body,
-        userId: req.user.claims.sub
+        userId
       });
-      const record = await storage.createDailyRecord(validatedData);
-      res.status(201).json(record);
+
+      // SECURITY: Validate that the flock belongs to user's farm (tenant isolation)
+      const flock = await storage.getFlockById(validatedData.flockId);
+      if (!flock) {
+        return res.status(404).json({ message: "Flock not found" });
+      }
+      
+      if (flock.farmId !== currentUser.farmId) {
+        return res.status(403).json({ message: "Access denied. You can only create records for your own farm's flocks." });
+      }
+
+      // Double-entry detection: Check for existing records with same userId + flockId + recordDate
+      const existingRecord = await storage.findDailyRecordDuplicate(
+        validatedData.userId, 
+        validatedData.flockId, 
+        validatedData.recordDate
+      );
+
+      let record;
+      if (existingRecord && existingRecord.reviewStatus === 'approved') {
+        // Duplicate found with approved status - flag for review
+        const recordWithReview = {
+          ...validatedData,
+          reviewStatus: 'pending_review' as const,
+          isDuplicate: true,
+          duplicateOfId: existingRecord.id
+        };
+        
+        // Atomic operation: Create record and notify managers in transaction
+        record = await storage.createDailyRecordWithNotification(recordWithReview, flock.farmId, {
+          type: 'duplicate_entry',
+          title: 'Duplicate Daily Record Detected',
+          message: `A potential duplicate daily record has been submitted for ${validatedData.recordDate}. Please review and approve or reject.`,
+          meta: {
+            duplicateOfId: existingRecord.id,
+            flockId: validatedData.flockId,
+            submittedBy: userId
+          }
+        });
+
+        res.status(201).json({ 
+          ...record,
+          message: "Record submitted for manager review due to potential duplicate."
+        });
+      } else {
+        // No duplicates or previous record was rejected - create normally
+        const recordWithReview = {
+          ...validatedData,
+          reviewStatus: 'approved' as const,
+          isDuplicate: false
+        };
+        
+        record = await storage.createDailyRecordWithReview(recordWithReview);
+        res.status(201).json(record);
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Validation error", errors: error.errors });
