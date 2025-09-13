@@ -204,7 +204,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/flocks', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertFlockSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to create flocks" });
+      }
+
+      // Auto-inject farmId and userId for security
+      const flockData = {
+        ...req.body,
+        farmId: currentUser.farmId,
+      };
+
+      const validatedData = insertFlockSchema.parse(flockData);
       const flock = await storage.createFlock(validatedData);
       res.status(201).json(flock);
     } catch (error) {
