@@ -76,7 +76,7 @@ export default function MarketplaceProducts() {
         ...data,
         currentPrice: parseFloat(data.currentPrice)
       };
-      return apiRequest("/api/products", "POST", transformedData);
+      return apiRequest("POST", "/api/products", transformedData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });

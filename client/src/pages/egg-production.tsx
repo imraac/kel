@@ -168,6 +168,22 @@ export default function EggProduction() {
   });
   const weekRevenue = weekSales.reduce((sum: number, sale: any) => sum + parseFloat(sale.totalAmount || '0'), 0);
 
+  // Auto-calculate total amount when cratesSold or pricePerCrate changes
+  useEffect(() => {
+    const subscription = saleForm.watch((value, { name }) => {
+      if (name === 'cratesSold' || name === 'pricePerCrate') {
+        const cratesSold = value.cratesSold || 0;
+        const pricePerCrate = parseFloat(value.pricePerCrate || "0");
+        const totalAmount = cratesSold * pricePerCrate;
+        
+        if (totalAmount >= 0 && !isNaN(totalAmount)) {
+          saleForm.setValue('totalAmount', totalAmount.toFixed(2));
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [saleForm]);
+
   const onSubmitSale = (data: SaleFormData) => {
     createSaleMutation.mutate(data);
   };
@@ -320,6 +336,8 @@ export default function EggProduction() {
                               {...field} 
                               placeholder="Auto-calculated"
                               data-testid="input-total-amount"
+                              readOnly
+                              className="bg-muted"
                             />
                           </FormControl>
                           <FormMessage />

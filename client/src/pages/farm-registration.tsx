@@ -54,7 +54,7 @@ export function FarmRegistrationPage() {
 
   const createFarmMutation = useMutation({
     mutationFn: (farmData: InsertFarm) =>
-      apiRequest("/api/farms", "POST", farmData),
+      apiRequest("POST", "/api/farms", farmData),
     onSuccess: (farm) => {
       // SECURITY FIX: Invalidate both farms and user context to update farmId/role
       queryClient.invalidateQueries({ queryKey: ["/api/farms"] });
