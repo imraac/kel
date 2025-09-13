@@ -33,7 +33,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("staff"), // admin, farm_owner, staff, customer
+  role: varchar("role").notNull().default("staff"), // admin, farm_owner, manager, staff, customer
   farmId: varchar("farm_id"), // null for customers and global admin
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -110,6 +110,15 @@ export const dailyRecords = pgTable("daily_records", {
   sampleSize: integer("sample_size"),
   
   notes: text("notes"),
+  
+  // Review system
+  reviewStatus: varchar("review_status").notNull().default("approved"), // approved, pending_review, rejected
+  isDuplicate: boolean("is_duplicate").notNull().default(false),
+  duplicateOfId: varchar("duplicate_of_id"), // references daily_records.id
+  reviewerId: varchar("reviewer_id"), // user who reviewed the entry
+  reviewNote: text("review_note"),
+  reviewedAt: timestamp("reviewed_at"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -260,6 +269,20 @@ export const deliveries = pgTable("deliveries", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recipientUserId: varchar("recipient_user_id").notNull(),
+  farmId: varchar("farm_id").notNull(),
+  type: varchar("type").notNull(), // duplicate_entry, system_alert, task_assignment, etc
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  meta: jsonb("meta"), // additional data like referenced record IDs
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 // Farm relations
 export const farmsRelations = relations(farms, ({ many }) => ({
@@ -404,11 +427,23 @@ export const deliveriesRelations = relations(deliveries, ({ one }) => ({
 export const insertFarmSchema = createInsertSchema(farms).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFlockSchema = createInsertSchema(flocks).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertDailyRecordSchema = createInsertSchema(dailyRecords).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDailyRecordSchema = createInsertSchema(dailyRecords).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  // Review system fields - server only
+  reviewStatus: true,
+  isDuplicate: true,
+  duplicateOfId: true,
+  reviewerId: true,
+  reviewNote: true,
+  reviewedAt: true,
+});
 export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFeedInventorySchema = createInsertSchema(feedInventory).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertHealthRecordSchema = createInsertSchema(healthRecords).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Marketplace insert schemas
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true });
@@ -455,6 +490,8 @@ export type InsertHealthRecord = z.infer<typeof insertHealthRecordSchema>;
 export type HealthRecord = typeof healthRecords.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
 
 // Marketplace types
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
