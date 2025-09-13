@@ -8,11 +8,13 @@ import QuickActions from "@/components/dashboard/quick-actions";
 import ActivityFeed from "@/components/dashboard/activity-feed";
 import PerformanceSummary from "@/components/dashboard/performance-summary";
 import ComprehensiveDailyRecordForm from "@/components/forms/comprehensive-daily-record-form";
+import NotificationPanel from "@/components/dashboard/notification-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
@@ -23,6 +25,7 @@ import { z } from "zod";
 
 // Schema for quick egg entry
 const eggEntrySchema = z.object({
+  flockId: z.string().min(1, "Flock selection is required"),
   eggsCollected: z.number().min(0, "Eggs collected must be non-negative"),
   brokenEggs: z.number().min(0).default(0),
   recordDate: z.string().min(1, "Date is required"),
@@ -64,6 +67,11 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
+  const { data: flocks = [] } = useQuery<any[]>({
+    queryKey: ["/api/flocks"],
+    enabled: isAuthenticated,
+  });
+
   // Handle unauthorized errors
   useEffect(() => {
     if (metricsError && isUnauthorizedError(metricsError)) {
@@ -82,6 +90,7 @@ export default function Home() {
   const eggForm = useForm<EggEntryData>({
     resolver: zodResolver(eggEntrySchema),
     defaultValues: {
+      flockId: "",
       eggsCollected: 0,
       brokenEggs: 0,
       recordDate: new Date().toISOString().split('T')[0],
@@ -92,17 +101,18 @@ export default function Home() {
   const createEggRecordMutation = useMutation({
     mutationFn: async (data: EggEntryData) => {
       const recordData = {
+        flockId: data.flockId,
         recordDate: data.recordDate,
         eggsCollected: data.eggsCollected,
         brokenEggs: data.brokenEggs,
         cratesProduced: Math.floor(data.eggsCollected / 30),
         mortalityCount: 0,
-        mortalityReason: "",
-        feedConsumed: "",
-        feedType: "",
-        temperature: "",
-        lightingHours: "",
-        averageWeight: "",
+        mortalityReason: null,
+        feedConsumed: null,
+        feedType: null,
+        temperature: null,
+        lightingHours: null,
+        averageWeight: null,
         sampleSize: 0,
         notes: data.notes || "",
       };
@@ -188,15 +198,7 @@ export default function Home() {
             
             <div className="flex items-center space-x-4">
               {/* Alerts/Notifications */}
-              <div className="relative">
-                <button 
-                  className="p-2 text-muted-foreground hover:text-foreground relative"
-                  data-testid="button-notifications"
-                >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full"></span>
-                </button>
-              </div>
+              <NotificationPanel />
               
               {/* Quick Actions */}
               <div className="hidden sm:flex items-center space-x-2">
@@ -216,6 +218,30 @@ export default function Home() {
                     </DialogHeader>
                     <Form {...eggForm}>
                       <form onSubmit={eggForm.handleSubmit(onSubmitEggs)} className="space-y-4">
+                        <FormField
+                          control={eggForm.control}
+                          name="flockId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Flock</FormLabel>
+                              <FormControl>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <SelectTrigger data-testid="select-quick-egg-flock">
+                                    <SelectValue placeholder="Select flock" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {flocks.map((flock) => (
+                                      <SelectItem key={flock.id} value={flock.id}>
+                                        {flock.name} ({flock.currentCount} birds)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <FormField
                           control={eggForm.control}
                           name="recordDate"

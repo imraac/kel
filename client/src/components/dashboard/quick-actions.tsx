@@ -74,7 +74,7 @@ const saleRecordSchema = z.object({
   saleDate: z.string().min(1),
   customerName: z.string().min(1),
   cratesSold: z.number().min(1),
-  pricePerCrate: z.coerce.number().positive(),
+  pricePerCrate: z.number().positive(),
   totalAmount: z.number().positive(),
   paymentStatus: z.enum(["pending", "paid", "overdue"]),
   notes: z.string().optional(),
