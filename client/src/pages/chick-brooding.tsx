@@ -12,13 +12,15 @@ import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus } from "lucide-reac
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Menu } from "lucide-react";
-import DailyRecordForm from "@/components/forms/daily-record-form";
+import BroodingRecordForm from "@/components/forms/brooding-record-form";
+import FlockForm from "@/components/forms/flock-form";
 
 export default function ChickBrooding() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
+  const [flockDialogOpen, setFlockDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Redirect to login if not authenticated
@@ -125,7 +127,7 @@ export default function ChickBrooding() {
                     Record daily brooding data including temperature, lighting, feed, and chick mortality.
                   </DialogDescription>
                 </DialogHeader>
-                <DailyRecordForm onSuccess={() => setRecordDialogOpen(false)} />
+                <BroodingRecordForm onSuccess={() => setRecordDialogOpen(false)} />
               </DialogContent>
             </Dialog>
           </div>
@@ -194,16 +196,33 @@ export default function ChickBrooding() {
             <TabsContent value="flocks">
               <Card data-testid="card-brooding-flocks">
                 <CardHeader>
-                  <CardTitle>Brooding Flocks</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Brooding Flocks</CardTitle>
+                    <Dialog open={flockDialogOpen} onOpenChange={setFlockDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" data-testid="button-add-flock-header">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add New Flock
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Create New Flock</DialogTitle>
+                          <DialogDescription>
+                            Add a new flock to your farm for tracking throughout its lifecycle.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <FlockForm onSuccess={() => setFlockDialogOpen(false)} />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {broodingFlocks.length === 0 ? (
                     <div className="text-center py-8">
                       <Baby className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">No brooding flocks currently active</p>
-                      <Button className="mt-4" data-testid="button-add-flock">
-                        Add New Flock
-                      </Button>
+                      <p className="text-sm text-muted-foreground mt-2">Click "Add New Flock" above to get started</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -252,6 +271,15 @@ export default function ChickBrooding() {
                           Add Record
                         </Button>
                       </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Add Brooding Record</DialogTitle>
+                          <DialogDescription>
+                            Record daily brooding data including temperature, lighting, feed, and chick mortality.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <BroodingRecordForm onSuccess={() => setRecordDialogOpen(false)} />
+                      </DialogContent>
                     </Dialog>
                   </div>
                 </CardHeader>
