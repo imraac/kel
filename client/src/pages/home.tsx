@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
@@ -7,17 +7,37 @@ import AlertPanel from "@/components/dashboard/alert-panel";
 import QuickActions from "@/components/dashboard/quick-actions";
 import ActivityFeed from "@/components/dashboard/activity-feed";
 import PerformanceSummary from "@/components/dashboard/performance-summary";
+import DailyRecordForm from "@/components/forms/daily-record-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Bell, Menu, Plus, ClipboardList } from "lucide-react";
-import { useState } from "react";
+import { z } from "zod";
+
+// Schema for quick egg entry
+const eggEntrySchema = z.object({
+  eggsCollected: z.number().min(0, "Eggs collected must be non-negative"),
+  brokenEggs: z.number().min(0).default(0),
+  recordDate: z.string().min(1, "Date is required"),
+  notes: z.string().optional(),
+});
+
+type EggEntryData = z.infer<typeof eggEntrySchema>;
 
 export default function Home() {
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [eggDialogOpen, setEggDialogOpen] = useState(false);
+  const [dailyRecordDialogOpen, setDailyRecordDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -57,6 +77,60 @@ export default function Home() {
       }, 500);
     }
   }, [metricsError, toast]);
+
+  // Egg entry form
+  const eggForm = useForm<EggEntryData>({
+    resolver: zodResolver(eggEntrySchema),
+    defaultValues: {
+      eggsCollected: 0,
+      brokenEggs: 0,
+      recordDate: new Date().toISOString().split('T')[0],
+      notes: "",
+    },
+  });
+
+  const createEggRecordMutation = useMutation({
+    mutationFn: async (data: EggEntryData) => {
+      const recordData = {
+        recordDate: data.recordDate,
+        eggsCollected: data.eggsCollected,
+        brokenEggs: data.brokenEggs,
+        cratesProduced: Math.floor(data.eggsCollected / 30),
+        mortalityCount: 0,
+        mortalityReason: "",
+        feedConsumed: "",
+        feedType: "",
+        temperature: "",
+        lightingHours: "",
+        averageWeight: "",
+        sampleSize: 0,
+        notes: data.notes || "",
+      };
+      await apiRequest("POST", "/api/daily-records", recordData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-records"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
+      toast({
+        title: "Success",
+        description: "Egg collection recorded successfully",
+      });
+      eggForm.reset();
+      setEggDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to record eggs",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitEggs = (data: EggEntryData) => {
+    createEggRecordMutation.mutate(data);
+  };
 
   if (isLoading) {
     return (
@@ -126,14 +200,114 @@ export default function Home() {
               
               {/* Quick Actions */}
               <div className="hidden sm:flex items-center space-x-2">
-                <Button variant="secondary" size="sm" data-testid="button-add-eggs">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Eggs
-                </Button>
-                <Button size="sm" data-testid="button-daily-record">
-                  <ClipboardList className="h-4 w-4 mr-1" />
-                  Daily Record
-                </Button>
+                <Dialog open={eggDialogOpen} onOpenChange={setEggDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="secondary" size="sm" data-testid="button-add-eggs">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Eggs
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Quick Egg Entry</DialogTitle>
+                      <DialogDescription>
+                        Record today's egg collection quickly
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...eggForm}>
+                      <form onSubmit={eggForm.handleSubmit(onSubmitEggs)} className="space-y-4">
+                        <FormField
+                          control={eggForm.control}
+                          name="recordDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} data-testid="input-egg-date" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={eggForm.control}
+                          name="eggsCollected"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Eggs Collected</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  {...field} 
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                  data-testid="input-eggs-collected"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={eggForm.control}
+                          name="brokenEggs"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Broken Eggs</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  {...field} 
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                  data-testid="input-broken-eggs"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={eggForm.control}
+                          name="notes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Notes (Optional)</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Any notes about today's collection" data-testid="input-egg-notes" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button 
+                          type="submit" 
+                          disabled={createEggRecordMutation.isPending}
+                          data-testid="button-submit-eggs"
+                          className="w-full"
+                        >
+                          {createEggRecordMutation.isPending ? "Recording..." : "Record Eggs"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+                
+                <Dialog open={dailyRecordDialogOpen} onOpenChange={setDailyRecordDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-daily-record">
+                      <ClipboardList className="h-4 w-4 mr-1" />
+                      Daily Record
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Complete Daily Record</DialogTitle>
+                      <DialogDescription>
+                        Record comprehensive daily farm activities including eggs, mortality, feed, and environmental data
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DailyRecordForm onSuccess={() => setDailyRecordDialogOpen(false)} />
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </div>
