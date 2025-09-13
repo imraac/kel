@@ -33,7 +33,36 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("staff"), // admin, staff
+  role: varchar("role").notNull().default("staff"), // admin, farm_owner, staff, customer
+  farmId: varchar("farm_id"), // null for customers and global admin
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Farms table - multi-tenant support
+export const farms = pgTable("farms", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  location: varchar("location").notNull(), // city, region
+  address: text("address"),
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  website: varchar("website"),
+  
+  // Farm capacity and specialization
+  totalBirds: integer("total_birds").default(0),
+  avgEggsPerDay: integer("avg_eggs_per_day").default(0),
+  specialization: varchar("specialization").default("layers"), // layers, broilers, mixed
+  
+  // Business details
+  businessRegistration: varchar("business_registration"),
+  certifications: text("certifications"), // organic, free-range, etc
+  
+  // Platform status
+  status: varchar("status").notNull().default("active"), // active, inactive, pending
+  isApproved: boolean("is_approved").default(false),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -41,6 +70,7 @@ export const users = pgTable("users", {
 // Flocks table
 export const flocks = pgTable("flocks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  farmId: varchar("farm_id").notNull(), // Associate with specific farm
   name: varchar("name").notNull(),
   breed: varchar("breed"),
   initialCount: integer("initial_count").notNull(),
@@ -87,6 +117,7 @@ export const dailyRecords = pgTable("daily_records", {
 // Sales table
 export const sales = pgTable("sales", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  farmId: varchar("farm_id").notNull(), // Associate with specific farm
   saleDate: date("sale_date").notNull(),
   userId: varchar("user_id").notNull(),
   customerName: varchar("customer_name"),
@@ -102,6 +133,7 @@ export const sales = pgTable("sales", {
 // Feed inventory table
 export const feedInventory = pgTable("feed_inventory", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  farmId: varchar("farm_id").notNull(), // Associate with specific farm
   feedType: varchar("feed_type").notNull(),
   supplier: varchar("supplier"),
   quantityKg: decimal("quantity_kg", { precision: 10, scale: 2 }).notNull(),
@@ -135,6 +167,7 @@ export const healthRecords = pgTable("health_records", {
 // Expenses table
 export const expenses = pgTable("expenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  farmId: varchar("farm_id").notNull(), // Associate with specific farm
   expenseDate: date("expense_date").notNull(),
   userId: varchar("user_id").notNull(),
   category: varchar("category").notNull(), // feed, medication, labor, utilities, equipment, other
@@ -167,6 +200,7 @@ export const customers = pgTable("customers", {
 // Products table
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  farmId: varchar("farm_id").notNull(), // Associate with specific farm
   name: varchar("name").notNull(),
   category: varchar("category").notNull(), // eggs, chickens, feed
   description: text("description"),
@@ -183,6 +217,7 @@ export const products = pgTable("products", {
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderNumber: varchar("order_number").notNull().unique(),
+  farmId: varchar("farm_id").notNull(), // Associate with specific farm
   customerId: varchar("customer_id").notNull(),
   userId: varchar("user_id").notNull(), // staff who processed the order
   orderDate: timestamp("order_date").defaultNow(),
@@ -226,12 +261,31 @@ export const deliveries = pgTable("deliveries", {
 });
 
 // Relations
-export const flocksRelations = relations(flocks, ({ many }) => ({
+// Farm relations
+export const farmsRelations = relations(farms, ({ many }) => ({
+  users: many(users),
+  flocks: many(flocks),
+  sales: many(sales),
+  feedInventory: many(feedInventory),
+  expenses: many(expenses),
+  products: many(products),
+  orders: many(orders),
+}));
+
+export const flocksRelations = relations(flocks, ({ one, many }) => ({
+  farm: one(farms, {
+    fields: [flocks.farmId],
+    references: [farms.id],
+  }),
   dailyRecords: many(dailyRecords),
   healthRecords: many(healthRecords),
 }));
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  farm: one(farms, {
+    fields: [users.farmId],
+    references: [farms.id],
+  }),
   dailyRecords: many(dailyRecords),
   sales: many(sales),
   feedInventory: many(feedInventory),
@@ -251,6 +305,10 @@ export const dailyRecordsRelations = relations(dailyRecords, ({ one }) => ({
 }));
 
 export const salesRelations = relations(sales, ({ one }) => ({
+  farm: one(farms, {
+    fields: [sales.farmId],
+    references: [farms.id],
+  }),
   user: one(users, {
     fields: [sales.userId],
     references: [users.id],
@@ -258,6 +316,10 @@ export const salesRelations = relations(sales, ({ one }) => ({
 }));
 
 export const feedInventoryRelations = relations(feedInventory, ({ one }) => ({
+  farm: one(farms, {
+    fields: [feedInventory.farmId],
+    references: [farms.id],
+  }),
   user: one(users, {
     fields: [feedInventory.userId],
     references: [users.id],
@@ -276,6 +338,10 @@ export const healthRecordsRelations = relations(healthRecords, ({ one }) => ({
 }));
 
 export const expensesRelations = relations(expenses, ({ one }) => ({
+  farm: one(farms, {
+    fields: [expenses.farmId],
+    references: [farms.id],
+  }),
   user: one(users, {
     fields: [expenses.userId],
     references: [users.id],
@@ -287,11 +353,19 @@ export const customersRelations = relations(customers, ({ many }) => ({
   orders: many(orders),
 }));
 
-export const productsRelations = relations(products, ({ many }) => ({
+export const productsRelations = relations(products, ({ one, many }) => ({
+  farm: one(farms, {
+    fields: [products.farmId],
+    references: [farms.id],
+  }),
   orderItems: many(orderItems),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
+  farm: one(farms, {
+    fields: [orders.farmId],
+    references: [farms.id],
+  }),
   customer: one(customers, {
     fields: [orders.customerId],
     references: [customers.id],
@@ -327,6 +401,7 @@ export const deliveriesRelations = relations(deliveries, ({ one }) => ({
 }));
 
 // Insert schemas
+export const insertFarmSchema = createInsertSchema(farms).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFlockSchema = createInsertSchema(flocks).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDailyRecordSchema = createInsertSchema(dailyRecords).omit({ id: true, createdAt: true, updatedAt: true });
@@ -362,6 +437,10 @@ export const insertDeliverySchema = createInsertSchema(deliveries).omit({ id: tr
 });
 
 // Types
+// Farm types
+export type InsertFarm = z.infer<typeof insertFarmSchema>;
+export type Farm = typeof farms.$inferSelect;
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertFlock = z.infer<typeof insertFlockSchema>;
