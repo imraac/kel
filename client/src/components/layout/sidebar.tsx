@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Sprout, BarChart3, Baby, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut } from "lucide-react";
+import { Sprout, BarChart3, Baby, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -25,6 +25,12 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     { path: "/health-records", icon: Heart, label: "Health Records", id: "health-records" },
     { path: "/reports", icon: ClipboardList, label: "Reports", id: "reports" },
     { path: "/expenses", icon: Receipt, label: "Expenses", id: "expenses" },
+  ];
+
+  const marketplaceItems = [
+    { path: "/marketplace/customers", icon: UserCheck, label: "Customers", id: "marketplace-customers" },
+    { path: "/marketplace/products", icon: Package2, label: "Products", id: "marketplace-products" },
+    { path: "/marketplace/orders", icon: ShoppingCart, label: "Orders", id: "marketplace-orders" },
   ];
 
   const managementItems = [
@@ -80,6 +86,36 @@ export default function Sidebar({ isOpen }: SidebarProps) {
             })}
           </div>
           
+          {/* Marketplace Section */}
+          <div className="pt-4 border-t border-border">
+            <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Marketplace
+            </h3>
+            <div className="space-y-1">
+              {marketplaceItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location === item.path;
+                
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.path}
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                    data-testid={`nav-${item.id}`}
+                  >
+                    <Icon className="mr-3 h-4 w-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+          
           {/* Management Section */}
           <div className="pt-4 border-t border-border">
             <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -87,7 +123,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
             </h3>
             <div className="space-y-1">
               {managementItems.map((item) => {
-                if (item.adminOnly && user?.role !== 'admin') return null;
+                if (item.adminOnly && (!user || user.role !== 'admin')) return null;
                 
                 const Icon = item.icon;
                 const isActive = location === item.path;
@@ -118,14 +154,14 @@ export default function Sidebar({ isOpen }: SidebarProps) {
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
               <span className="text-primary-foreground text-sm font-medium">
-                {user?.firstName?.[0]}{user?.lastName?.[0]}
+                {user?.firstName?.[0] || 'U'}{user?.lastName?.[0] || 'U'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
-                {user?.firstName} {user?.lastName}
+                {user?.firstName || 'Unknown'} {user?.lastName || 'User'}
               </p>
-              <p className="text-xs text-muted-foreground capitalize">{user?.role || 'Staff'}</p>
+              <p className="text-xs text-muted-foreground capitalize">{user?.role || 'staff'}</p>
             </div>
             <Button
               variant="ghost"

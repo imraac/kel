@@ -32,12 +32,12 @@ export default function ChickBrooding() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: flocks, error: flocksError } = useQuery({
+  const { data: flocks = [], error: flocksError } = useQuery<any[]>({
     queryKey: ["/api/flocks"],
     enabled: isAuthenticated,
   });
 
-  const { data: dailyRecords, error: recordsError } = useQuery({
+  const { data: dailyRecords = [], error: recordsError } = useQuery<any[]>({
     queryKey: ["/api/daily-records"],
     enabled: isAuthenticated,
   });
@@ -71,8 +71,8 @@ export default function ChickBrooding() {
     return null;
   }
 
-  const broodingFlocks = flocks?.filter((flock: any) => flock.status === 'brooding') || [];
-  const broodingRecords = dailyRecords?.filter((record: any) => 
+  const broodingFlocks = flocks.filter((flock: any) => flock.status === 'brooding');
+  const broodingRecords = dailyRecords.filter((record: any) => 
     record.temperature || record.lightingHours
   ) || [];
 
