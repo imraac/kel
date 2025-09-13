@@ -48,7 +48,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
               <Sprout className="text-primary-foreground text-lg" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-foreground">Ali Roble Farm</h1>
+              <h1 className="text-lg font-semibold text-foreground">RoblePoultryPilot</h1>
               <p className="text-sm text-muted-foreground">5,300 Layers</p>
             </div>
           </div>
