@@ -18,10 +18,10 @@ export default function Landing() {
             </div>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
-            Ali Roble Farm Manager
+            RoblePoultryPilot
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Comprehensive poultry farm management for tracking layers production from chicks to eggs with role-based access and performance analytics.
+            Comprehensive poultry farm management platform with integrated marketplace for tracking layers production from chicks to eggs, customer interactions, and order management.
           </p>
           <Button size="lg" onClick={handleLogin} data-testid="button-login" className="text-lg px-8 py-6">
             Get Started
@@ -70,7 +70,7 @@ export default function Landing() {
         {/* Key Benefits */}
         <Card className="max-w-4xl mx-auto" data-testid="card-benefits">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Why Choose Ali Roble Farm Manager?</CardTitle>
+            <CardTitle className="text-2xl">Why Choose RoblePoultryPilot?</CardTitle>
             <CardDescription>Built specifically for Kenyan poultry farmers managing large-scale layer operations</CardDescription>
           </CardHeader>
           <CardContent>

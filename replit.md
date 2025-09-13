@@ -1,8 +1,8 @@
-# Ali Roble Farm Manager
+# RoblePoultryPilot
 
 ## Overview
 
-Ali Roble Farm Manager is a comprehensive poultry farm management system designed for tracking layer chickens from chicks to eggs. The application provides role-based access for farm operations management, including brooding, egg production tracking, feed management, health records, sales monitoring, and expense tracking. Built with modern web technologies, it offers real-time performance analytics and comprehensive reporting capabilities for efficient poultry farm operations.
+RoblePoultryPilot is a comprehensive poultry farm management system designed for tracking layer chickens from chicks to eggs. The application provides role-based access for farm operations management, including brooding, egg production tracking, feed management, health records, sales monitoring, and expense tracking. Additionally, it features a marketplace where farmers and customers can interact, place orders, and manage deliveries. Built with modern web technologies, it offers real-time performance analytics and comprehensive reporting capabilities for efficient poultry farm operations.
 
 ## User Preferences
 
