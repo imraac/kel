@@ -7,6 +7,7 @@ import {
   feedInventory,
   healthRecords,
   expenses,
+  notifications,
   customers,
   products,
   orders,
@@ -38,6 +39,8 @@ import {
   type OrderItem,
   type InsertDelivery,
   type Delivery,
+  type InsertNotification,
+  type Notification,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
@@ -67,6 +70,9 @@ export interface IStorage {
 
   // Daily record operations
   createDailyRecord(record: InsertDailyRecord): Promise<DailyRecord>;
+  createDailyRecordWithReview(record: InsertDailyRecord & { reviewStatus: string; isDuplicate: boolean; duplicateOfId?: string }): Promise<DailyRecord>;
+  createDailyRecordWithNotification(record: InsertDailyRecord & { reviewStatus: string; isDuplicate: boolean; duplicateOfId?: string }, farmId: string, notificationData: { type: string; title: string; message: string; meta?: any }): Promise<DailyRecord>;
+  findDailyRecordDuplicate(userId: string, flockId: string, recordDate: string): Promise<DailyRecord | null>;
   getDailyRecords(flockId?: string, limit?: number): Promise<DailyRecord[]>;
   getDailyRecordsByDateRange(startDate: string, endDate: string): Promise<DailyRecord[]>;
   updateDailyRecord(id: string, updates: Partial<InsertDailyRecord>): Promise<DailyRecord>;
@@ -90,6 +96,12 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   getExpenses(limit?: number): Promise<Expense[]>;
   getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]>;
+
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  createNotificationForManagers(farmId: string, notificationData: { type: string; title: string; message: string; meta?: any }): Promise<void>;
+  getNotificationsByUser(userId: string, limit?: number): Promise<Notification[]>;
+  markNotificationAsRead(notificationId: string): Promise<void>;
 
   // Dashboard analytics
   getDashboardMetrics(): Promise<any>;
@@ -310,6 +322,69 @@ export class DatabaseStorage implements IStorage {
     return newRecord;
   }
 
+  async createDailyRecordWithReview(record: InsertDailyRecord & { reviewStatus: string; isDuplicate: boolean; duplicateOfId?: string }): Promise<DailyRecord> {
+    const [newRecord] = await db.insert(dailyRecords).values(record).returning();
+    return newRecord;
+  }
+
+  async createDailyRecordWithNotification(
+    record: InsertDailyRecord & { reviewStatus: string; isDuplicate: boolean; duplicateOfId?: string }, 
+    farmId: string, 
+    notificationData: { type: string; title: string; message: string; meta?: any }
+  ): Promise<DailyRecord> {
+    return await db.transaction(async (tx) => {
+      // Create the daily record
+      const [newRecord] = await tx.insert(dailyRecords).values(record).returning();
+
+      // Find all managers and farm_owners in this farm
+      const managers = await tx
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.farmId, farmId),
+            sql`${users.role} IN ('manager', 'farm_owner')`
+          )
+        );
+
+      // Create notifications for each manager
+      const notificationsToCreate = managers.map(manager => ({
+        recipientUserId: manager.id,
+        farmId,
+        type: notificationData.type,
+        title: notificationData.title,
+        message: notificationData.message,
+        meta: {
+          ...notificationData.meta,
+          recordId: newRecord.id // Add the record ID to meta
+        },
+        isRead: false
+      }));
+
+      if (notificationsToCreate.length > 0) {
+        await tx.insert(notifications).values(notificationsToCreate);
+      }
+
+      return newRecord;
+    });
+  }
+
+  async findDailyRecordDuplicate(userId: string, flockId: string, recordDate: string): Promise<DailyRecord | null> {
+    const [duplicate] = await db
+      .select()
+      .from(dailyRecords)
+      .where(
+        and(
+          eq(dailyRecords.userId, userId),
+          eq(dailyRecords.flockId, flockId),
+          eq(dailyRecords.recordDate, recordDate)
+        )
+      )
+      .orderBy(desc(dailyRecords.createdAt))
+      .limit(1);
+    return duplicate || null;
+  }
+
   async getDailyRecords(flockId?: string, limit = 50): Promise<DailyRecord[]> {
     if (flockId) {
       return await db
@@ -439,6 +514,56 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(expenses.expenseDate));
+  }
+
+  // Notification operations
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async createNotificationForManagers(farmId: string, notificationData: { type: string; title: string; message: string; meta?: any }): Promise<void> {
+    // Find all managers and farm_owners in this farm
+    const managers = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.farmId, farmId),
+          sql`${users.role} IN ('manager', 'farm_owner')`
+        )
+      );
+
+    // Create notification for each manager
+    const notificationsToCreate = managers.map(manager => ({
+      recipientUserId: manager.id,
+      farmId,
+      type: notificationData.type,
+      title: notificationData.title,
+      message: notificationData.message,
+      meta: notificationData.meta,
+      isRead: false
+    }));
+
+    if (notificationsToCreate.length > 0) {
+      await db.insert(notifications).values(notificationsToCreate);
+    }
+  }
+
+  async getNotificationsByUser(userId: string, limit = 20): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.recipientUserId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true, updatedAt: new Date() })
+      .where(eq(notifications.id, notificationId));
   }
 
   // Dashboard analytics
