@@ -86,9 +86,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Admins can create any role
         validatedData = insertUserSchema.parse(req.body);
         
+        // Ensure role is defined before type checking
+        if (!validatedData.role) {
+          return res.status(400).json({ message: "Role is required" });
+        }
+        
         // For admins creating non-customer roles, require valid farmId
         if (!['admin', 'customer'].includes(validatedData.role)) {
-          if (typeof validatedData.farmId !== 'string' || !validatedData.farmId) {
+          if (!validatedData.farmId || typeof validatedData.farmId !== 'string') {
             return res.status(400).json({ 
               message: "Farm ID is required for staff, manager, and farm_owner roles" 
             });

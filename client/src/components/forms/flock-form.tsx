@@ -108,30 +108,10 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
   });
 
   const onSubmit = (data: FlockFormInputs) => {
-    console.log("🚀 FORM SUBMIT CALLED!", {
-      data,
-      formErrors: form.formState.errors,
-      isValid: form.formState.isValid,
-      isEditing: !!flock,
-      flockId: flock?.id,
-      mutationState: {
-        isPending: saveFlockMutation.isPending,
-        isError: saveFlockMutation.isError,
-        error: saveFlockMutation.error
-      }
-    });
-    
-    // Check if form has validation errors
-    if (!form.formState.isValid) {
-      console.log("❌ FORM VALIDATION FAILED:", form.formState.errors);
-      return;
-    }
-    
     try {
-      console.log("🔄 TRIGGERING MUTATION...");
       saveFlockMutation.mutate(data);
     } catch (error) {
-      console.error("❌ ERROR IN MUTATION:", error);
+      console.error("Error in mutation:", error);
     }
   };
 
@@ -267,7 +247,6 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
               type="submit" 
               disabled={saveFlockMutation.isPending}
               data-testid="button-submit-flock"
-              onClick={() => console.log("🔘 BUTTON CLICKED - Form valid:", form.formState.isValid, "Errors:", form.formState.errors)}
             >
               {saveFlockMutation.isPending ? (flock ? "Updating..." : "Creating...") : (flock ? "Update Flock" : "Create Flock")}
             </Button>
