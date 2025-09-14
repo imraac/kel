@@ -353,32 +353,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete flock
-  app.delete('/api/flocks/:id', isAuthenticated, async (req: any, res) => {
+  // Deactivate flock (admin-only)
+  app.patch('/api/flocks/:id/deactivate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to delete flocks" });
+      // Only administrators can deactivate flocks
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied. Administrator role required to deactivate flocks." });
       }
 
-      // Get the existing flock to verify ownership
+      // Get the existing flock
       const existingFlock = await storage.getFlockById(req.params.id);
       if (!existingFlock) {
         return res.status(404).json({ message: "Flock not found" });
       }
 
-      // Verify the flock belongs to the user's farm
-      if (existingFlock.farmId !== currentUser.farmId) {
-        return res.status(403).json({ message: "Access denied. Flock belongs to different farm." });
-      }
-
-      await storage.deleteFlock(req.params.id);
-      res.status(204).send(); // No content response for successful deletion
+      // Update the flock status to deactivated
+      const deactivatedFlock = await storage.updateFlock(req.params.id, { 
+        status: 'deactivated' 
+      });
+      
+      res.json({ 
+        message: "Flock deactivated successfully", 
+        flock: deactivatedFlock 
+      });
     } catch (error) {
-      console.error("Error deleting flock:", error);
-      res.status(500).json({ message: "Failed to delete flock" });
+      console.error("Error deactivating flock:", error);
+      res.status(500).json({ message: "Failed to deactivate flock" });
     }
   });
 
