@@ -21,7 +21,11 @@ import { insertFeedInventorySchema } from "@shared/schema";
 import { z } from "zod";
 import { Textarea } from "@/components/ui/textarea";
 
-const feedFormSchema = insertFeedInventorySchema.extend({
+const feedFormSchema = z.object({
+  feedType: z.string().min(1, "Feed type is required"),
+  supplier: z.string().optional(),
+  quantityKg: z.string().min(1, "Quantity is required"),
+  unitPrice: z.string().optional(),
   purchaseDate: z.string().min(1, "Purchase date is required"),
   expiryDate: z.string().optional(),
 });
@@ -88,7 +92,12 @@ export default function FeedManagement() {
 
   const createFeedMutation = useMutation({
     mutationFn: async (data: FeedFormData) => {
-      await apiRequest("POST", "/api/feed-inventory", data);
+      const feedData = {
+        ...data,
+        quantityKg: data.quantityKg ? Number(data.quantityKg) : undefined,
+        unitPrice: data.unitPrice ? Number(data.unitPrice) : undefined,
+      };
+      await apiRequest("POST", "/api/feed-inventory", feedData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/feed-inventory"] });
@@ -158,6 +167,8 @@ export default function FeedManagement() {
   const daysRemaining = dailyAverage > 0 ? Math.floor(totalStock / dailyAverage) : 0;
 
   const onSubmitFeed = (data: FeedFormData) => {
+    console.log("Feed form submitted with data:", data);
+    console.log("Feed form errors:", feedForm.formState.errors);
     createFeedMutation.mutate(data);
   };
 
