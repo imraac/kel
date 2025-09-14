@@ -634,16 +634,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId
       };
 
-      // Validate and normalize numeric fields using centralized utilities
-      let normalized;
-      try {
-        normalized = normalizeNumericFields(input, {
-          decimals: { cost: 2 },
-          optional: ['cost']
-        });
-      } catch (error) {
-        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
-      }
+      // No numeric normalization needed - let decimal fields remain as strings
+      const normalized = input;
 
       const validatedData = insertHealthRecordSchema.parse(normalized);
       const record = await storage.createHealthRecord(validatedData);
