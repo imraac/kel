@@ -63,11 +63,22 @@ export default function CustomerRegistration() {
   });
 
   const registrationMutation = useMutation({
-    mutationFn: (data: CustomerRegistrationForm) =>
-      apiRequest('/api/public/customers', {
+    mutationFn: async (data: CustomerRegistrationForm) => {
+      const response = await fetch('/api/public/customers', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
-      }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       setIsSuccess(true);
       toast({
