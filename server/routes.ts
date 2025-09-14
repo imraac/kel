@@ -481,10 +481,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sales routes
-  app.get('/api/sales', isAuthenticated, async (req, res) => {
+  app.get('/api/sales', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to view sales" });
+      }
+
       const limit = parseInt(req.query.limit as string) || 50;
-      const sales = await storage.getSales(limit);
+      const sales = await storage.getSalesByFarm(currentUser.farmId, limit);
       res.json(sales);
     } catch (error) {
       console.error("Error fetching sales:", error);
@@ -494,10 +501,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/sales', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertSaleSchema.parse({
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to create sales" });
+      }
+
+      // Auto-inject farmId and userId, and coerce numeric fields
+      const input = {
         ...req.body,
-        userId: req.user.claims.sub
-      });
+        userId,
+        farmId: currentUser.farmId
+      };
+
+      // Normalize numeric fields at the API boundary
+      const normalized = {
+        ...input,
+        cratesSold: Number(input.cratesSold),
+        pricePerCrate: Number(input.pricePerCrate).toFixed(2),
+        totalAmount: Number(input.totalAmount).toFixed(2),
+      };
+
+      const validatedData = insertSaleSchema.parse(normalized);
       const sale = await storage.createSale(validatedData);
       res.status(201).json(sale);
     } catch (error) {
