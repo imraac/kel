@@ -76,7 +76,7 @@ export const flocks = pgTable("flocks", {
   initialCount: integer("initial_count").notNull(),
   currentCount: integer("current_count").notNull(),
   hatchDate: date("hatch_date").notNull(),
-  status: varchar("status").notNull().default("brooding"), // brooding, laying, retired
+  status: varchar("status").notNull().default("brooding"), // brooding, laying, retired, deactivated
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

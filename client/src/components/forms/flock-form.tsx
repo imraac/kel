@@ -18,7 +18,7 @@ const flockFormSchema = z.object({
   initialCount: z.number().min(1, "Initial count must be at least 1"),
   currentCount: z.number().min(0, "Current count must be at least 0"),
   hatchDate: z.string().min(1, "Hatch date is required"),
-  status: z.enum(["brooding", "laying", "retired"]),
+  status: z.enum(["brooding", "laying", "retired", "deactivated"]),
   farmId: z.string().optional(), // Optional for validation, included for editing
 });
 
