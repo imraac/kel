@@ -26,7 +26,16 @@ export default function SimpleFlockForm({ onSuccess }: SimpleFlockFormProps) {
   const createFlockMutation = useMutation({
     mutationFn: async (flockData: any) => {
       console.log("Mutation function called with:", flockData);
-      const response = await apiRequest("POST", "/api/flocks", flockData);
+      
+      let response;
+      if (flockData.id) {
+        // Update existing flock using PUT
+        response = await apiRequest("PUT", `/api/flocks/${flockData.id}`, flockData);
+      } else {
+        // Create new flock using POST
+        response = await apiRequest("POST", "/api/flocks", flockData);
+      }
+      
       console.log("API response:", response);
       return response;
     },
