@@ -873,6 +873,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // PUBLIC API ENDPOINTS (No Authentication Required)
+  // ========================================
+
+  // Public farms directory - List all active farms
+  app.get('/api/public/farms', async (req, res) => {
+    try {
+      const farms = await storage.getPublicFarms(); // Only approved, active farms
+      res.json(farms);
+    } catch (error) {
+      console.error("Error fetching public farms:", error);
+      res.status(500).json({ message: "Failed to fetch farms" });
+    }
+  });
+
+  // Public farm details - Individual farm information
+  app.get('/api/public/farms/:id', async (req, res) => {
+    try {
+      const farm = await storage.getPublicFarmById(req.params.id);
+      if (!farm) {
+        return res.status(404).json({ message: "Farm not found" });
+      }
+      res.json(farm);
+    } catch (error) {
+      console.error("Error fetching public farm:", error);
+      res.status(500).json({ message: "Failed to fetch farm details" });
+    }
+  });
+
+  // Public products by farm - Products available from a specific farm
+  app.get('/api/public/farms/:farmId/products', async (req, res) => {
+    try {
+      const products = await storage.getPublicProductsByFarm(req.params.farmId);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching farm products:", error);
+      res.status(500).json({ message: "Failed to fetch farm products" });
+    }
+  });
+
+  // Public products directory - All available products
+  app.get('/api/public/products', async (req, res) => {
+    try {
+      const products = await storage.getPublicProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching public products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  // Customer self-registration endpoint
+  app.post('/api/public/customers/register', async (req, res) => {
+    try {
+      const customerData = insertCustomerSchema.parse({
+        ...req.body,
+        status: 'active', // Auto-activate self-registered customers
+        customerType: req.body.customerType || 'retail' // Default to retail
+      });
+      
+      const customer = await storage.createCustomer(customerData);
+      res.status(201).json({ 
+        message: "Registration successful! You can now browse and place orders.",
+        customer: {
+          id: customer.id,
+          name: customer.name,
+          email: customer.email
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error registering customer:", error);
+        res.status(500).json({ message: "Registration failed. Please try again." });
+      }
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
