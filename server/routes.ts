@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // For admins creating non-customer roles, require valid farmId
         if (!['admin', 'customer'].includes(validatedData.role)) {
-          if (typeof validatedData.farmId !== 'string') {
+          if (typeof validatedData.farmId !== 'string' || !validatedData.farmId) {
             return res.status(400).json({ 
               message: "Farm ID is required for staff, manager, and farm_owner roles" 
             });
