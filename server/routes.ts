@@ -34,19 +34,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Users routes (for driver assignment)
+  // Users routes
   app.get('/api/users', isAuthenticated, async (req: any, res) => {
     try {
-      // Only admins can view all users for driver assignment
+      // Allow admins and managers to view users
       const currentUser = await storage.getUser(req.user.claims.sub);
-      if (currentUser?.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied. Admin role required." });
+      if (!['admin', 'manager'].includes(currentUser?.role || '')) {
+        return res.status(403).json({ message: "Access denied. Admin or manager role required." });
       }
       const users = await storage.getUsers();
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Create new user
+  app.post('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      if (!currentUser || !['admin', 'manager'].includes(currentUser.role || '')) {
+        return res.status(403).json({ message: "Access denied. Admin or manager role required." });
+      }
+
+      const { firstName, lastName, email, role } = req.body;
+      
+      // Validate required fields
+      if (!firstName || !lastName || !email || !role) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Role-based restrictions
+      if (currentUser.role === 'manager') {
+        // Managers can only create staff, customers, and other managers
+        if (!['staff', 'customer', 'manager'].includes(role)) {
+          return res.status(403).json({ 
+            message: "Managers can only create staff, customer, and manager accounts" 
+          });
+        }
+      }
+      // Admins can create any role
+
+      // Create user with the same farmId as the creator (for non-admin/customer roles)
+      const userData = {
+        firstName,
+        lastName,
+        email,
+        role,
+        farmId: ['admin', 'customer'].includes(role) ? null : currentUser.farmId
+      };
+
+      const newUser = await storage.upsertUser(userData);
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      if (error instanceof Error && error.message.includes('unique')) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
 
