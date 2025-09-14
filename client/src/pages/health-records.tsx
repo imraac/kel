@@ -20,22 +20,28 @@ import { insertHealthRecordSchema } from "@shared/schema";
 import { z } from "zod";
 import { Textarea } from "@/components/ui/textarea";
 
-// Health record form schema - following egg sale pattern
-const healthFormSchema = z.object({
+// Health record form schema - use the actual database schema for consistency
+const healthFormSchema = insertHealthRecordSchema.pick({
+  recordDate: true,
+  flockId: true, 
+  recordType: true,
+  title: true,
+  description: true,
+  medicationUsed: true,
+  dosage: true,
+  administeredBy: true,
+  nextDueDate: true,
+  cost: true,
+  notes: true,
+}).extend({
+  // Override date fields to handle string inputs from HTML date inputs
   recordDate: z.string().min(1, "Record date is required"),
-  flockId: z.string().min(1, "Please select a flock"),
-  recordType: z.enum(["vaccination", "medication", "treatment", "checkup"]),
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  medicationUsed: z.string().optional(),
-  dosage: z.string().optional(), 
-  administeredBy: z.string().optional(),
   nextDueDate: z.string().optional(),
+  // Override cost to handle string input like egg sale pattern
   cost: z.string().optional().refine(
     (val) => !val || val === "" || !isNaN(parseFloat(val)),
     "Invalid cost amount"
   ),
-  notes: z.string().optional(),
 });
 
 type HealthFormData = z.infer<typeof healthFormSchema>;
@@ -327,7 +333,7 @@ export default function HealthRecords() {
                         <FormItem>
                           <FormLabel>Description</FormLabel>
                           <FormControl>
-                            <Textarea {...field} rows={3} data-testid="textarea-description" />
+                            <Textarea {...field} value={field.value ?? ""} rows={3} data-testid="textarea-description" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -342,7 +348,7 @@ export default function HealthRecords() {
                           <FormItem>
                             <FormLabel>Medication/Vaccine</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Product name" data-testid="input-medication" />
+                              <Input {...field} value={field.value ?? ""} placeholder="Product name" data-testid="input-medication" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -356,7 +362,7 @@ export default function HealthRecords() {
                           <FormItem>
                             <FormLabel>Dosage</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="e.g., 1ml per bird" data-testid="input-dosage" />
+                              <Input {...field} value={field.value ?? ""} placeholder="e.g., 1ml per bird" data-testid="input-dosage" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -371,7 +377,7 @@ export default function HealthRecords() {
                         <FormItem>
                           <FormLabel>Administered By</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Veterinarian or staff name" data-testid="input-administered-by" />
+                            <Input {...field} value={field.value ?? ""} placeholder="Veterinarian or staff name" data-testid="input-administered-by" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -428,7 +434,7 @@ export default function HealthRecords() {
                         <FormItem>
                           <FormLabel>Additional Notes</FormLabel>
                           <FormControl>
-                            <Textarea {...field} rows={2} data-testid="textarea-notes" />
+                            <Textarea {...field} value={field.value ?? ""} rows={2} data-testid="textarea-notes" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
