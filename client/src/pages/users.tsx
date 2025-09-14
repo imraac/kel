@@ -23,7 +23,7 @@ const userFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
-  role: z.enum(["admin", "staff"], {
+  role: z.enum(["admin", "farm_owner", "manager", "staff", "customer"], {
     required_error: "Role is required",
   }),
 });
@@ -52,12 +52,12 @@ export default function UsersPage() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Check if user is admin
+  // Check if user is admin or manager
   useEffect(() => {
-    if (!isLoading && isAuthenticated && currentUser?.role !== 'admin') {
+    if (!isLoading && isAuthenticated && !['admin', 'manager'].includes(currentUser?.role || '')) {
       toast({
         title: "Access Denied",
-        description: "You need admin privileges to access this page",
+        description: "You need admin or manager privileges to access this page",
         variant: "destructive",
       });
       // Redirect to home page
@@ -66,14 +66,14 @@ export default function UsersPage() {
     }
   }, [currentUser, isAuthenticated, isLoading, toast]);
 
-  const { data: users, error: usersError } = useQuery({
+  const { data: users, error: usersError } = useQuery<any[]>({
     queryKey: ["/api/users"],
-    enabled: isAuthenticated && currentUser?.role === 'admin',
+    enabled: isAuthenticated && (currentUser?.role === 'admin' || currentUser?.role === 'manager'),
   });
 
-  const { data: activity, error: activityError } = useQuery({
+  const { data: activity, error: activityError } = useQuery<any[]>({
     queryKey: ["/api/dashboard/activity"],
-    enabled: isAuthenticated && currentUser?.role === 'admin',
+    enabled: isAuthenticated && (currentUser?.role === 'admin' || currentUser?.role === 'manager'),
   });
 
   // Handle unauthorized errors
@@ -144,7 +144,7 @@ export default function UsersPage() {
     );
   }
 
-  if (!isAuthenticated || currentUser?.role !== 'admin') {
+  if (!isAuthenticated || !['admin', 'manager'].includes(currentUser?.role || '')) {
     return null;
   }
 
@@ -184,7 +184,10 @@ export default function UsersPage() {
 
   const displayUsers = users || mockUsers;
   const adminUsers = displayUsers.filter((user: any) => user.role === 'admin');
+  const managerUsers = displayUsers.filter((user: any) => user.role === 'manager');
+  const farmOwnerUsers = displayUsers.filter((user: any) => user.role === 'farm_owner');
   const staffUsers = displayUsers.filter((user: any) => user.role === 'staff');
+  const customerUsers = displayUsers.filter((user: any) => user.role === 'customer');
   const activeUsers = displayUsers.filter((user: any) => {
     if (!user.lastActive) return false;
     const lastActive = new Date(user.lastActive);
@@ -198,13 +201,28 @@ export default function UsersPage() {
   };
 
   const getRoleIcon = (role: string) => {
-    return role === 'admin' ? Crown : User;
+    switch (role) {
+      case 'admin': return Crown;
+      case 'farm_owner': return Shield;
+      case 'manager': return Settings;
+      case 'customer': return User;
+      default: return User; // staff and others
+    }
   };
 
   const getRoleBadge = (role: string) => {
-    return role === 'admin' 
-      ? { variant: "default" as const, color: "text-primary" }
-      : { variant: "secondary" as const, color: "text-muted-foreground" };
+    switch (role) {
+      case 'admin':
+        return { variant: "default" as const, color: "text-primary" };
+      case 'farm_owner':
+        return { variant: "default" as const, color: "text-green-600" };
+      case 'manager':
+        return { variant: "secondary" as const, color: "text-blue-600" };
+      case 'customer':
+        return { variant: "outline" as const, color: "text-purple-600" };
+      default: // staff
+        return { variant: "secondary" as const, color: "text-muted-foreground" };
+    }
   };
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -336,7 +354,20 @@ export default function UsersPage() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="staff">Staff</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
+                              {currentUser?.role === 'admin' && (
+                                <>
+                                  <SelectItem value="manager">Manager</SelectItem>
+                                  <SelectItem value="farm_owner">Farm Owner</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="customer">Customer</SelectItem>
+                                </>
+                              )}
+                              {currentUser?.role === 'manager' && (
+                                <>
+                                  <SelectItem value="manager">Manager</SelectItem>
+                                  <SelectItem value="customer">Customer</SelectItem>
+                                </>
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -362,7 +393,7 @@ export default function UsersPage() {
         {/* Content */}
         <div className="flex-1 p-4 md:p-6 space-y-6">
           {/* Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
             <Card data-testid="card-total-users">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -393,16 +424,31 @@ export default function UsersPage() {
               </CardContent>
             </Card>
 
+            <Card data-testid="card-manager-users">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Managers</p>
+                    <p className="text-2xl font-bold text-foreground">{managerUsers.length}</p>
+                    <p className="text-xs text-blue-600">Management access</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Settings className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card data-testid="card-staff-users">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Staff Members</p>
                     <p className="text-2xl font-bold text-foreground">{staffUsers.length}</p>
-                    <p className="text-xs text-blue-600">Standard access</p>
+                    <p className="text-xs text-gray-600">Standard access</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <User className="h-6 w-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <User className="h-6 w-6 text-gray-600" />
                   </div>
                 </div>
               </CardContent>
@@ -418,6 +464,21 @@ export default function UsersPage() {
                   </div>
                   <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
                     <Shield className="h-6 w-6 text-orange-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-farm-owner-users">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Farm Owners</p>
+                    <p className="text-2xl font-bold text-foreground">{farmOwnerUsers.length}</p>
+                    <p className="text-xs text-yellow-600">Owner privileges</p>
+                  </div>
+                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-yellow-600" />
                   </div>
                 </div>
               </CardContent>
@@ -518,17 +579,59 @@ export default function UsersPage() {
                         </ul>
                       </div>
 
+                      <div className="p-4 border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Shield className="h-5 w-5 text-yellow-600" />
+                          <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Farm Owner</h3>
+                        </div>
+                        <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                          <li>• Full farm ownership and control</li>
+                          <li>• Manage farm settings and configuration</li>
+                          <li>• Access to all farm financial data</li>
+                          <li>• Receive notifications and alerts</li>
+                          <li>• Create and manage flocks</li>
+                        </ul>
+                      </div>
+
                       <div className="p-4 border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 rounded-lg">
                         <div className="flex items-center space-x-2 mb-2">
-                          <User className="h-5 w-5 text-blue-600" />
-                          <h3 className="font-semibold text-blue-800 dark:text-blue-200">Staff Member</h3>
+                          <Settings className="h-5 w-5 text-blue-600" />
+                          <h3 className="font-semibold text-blue-800 dark:text-blue-200">Manager</h3>
                         </div>
                         <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                          <li>• Create and manage users (staff, customers)</li>
+                          <li>• Oversee daily farm operations</li>
+                          <li>• Access to production analytics</li>
+                          <li>• Receive notifications and alerts</li>
+                          <li>• Review and approve daily records</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-4 border border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <User className="h-5 w-5 text-gray-600" />
+                          <h3 className="font-semibold text-gray-800 dark:text-gray-200">Staff Member</h3>
+                        </div>
+                        <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
                           <li>• Record daily farm activities</li>
                           <li>• View production reports</li>
                           <li>• Add expenses and sales</li>
                           <li>• Update feed and health records</li>
                           <li>• Limited access to analytics</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-4 border border-purple-200 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <User className="h-5 w-5 text-purple-600" />
+                          <h3 className="font-semibold text-purple-800 dark:text-purple-200">Customer</h3>
+                        </div>
+                        <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
+                          <li>• Browse and view available products</li>
+                          <li>• Place orders for eggs and chickens</li>
+                          <li>• Track order status and delivery</li>
+                          <li>• View order history</li>
+                          <li>• Contact farm for support</li>
                         </ul>
                       </div>
                     </div>
