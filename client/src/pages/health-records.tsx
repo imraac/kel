@@ -23,7 +23,15 @@ import { Textarea } from "@/components/ui/textarea";
 const healthFormSchema = insertHealthRecordSchema.extend({
   recordDate: z.string().min(1, "Record date is required"),
   nextDueDate: z.string().optional(),
-});
+}).transform(data => ({
+  ...data,
+  description: data.description || "",
+  medicationUsed: data.medicationUsed || "",
+  dosage: data.dosage || "",
+  administeredBy: data.administeredBy || "",
+  cost: data.cost || "",
+  notes: data.notes || "",
+}));
 
 type HealthFormData = z.infer<typeof healthFormSchema>;
 
@@ -49,12 +57,12 @@ export default function HealthRecords() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: healthRecords, error: recordsError } = useQuery({
+  const { data: healthRecords = [], error: recordsError } = useQuery({
     queryKey: ["/api/health-records"],
     enabled: isAuthenticated,
   });
 
-  const { data: flocks, error: flocksError } = useQuery({
+  const { data: flocks = [], error: flocksError } = useQuery({
     queryKey: ["/api/flocks"],
     enabled: isAuthenticated,
   });
@@ -86,6 +94,7 @@ export default function HealthRecords() {
       nextDueDate: "",
       cost: "",
       notes: "",
+      flockId: "",
     },
   });
 
@@ -138,27 +147,31 @@ export default function HealthRecords() {
     return null;
   }
 
-  const vaccinations = healthRecords?.filter((record: any) => record.recordType === 'vaccination') || [];
-  const medications = healthRecords?.filter((record: any) => record.recordType === 'medication') || [];
-  const treatments = healthRecords?.filter((record: any) => record.recordType === 'treatment') || [];
-  const checkups = healthRecords?.filter((record: any) => record.recordType === 'checkup') || [];
+  const vaccinations = healthRecords.filter((record: any) => record.recordType === 'vaccination');
+  const medications = healthRecords.filter((record: any) => record.recordType === 'medication');
+  const treatments = healthRecords.filter((record: any) => record.recordType === 'treatment');
+  const checkups = healthRecords.filter((record: any) => record.recordType === 'checkup');
 
   // Calculate upcoming vaccinations
-  const upcomingVaccinations = healthRecords?.filter((record: any) => {
+  const upcomingVaccinations = healthRecords.filter((record: any) => {
     if (!record.nextDueDate) return false;
     const dueDate = new Date(record.nextDueDate);
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     return dueDate <= nextWeek && dueDate >= new Date();
-  }) || [];
+  });
 
-  const monthlyHealthCost = healthRecords?.filter((record: any) => {
+  const monthlyHealthCost = healthRecords.filter((record: any) => {
     const recordDate = new Date(record.recordDate);
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     return recordDate >= monthStart;
-  }).reduce((sum: number, record: any) => sum + parseFloat(record.cost || '0'), 0) || 0;
+  }).reduce((sum: number, record: any) => sum + parseFloat(record.cost || '0'), 0);
 
   const onSubmitHealth = (data: HealthFormData) => {
+    console.log("=== HEALTH FORM SUBMIT DEBUGGING ===");
+    console.log("Submit handler called with data:", data);
+    console.log("Form errors:", healthForm.formState.errors);
+    console.log("Mutation status:", createHealthMutation.status);
     createHealthMutation.mutate(data);
   };
 
@@ -437,7 +450,7 @@ export default function HealthRecords() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Records</p>
-                    <p className="text-2xl font-bold text-foreground">{healthRecords?.length || 0}</p>
+                    <p className="text-2xl font-bold text-foreground">{healthRecords.length}</p>
                     <p className="text-xs text-muted-foreground">All time</p>
                   </div>
                   <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -532,7 +545,7 @@ export default function HealthRecords() {
                   <CardTitle>All Health Records</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {!healthRecords || healthRecords.length === 0 ? (
+                  {healthRecords.length === 0 ? (
                     <div className="text-center py-8">
                       <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">No health records found</p>
