@@ -681,28 +681,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User must be associated with a farm to add expenses" });
       }
 
-      // Auto-inject farmId and userId, and coerce numeric fields
+      // Auto-inject farmId and userId
       const input = {
         ...req.body,
         userId,
         farmId: currentUser.farmId
       };
 
-      // Validate and normalize numeric fields using centralized utilities
-      let normalized;
-      try {
-        normalized = normalizeNumericFields(input, {
-          decimals: { amount: 2 }
-        });
-      } catch (error) {
-        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      // Defensive coercion: ensure amount field is string for Drizzle schema
+      if (typeof input.amount === 'number') {
+        input.amount = String(input.amount);
+      }
+      // Handle empty string for required amount field
+      if (input.amount === '') {
+        return res.status(400).json({ message: "Amount is required" });
       }
 
-      const validatedData = insertExpenseSchema.parse(normalized);
+      const validatedData = insertExpenseSchema.parse(input);
       const expense = await storage.createExpense(validatedData);
       res.status(201).json(expense);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("=== EXPENSE ZOD VALIDATION ERRORS ===");
+        console.error("Raw request body:", JSON.stringify(req.body, null, 2));
+        console.error("Amount field details:", req.body?.amount, "type:", typeof req.body?.amount);
+        console.error("Zod errors:", JSON.stringify(error.errors, null, 2));
         res.status(400).json({ message: "Validation error", errors: error.errors });
       } else {
         console.error("Error creating expense:", error);
