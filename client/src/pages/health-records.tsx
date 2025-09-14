@@ -20,18 +20,23 @@ import { insertHealthRecordSchema } from "@shared/schema";
 import { z } from "zod";
 import { Textarea } from "@/components/ui/textarea";
 
-const healthFormSchema = insertHealthRecordSchema.extend({
+// Health record form schema - following egg sale pattern
+const healthFormSchema = z.object({
   recordDate: z.string().min(1, "Record date is required"),
+  flockId: z.string().min(1, "Please select a flock"),
+  recordType: z.enum(["vaccination", "medication", "treatment", "checkup"]),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  medicationUsed: z.string().optional(),
+  dosage: z.string().optional(), 
+  administeredBy: z.string().optional(),
   nextDueDate: z.string().optional(),
-}).transform(data => ({
-  ...data,
-  description: data.description || "",
-  medicationUsed: data.medicationUsed || "",
-  dosage: data.dosage || "",
-  administeredBy: data.administeredBy || "",
-  cost: data.cost || "",
-  notes: data.notes || "",
-}));
+  cost: z.string().optional().refine(
+    (val) => !val || val === "" || !isNaN(parseFloat(val)),
+    "Invalid cost amount"
+  ),
+  notes: z.string().optional(),
+});
 
 type HealthFormData = z.infer<typeof healthFormSchema>;
 
@@ -100,17 +105,8 @@ export default function HealthRecords() {
 
   const createHealthMutation = useMutation({
     mutationFn: async (data: HealthFormData) => {
-      // Ensure numeric fields are properly converted from strings to numbers
-      const healthData = {
-        ...data,
-        cost: data.cost && data.cost.trim() !== "" ? Number(data.cost) : undefined,
-      };
-      
-      // Log the data being sent for debugging
-      console.log("Sending health record data:", healthData);
-      console.log("Cost field type:", typeof healthData.cost, "value:", healthData.cost);
-      
-      await apiRequest("POST", "/api/health-records", healthData);
+      // Keep cost as string like egg sale pattern
+      await apiRequest("POST", "/api/health-records", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/health-records"] });
@@ -178,29 +174,6 @@ export default function HealthRecords() {
   }).reduce((sum: number, record: any) => sum + parseFloat(record.cost || '0'), 0);
 
   const onSubmitHealth = (data: HealthFormData) => {
-    console.log("=== NEW HEALTH FORM SUBMIT ===");
-    console.log("Raw form data:", data);
-    console.log("Form validation errors:", healthForm.formState.errors);
-    
-    // Validate required fields before submission
-    if (!data.flockId) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a flock",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!data.title.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a title",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     createHealthMutation.mutate(data);
   };
 
@@ -428,16 +401,17 @@ export default function HealthRecords() {
                             <FormLabel>Cost (KSh)</FormLabel>
                             <FormControl>
                               <Input 
-                                type="number" 
-                                step="0.01" 
-                                min="0"
+                                type="text" 
                                 {...field} 
                                 placeholder="0.00"
                                 data-testid="input-cost"
                                 onChange={(e) => {
-                                  // Ensure clean numeric input handling
+                                  // Keep as string like egg sale pattern
                                   const value = e.target.value;
-                                  field.onChange(value);
+                                  // Only allow digits and decimal point
+                                  if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                                    field.onChange(value);
+                                  }
                                 }}
                               />
                             </FormControl>
