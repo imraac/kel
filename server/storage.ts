@@ -56,6 +56,10 @@ export interface IStorage {
   updateFarm(id: string, updates: Partial<InsertFarm>): Promise<Farm>;
   updateFarmOwnerFields(id: string, updates: Partial<InsertFarm>): Promise<Farm>;
   getFarmsByUserId(userId: string): Promise<Farm[]>;
+  
+  // Public API methods (no authentication required)
+  getPublicFarms(): Promise<Farm[]>;
+  getPublicFarmById(id: string): Promise<Farm | undefined>;
 
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
@@ -119,6 +123,10 @@ export interface IStorage {
   getProducts(): Promise<Product[]>;
   getProductById(id: string): Promise<Product | undefined>;
   updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product>;
+  
+  // Public product methods (no authentication required)
+  getPublicProducts(): Promise<Product[]>;
+  getPublicProductsByFarm(farmId: string): Promise<Product[]>;
   
   // Inventory validation and management
   checkProductStock(productId: string, requiredQuantity: number): Promise<{ available: boolean; currentStock: number; productPrice: number; productName: string }>;
@@ -266,6 +274,25 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(users.farmId, farms.id))
       .where(eq(users.id, userId))
       .then(results => results.map(r => r.farms));
+  }
+
+  // Public API methods (no authentication required)
+  async getPublicFarms(): Promise<Farm[]> {
+    // Only return approved and active farms for public browsing
+    return await db
+      .select()
+      .from(farms)
+      .where(and(eq(farms.status, 'active'), eq(farms.isApproved, true)))
+      .orderBy(desc(farms.createdAt));
+  }
+
+  async getPublicFarmById(id: string): Promise<Farm | undefined> {
+    // Only return if farm is approved and active
+    const [farm] = await db
+      .select()
+      .from(farms)
+      .where(and(eq(farms.id, id), eq(farms.status, 'active'), eq(farms.isApproved, true)));
+    return farm;
   }
 
   // User operations (mandatory for Replit Auth)
@@ -679,6 +706,62 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, id))
       .returning();
     return updatedProduct;
+  }
+
+  // Public product methods (no authentication required)
+  async getPublicProducts(): Promise<Product[]> {
+    // Only return available products from approved and active farms
+    return await db
+      .select({
+        id: products.id,
+        farmId: products.farmId,
+        name: products.name,
+        category: products.category,
+        description: products.description,
+        unit: products.unit,
+        currentPrice: products.currentPrice,
+        minOrderQuantity: products.minOrderQuantity,
+        stockQuantity: products.stockQuantity,
+        isAvailable: products.isAvailable,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+      })
+      .from(products)
+      .innerJoin(farms, eq(products.farmId, farms.id))
+      .where(and(
+        eq(products.isAvailable, true),
+        eq(farms.status, 'active'),
+        eq(farms.isApproved, true)
+      ))
+      .orderBy(desc(products.createdAt));
+  }
+
+  async getPublicProductsByFarm(farmId: string): Promise<Product[]> {
+    // Only return available products if farm is approved and active
+    return await db
+      .select({
+        id: products.id,
+        farmId: products.farmId,
+        name: products.name,
+        category: products.category,
+        description: products.description,
+        unit: products.unit,
+        currentPrice: products.currentPrice,
+        minOrderQuantity: products.minOrderQuantity,
+        stockQuantity: products.stockQuantity,
+        isAvailable: products.isAvailable,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+      })
+      .from(products)
+      .innerJoin(farms, eq(products.farmId, farms.id))
+      .where(and(
+        eq(products.farmId, farmId),
+        eq(products.isAvailable, true),
+        eq(farms.status, 'active'),
+        eq(farms.isApproved, true)
+      ))
+      .orderBy(desc(products.createdAt));
   }
 
   // Inventory validation and management
