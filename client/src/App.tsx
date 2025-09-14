@@ -20,12 +20,21 @@ import { FarmRegistrationPage } from "@/pages/farm-registration";
 import MarketplaceCustomers from "@/pages/marketplace-customers";
 import MarketplaceProducts from "@/pages/marketplace-products";
 import MarketplaceOrders from "@/pages/marketplace-orders";
+import PublicMarketplace from "@/pages/public-marketplace";
+import FarmStorefront from "@/pages/farm-storefront";
+import CustomerRegistration from "@/pages/customer-registration";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
+      {/* Public routes - always accessible */}
+      <Route path="/marketplace" component={PublicMarketplace} />
+      <Route path="/farm/:farmId" component={FarmStorefront} />
+      <Route path="/customer-registration" component={CustomerRegistration} />
+      <Route path="/farm-registration" component={FarmRegistrationPage} />
+      
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
@@ -39,7 +48,6 @@ function Router() {
           <Route path="/expenses" component={Expenses} />
           <Route path="/users" component={Users} />
           <Route path="/settings" component={Settings} />
-          <Route path="/farm-registration" component={FarmRegistrationPage} />
           <Route path="/marketplace/customers" component={MarketplaceCustomers} />
           <Route path="/marketplace/products" component={MarketplaceProducts} />
           <Route path="/marketplace/orders" component={MarketplaceOrders} />
