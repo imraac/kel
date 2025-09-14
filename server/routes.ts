@@ -311,6 +311,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update flock
+  app.put('/api/flocks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to update flocks" });
+      }
+
+      // Get the existing flock to verify ownership
+      const existingFlock = await storage.getFlockById(req.params.id);
+      if (!existingFlock) {
+        return res.status(404).json({ message: "Flock not found" });
+      }
+
+      // Verify the flock belongs to the user's farm
+      if (existingFlock.farmId !== currentUser.farmId) {
+        return res.status(403).json({ message: "Access denied. Flock belongs to different farm." });
+      }
+
+      const validatedData = insertFlockSchema.partial().parse(req.body);
+      const updatedFlock = await storage.updateFlock(req.params.id, validatedData);
+      res.json(updatedFlock);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error updating flock:", error);
+        res.status(500).json({ message: "Failed to update flock" });
+      }
+    }
+  });
+
   // Daily records routes
   app.get('/api/daily-records', isAuthenticated, async (req, res) => {
     try {
