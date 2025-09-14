@@ -332,7 +332,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied. Flock belongs to different farm." });
       }
 
-      const validatedData = insertFlockSchema.partial().parse(req.body);
+      // Remove fields that shouldn't be updated by users
+      const { id, farmId, createdAt, updatedAt, ...updateData } = req.body;
+      
+      const validatedData = insertFlockSchema.partial().strip().parse(updateData);
       const updatedFlock = await storage.updateFlock(req.params.id, validatedData);
       res.json(updatedFlock);
     } catch (error) {

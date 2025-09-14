@@ -40,23 +40,16 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
 
   const saveFlockMutation = useMutation({
     mutationFn: async (data: FlockFormData) => {
-      console.log("Mutation function called with data:", data);
       if (flock) {
         // Editing existing flock
-        console.log("Making PUT request to:", `/api/flocks/${flock.id}`);
-        const result = await apiRequest("PUT", `/api/flocks/${flock.id}`, data);
-        console.log("PUT request result:", result);
-        return result;
+        await apiRequest("PUT", `/api/flocks/${flock.id}`, data);
       } else {
         // Creating new flock
         const flockData = {
           ...data,
           currentCount: data.initialCount, // Set current count to initial count for new flocks
         };
-        console.log("Making POST request with data:", flockData);
-        const result = await apiRequest("POST", "/api/flocks", flockData);
-        console.log("POST request result:", result);
-        return result;
+        await apiRequest("POST", "/api/flocks", flockData);
       }
     },
     onSuccess: () => {
@@ -81,10 +74,6 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
   });
 
   const onSubmit = (data: FlockFormData) => {
-    console.log("Form submit called with data:", data);
-    console.log("Is editing flock:", !!flock);
-    console.log("Flock ID:", flock?.id);
-    console.log("Form errors:", form.formState.errors);
     saveFlockMutation.mutate(data);
   };
 
@@ -124,7 +113,7 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Breed</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger data-testid="select-breed">
                           <SelectValue placeholder="Select breed" />
@@ -164,8 +153,10 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 0;
                           field.onChange(value);
-                          // Also set current count to initial count
-                          form.setValue("currentCount", value);
+                          // Only set current count to initial count for new flocks, not when editing
+                          if (!flock) {
+                            form.setValue("currentCount", value);
+                          }
                         }}
                         data-testid="input-initial-count"
                       />
@@ -196,7 +187,7 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-status">
                         <SelectValue placeholder="Select status" />
