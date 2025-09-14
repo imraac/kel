@@ -40,16 +40,24 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
 
   const saveFlockMutation = useMutation({
     mutationFn: async (data: FlockFormData) => {
+      console.log("Mutation function called with data:", data);
+      
       if (flock) {
         // Editing existing flock
-        await apiRequest("PUT", `/api/flocks/${flock.id}`, data);
+        console.log("Making PUT request to:", `/api/flocks/${flock.id}`);
+        const response = await apiRequest("PUT", `/api/flocks/${flock.id}`, data);
+        console.log("PUT response:", response);
+        return response;
       } else {
         // Creating new flock
         const flockData = {
           ...data,
           currentCount: data.initialCount, // Set current count to initial count for new flocks
         };
-        await apiRequest("POST", "/api/flocks", flockData);
+        console.log("Making POST request with data:", flockData);
+        const response = await apiRequest("POST", "/api/flocks", flockData);
+        console.log("POST response:", response);
+        return response;
       }
     },
     onSuccess: () => {
@@ -74,7 +82,18 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
   });
 
   const onSubmit = (data: FlockFormData) => {
-    saveFlockMutation.mutate(data);
+    console.log("Form submit called with data:", data);
+    console.log("Form validation errors:", form.formState.errors);
+    console.log("Is editing flock:", !!flock);
+    if (flock) {
+      console.log("Flock ID:", flock.id);
+    }
+    
+    try {
+      saveFlockMutation.mutate(data);
+    } catch (error) {
+      console.error("Error in mutation:", error);
+    }
   };
 
   return (
