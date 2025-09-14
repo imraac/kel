@@ -20,8 +20,23 @@ import { insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import { Textarea } from "@/components/ui/textarea";
 
-const expenseFormSchema = insertExpenseSchema.extend({
+// Expense form schema - use the actual database schema for consistency
+const expenseFormSchema = insertExpenseSchema.pick({
+  expenseDate: true,
+  category: true, 
+  description: true,
+  amount: true,
+  supplier: true,
+  receiptNumber: true,
+  notes: true,
+}).extend({
+  // Override date field to handle string input from HTML date inputs
   expenseDate: z.string().min(1, "Expense date is required"),
+  // Override amount to handle string input like health record pattern
+  amount: z.string().min(1, "Amount is required").refine(
+    (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+    "Invalid amount - must be a positive number"
+  ),
 });
 
 type ExpenseFormData = z.infer<typeof expenseFormSchema>;
@@ -82,12 +97,8 @@ export default function Expenses() {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
-      // Convert string inputs to proper numbers before sending to server
-      const expenseData = {
-        ...data,
-        amount: parseFloat(data.amount),
-      };
-      await apiRequest("POST", "/api/expenses", expenseData);
+      // Send data as-is - server will handle type coercion
+      await apiRequest("POST", "/api/expenses", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
