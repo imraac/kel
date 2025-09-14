@@ -628,20 +628,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Auto-inject userId and coerce numeric fields
+      // Auto-inject userId 
       const input = {
         ...req.body,
         userId
       };
 
-      // No numeric normalization needed - let decimal fields remain as strings
-      const normalized = input;
+      // Defensive coercion: ensure cost field is string for Drizzle schema
+      if (typeof input.cost === 'number') {
+        input.cost = String(input.cost);
+      }
+      // Handle empty string for optional cost field
+      if (input.cost === '') {
+        input.cost = undefined;
+      }
 
-      const validatedData = insertHealthRecordSchema.parse(normalized);
+      const validatedData = insertHealthRecordSchema.parse(input);
       const record = await storage.createHealthRecord(validatedData);
       res.status(201).json(record);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("=== HEALTH RECORD ZOD VALIDATION ERRORS ===");
+        console.error("Raw request body:", JSON.stringify(req.body, null, 2));
+        console.error("Cost field details:", req.body?.cost, "type:", typeof req.body?.cost);
+        console.error("Zod errors:", JSON.stringify(error.errors, null, 2));
         res.status(400).json({ message: "Validation error", errors: error.errors });
       } else {
         console.error("Error creating health record:", error);
