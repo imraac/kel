@@ -20,12 +20,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const productFormSchema = insertProductSchema.extend({
-  name: z.string().min(1, "Product name is required"),
-  category: z.string().min(1, "Category is required"),
-  unit: z.string().min(1, "Unit is required"),
-  currentPrice: z.string().min(1, "Price is required"),
-});
 
 export default function MarketplaceProducts() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,45 +63,6 @@ export default function MarketplaceProducts() {
     }
   }, [productsError, toast]);
 
-  const createProductMutation = useMutation({
-    mutationFn: (data: z.infer<typeof productFormSchema>) => {
-      // Transform string price to number for API
-      const transformedData = {
-        ...data,
-        currentPrice: parseFloat(data.currentPrice)
-      };
-      return apiRequest("POST", "/api/products", transformedData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      setIsDialogOpen(false);
-      toast({
-        title: "Success",
-        description: "Product created successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create product",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const form = useForm<z.infer<typeof productFormSchema>>({
-    resolver: zodResolver(productFormSchema),
-    defaultValues: {
-      name: "",
-      category: "",
-      description: "",
-      unit: "",
-      currentPrice: "",
-      minOrderQuantity: 1,
-      stockQuantity: 0,
-      isAvailable: true,
-    },
-  });
 
   const filteredProducts = products.filter((product: Product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,9 +71,6 @@ export default function MarketplaceProducts() {
     return matchesSearch && matchesCategory;
   });
 
-  const onSubmit = (data: z.infer<typeof productFormSchema>) => {
-    createProductMutation.mutate(data);
-  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -194,175 +146,10 @@ export default function MarketplaceProducts() {
             <p className="text-muted-foreground">Manage your marketplace products and inventory</p>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-product">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Product
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New Product</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} data-testid="input-product-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-product-category">
-                                <SelectValue placeholder="Select category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="eggs">Eggs</SelectItem>
-                              <SelectItem value="chickens">Chickens</SelectItem>
-                              <SelectItem value="feed">Feed</SelectItem>
-                              <SelectItem value="equipment">Equipment</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} rows={2} data-testid="input-product-description" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="unit"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unit</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-product-unit">
-                                <SelectValue placeholder="Select unit" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="crates">Crates</SelectItem>
-                              <SelectItem value="pieces">Pieces</SelectItem>
-                              <SelectItem value="kg">Kilograms</SelectItem>
-                              <SelectItem value="bags">Bags</SelectItem>
-                              <SelectItem value="trays">Trays</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="currentPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Price (KES)</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-product-price" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="minOrderQuantity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Min Order Qty</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" min="1" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : null)} data-testid="input-product-min-order" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="stockQuantity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Current Stock</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" min="0" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : null)} data-testid="input-product-stock" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="isAvailable"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Available for Sale</FormLabel>
-                            <p className="text-sm text-muted-foreground">
-                              Enable product visibility in marketplace
-                            </p>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value ?? true}
-                              onCheckedChange={field.onChange}
-                              data-testid="switch-product-available"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={createProductMutation.isPending} data-testid="button-save-product">
-                      {createProductMutation.isPending ? "Creating..." : "Create Product"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+          <Button data-testid="button-add-product">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
         </div>
 
         {/* Filters */}
