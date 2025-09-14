@@ -483,6 +483,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(sales.saleDate));
   }
 
+  async getSalesByFarm(farmId: string, limit = 50): Promise<Sale[]> {
+    return await db
+      .select()
+      .from(sales)
+      .where(eq(sales.farmId, farmId))
+      .orderBy(desc(sales.saleDate))
+      .limit(limit);
+  }
+
   // Feed inventory operations
   async createFeedInventory(feed: InsertFeedInventory): Promise<FeedInventory> {
     const [newFeed] = await db.insert(feedInventory).values(feed).returning();

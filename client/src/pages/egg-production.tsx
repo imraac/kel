@@ -21,9 +21,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { insertSaleSchema } from "@shared/schema";
 import { z } from "zod";
 
-const saleFormSchema = insertSaleSchema.extend({
+const saleFormSchema = z.object({
   saleDate: z.string().min(1, "Sale date is required"),
+  customerName: z.string().optional(),
+  cratesSold: z.number().min(0, "Crates sold must be 0 or more"),
+  pricePerCrate: z.string().min(1, "Price per crate is required"),
   totalAmount: z.string().min(1, "Total amount is required"),
+  paymentStatus: z.enum(["pending", "paid", "overdue"]),
+  notes: z.string().optional(),
 });
 
 type SaleFormData = z.infer<typeof saleFormSchema>;
@@ -185,6 +190,8 @@ export default function EggProduction() {
   }, [saleForm]);
 
   const onSubmitSale = (data: SaleFormData) => {
+    console.log("Form submitted with data:", data);
+    console.log("Form errors:", saleForm.formState.errors);
     createSaleMutation.mutate(data);
   };
 
