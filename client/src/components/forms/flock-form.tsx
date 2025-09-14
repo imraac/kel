@@ -85,12 +85,17 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
     console.log("Form submit called with data:", data);
     console.log("Form validation errors:", form.formState.errors);
     console.log("Is editing flock:", !!flock);
+    
+    // When editing, ensure we include the flock ID in the data
+    const submitData = flock ? { ...data, id: flock.id } : data;
+    
     if (flock) {
       console.log("Flock ID:", flock.id);
+      console.log("Submit data with ID:", submitData);
     }
     
     try {
-      saveFlockMutation.mutate(data);
+      saveFlockMutation.mutate(submitData);
     } catch (error) {
       console.error("Error in mutation:", error);
     }
