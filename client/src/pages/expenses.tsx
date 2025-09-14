@@ -48,7 +48,7 @@ export default function Expenses() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: expenses, error: expensesError } = useQuery({
+  const { data: expenses = [], error: expensesError } = useQuery<any[]>({
     queryKey: ["/api/expenses"],
     enabled: isAuthenticated,
   });
@@ -82,7 +82,12 @@ export default function Expenses() {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
-      await apiRequest("POST", "/api/expenses", data);
+      // Convert string inputs to proper numbers before sending to server
+      const expenseData = {
+        ...data,
+        amount: parseFloat(data.amount),
+      };
+      await apiRequest("POST", "/api/expenses", expenseData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });

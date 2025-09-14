@@ -57,12 +57,12 @@ export default function HealthRecords() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: healthRecords = [], error: recordsError } = useQuery({
+  const { data: healthRecords = [], error: recordsError } = useQuery<any[]>({
     queryKey: ["/api/health-records"],
     enabled: isAuthenticated,
   });
 
-  const { data: flocks = [], error: flocksError } = useQuery({
+  const { data: flocks = [], error: flocksError } = useQuery<any[]>({
     queryKey: ["/api/flocks"],
     enabled: isAuthenticated,
   });
@@ -100,7 +100,12 @@ export default function HealthRecords() {
 
   const createHealthMutation = useMutation({
     mutationFn: async (data: HealthFormData) => {
-      await apiRequest("POST", "/api/health-records", data);
+      // Convert string inputs to proper numbers before sending to server
+      const healthData = {
+        ...data,
+        cost: data.cost ? parseFloat(data.cost) : undefined,
+      };
+      await apiRequest("POST", "/api/health-records", healthData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/health-records"] });
