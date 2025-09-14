@@ -148,41 +148,7 @@ export default function UsersPage() {
     return null;
   }
 
-  // Mock users data for demonstration (replace with real API data when available)
-  const mockUsers = [
-    {
-      id: "1",
-      firstName: "Ali",
-      lastName: "Roble",
-      email: "ali@example.com",
-      role: "admin",
-      profileImageUrl: null,
-      createdAt: "2024-01-15T10:30:00Z",
-      lastActive: "2024-03-15T14:20:00Z"
-    },
-    {
-      id: "2",
-      firstName: "John",
-      lastName: "Mwangi",
-      email: "john@example.com",
-      role: "staff",
-      profileImageUrl: null,
-      createdAt: "2024-02-01T09:15:00Z",
-      lastActive: "2024-03-15T13:45:00Z"
-    },
-    {
-      id: "3",
-      firstName: "Mary",
-      lastName: "Wanjiku",
-      email: "mary@example.com",
-      role: "staff",
-      profileImageUrl: null,
-      createdAt: "2024-02-10T11:00:00Z",
-      lastActive: "2024-03-15T12:30:00Z"
-    }
-  ];
-
-  const displayUsers = users || mockUsers;
+  const displayUsers = users || [];
   const adminUsers = displayUsers.filter((user: any) => user.role === 'admin');
   const managerUsers = displayUsers.filter((user: any) => user.role === 'manager');
   const farmOwnerUsers = displayUsers.filter((user: any) => user.role === 'farm_owner');
