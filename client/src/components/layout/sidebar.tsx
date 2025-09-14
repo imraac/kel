@@ -56,7 +56,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
             </div>
             <div>
               <h1 className="text-lg font-semibold text-foreground">RoblePoultryPilot</h1>
-              <p className="text-sm text-muted-foreground">Farm smarter: Plan, track, grow profits with precision.</p>
+              <p className="text-sm text-muted-foreground">Track & Grow</p>
             </div>
           </div>
         </div>
