@@ -100,11 +100,16 @@ export default function HealthRecords() {
 
   const createHealthMutation = useMutation({
     mutationFn: async (data: HealthFormData) => {
-      // Convert string inputs to proper numbers before sending to server
+      // Ensure numeric fields are properly converted from strings to numbers
       const healthData = {
         ...data,
-        cost: data.cost ? parseFloat(data.cost) : undefined,
+        cost: data.cost && data.cost.trim() !== "" ? Number(data.cost) : undefined,
       };
+      
+      // Log the data being sent for debugging
+      console.log("Sending health record data:", healthData);
+      console.log("Cost field type:", typeof healthData.cost, "value:", healthData.cost);
+      
       await apiRequest("POST", "/api/health-records", healthData);
     },
     onSuccess: () => {
@@ -173,10 +178,29 @@ export default function HealthRecords() {
   }).reduce((sum: number, record: any) => sum + parseFloat(record.cost || '0'), 0);
 
   const onSubmitHealth = (data: HealthFormData) => {
-    console.log("=== HEALTH FORM SUBMIT DEBUGGING ===");
-    console.log("Submit handler called with data:", data);
-    console.log("Form errors:", healthForm.formState.errors);
-    console.log("Mutation status:", createHealthMutation.status);
+    console.log("=== NEW HEALTH FORM SUBMIT ===");
+    console.log("Raw form data:", data);
+    console.log("Form validation errors:", healthForm.formState.errors);
+    
+    // Validate required fields before submission
+    if (!data.flockId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a flock",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!data.title.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a title",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     createHealthMutation.mutate(data);
   };
 
@@ -406,9 +430,15 @@ export default function HealthRecords() {
                               <Input 
                                 type="number" 
                                 step="0.01" 
+                                min="0"
                                 {...field} 
                                 placeholder="0.00"
                                 data-testid="input-cost"
+                                onChange={(e) => {
+                                  // Ensure clean numeric input handling
+                                  const value = e.target.value;
+                                  field.onChange(value);
+                                }}
                               />
                             </FormControl>
                             <FormMessage />
