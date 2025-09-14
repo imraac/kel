@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Building2, Phone, Mail, MapPin, Award, Users } from "lucide-react";
+import { Building2, Phone, Mail, MapPin, Award, Users, CheckCircle, ArrowLeft } from "lucide-react";
 import { z } from "zod";
 
 // Custom form schema to handle UI fields that need transformation
@@ -30,6 +30,8 @@ type FarmFormData = z.infer<typeof farmRegistrationSchema>;
 
 export function FarmRegistrationPage() {
   const [, setLocation] = useLocation();
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [registeredFarmName, setRegisteredFarmName] = useState("");
   const { toast } = useToast();
 
   const form = useForm<FarmFormData>({
@@ -60,11 +62,12 @@ export function FarmRegistrationPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/farms"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
+      setRegisteredFarmName((farm as any)?.name || 'your farm');
+      setIsSuccess(true);
       toast({
         title: "Farm registered successfully!",
-        description: `Welcome to RoblePoultryPilot, ${(farm as any)?.name || 'your farm'}! You can now start managing your poultry operations.`,
+        description: `Welcome to RoblePoultryPilot! Your farm registration is complete.`,
       });
-      setLocation("/");
     },
     onError: (error: any) => {
       toast({
@@ -92,6 +95,56 @@ export function FarmRegistrationPage() {
     
     createFarmMutation.mutate(submitData);
   };
+
+  // Success page
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+        <div className="max-w-2xl mx-auto">
+          <Card className="shadow-xl">
+            <CardContent className="text-center py-12 space-y-6">
+              <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
+              <div>
+                <h2 className="text-2xl font-bold text-green-600 mb-2">Farm Registration Successful!</h2>
+                <p className="text-gray-600 mb-4">
+                  Welcome to RoblePoultryPilot! Your farm "{registeredFarmName}" has been registered successfully.
+                </p>
+              </div>
+              
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <h3 className="font-semibold mb-2">What's Next?</h3>
+                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 text-left">
+                  <li>• Log in to access your farm management dashboard</li>
+                  <li>• Set up your flock records and daily operations</li>
+                  <li>• Create products to sell in the marketplace</li>
+                  <li>• Connect with customers and manage orders</li>
+                  <li>• Track production, sales, and analytics</li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg" 
+                  onClick={() => window.location.href = "/api/login"}
+                  data-testid="button-login-farm"
+                >
+                  Login to Your Farm Dashboard
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={() => setLocation("/marketplace")}
+                  data-testid="button-browse-marketplace"
+                >
+                  Browse Marketplace
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">

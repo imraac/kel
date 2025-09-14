@@ -142,14 +142,16 @@ export default function CustomerRegistration() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                onClick={() => window.location.href = "/api/login"}
+                data-testid="button-login"
+              >
+                Login to Your Account
+              </Button>
               <Link to="/marketplace">
-                <Button size="lg" data-testid="button-browse-marketplace">
+                <Button variant="outline" size="lg" data-testid="button-browse-marketplace">
                   Browse Marketplace
-                </Button>
-              </Link>
-              <Link to="/">
-                <Button variant="outline" size="lg" data-testid="button-home">
-                  Go to Homepage
                 </Button>
               </Link>
             </div>
