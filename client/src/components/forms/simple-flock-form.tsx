@@ -25,7 +25,10 @@ export default function SimpleFlockForm({ onSuccess }: SimpleFlockFormProps) {
 
   const createFlockMutation = useMutation({
     mutationFn: async (flockData: any) => {
-      await apiRequest("POST", "/api/flocks", flockData);
+      console.log("Mutation function called with:", flockData);
+      const response = await apiRequest("POST", "/api/flocks", flockData);
+      console.log("API response:", response);
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
@@ -62,7 +65,9 @@ export default function SimpleFlockForm({ onSuccess }: SimpleFlockFormProps) {
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("handleSubmit called!");
     e.preventDefault();
+    console.log("Form data - name:", name, "breed:", breed, "initialCount:", initialCount);
     
     // Basic validation
     if (!name.trim()) {
