@@ -19,6 +19,7 @@ import {
   insertManagerUserSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { normalizeNumericFields } from "./utils/numbers";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -515,13 +516,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         farmId: currentUser.farmId
       };
 
-      // Normalize numeric fields at the API boundary
-      const normalized = {
-        ...input,
-        cratesSold: Number(input.cratesSold),
-        pricePerCrate: Number(input.pricePerCrate).toFixed(2),
-        totalAmount: Number(input.totalAmount).toFixed(2),
-      };
+      // Validate and normalize numeric fields using centralized utilities
+      let normalized;
+      try {
+        normalized = normalizeNumericFields(input, {
+          integers: ['cratesSold'],
+          decimals: { pricePerCrate: 2, totalAmount: 2 }
+        });
+      } catch (error) {
+        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      }
 
       const validatedData = insertSaleSchema.parse(normalized);
       const sale = await storage.createSale(validatedData);
@@ -570,12 +574,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         farmId: currentUser.farmId
       };
 
-      // Normalize numeric fields at the API boundary
-      const normalized = {
-        ...input,
-        quantityKg: input.quantityKg ? Number(input.quantityKg).toFixed(2) : undefined,
-        unitPrice: input.unitPrice ? Number(input.unitPrice).toFixed(2) : undefined,
-      };
+      // Validate and normalize numeric fields using centralized utilities
+      let normalized;
+      try {
+        normalized = normalizeNumericFields(input, {
+          decimals: { quantityKg: 2, unitPrice: 2 },
+          optional: ['quantityKg', 'unitPrice']
+        });
+      } catch (error) {
+        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      }
 
       const validatedData = insertFeedInventorySchema.parse(normalized);
       const feed = await storage.createFeedInventory(validatedData);
@@ -605,10 +613,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/health-records', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertHealthRecordSchema.parse({
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to add health records" });
+      }
+
+      // Validate that flockId belongs to user's farm
+      if (req.body.flockId) {
+        const flock = await storage.getFlockById(req.body.flockId);
+        if (!flock || flock.farmId !== currentUser.farmId) {
+          return res.status(400).json({ message: "Invalid flock selection" });
+        }
+      }
+
+      // Auto-inject userId and coerce numeric fields
+      const input = {
         ...req.body,
-        userId: req.user.claims.sub
-      });
+        userId
+      };
+
+      // Validate and normalize numeric fields using centralized utilities
+      let normalized;
+      try {
+        normalized = normalizeNumericFields(input, {
+          decimals: { cost: 2 },
+          optional: ['cost']
+        });
+      } catch (error) {
+        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      }
+
+      const validatedData = insertHealthRecordSchema.parse(normalized);
       const record = await storage.createHealthRecord(validatedData);
       res.status(201).json(record);
     } catch (error) {
@@ -635,10 +672,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/expenses', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertExpenseSchema.parse({
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to add expenses" });
+      }
+
+      // Auto-inject farmId and userId, and coerce numeric fields
+      const input = {
         ...req.body,
-        userId: req.user.claims.sub
-      });
+        userId,
+        farmId: currentUser.farmId
+      };
+
+      // Validate and normalize numeric fields using centralized utilities
+      let normalized;
+      try {
+        normalized = normalizeNumericFields(input, {
+          decimals: { amount: 2 }
+        });
+      } catch (error) {
+        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      }
+
+      const validatedData = insertExpenseSchema.parse(normalized);
       const expense = await storage.createExpense(validatedData);
       res.status(201).json(expense);
     } catch (error) {
@@ -706,8 +764,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Marketplace routes - Products
-  app.get('/api/products', isAuthenticated, async (req, res) => {
+  app.get('/api/products', isAuthenticated, async (req: any, res) => {
     try {
+      // For now, return all products as they may be used in marketplace
+      // Individual farms can filter their own products client-side if needed
       const products = await storage.getProducts();
       res.json(products);
     } catch (error) {
@@ -718,7 +778,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/products', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertProductSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to add products" });
+      }
+
+      // Auto-inject farmId and coerce numeric fields
+      const input = {
+        ...req.body,
+        farmId: currentUser.farmId
+      };
+
+      // Validate and normalize numeric fields using centralized utilities
+      let normalized;
+      try {
+        normalized = normalizeNumericFields(input, {
+          integers: ['minOrderQuantity', 'stockQuantity'],
+          decimals: { currentPrice: 2 },
+          optional: ['minOrderQuantity', 'stockQuantity', 'currentPrice']
+        });
+      } catch (error) {
+        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      }
+
+      const validatedData = insertProductSchema.parse(normalized);
       const product = await storage.createProduct(validatedData);
       res.status(201).json(product);
     } catch (error) {
@@ -746,7 +831,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/products/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const updates = insertProductSchema.partial().parse(req.body);
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to update products" });
+      }
+
+      // Validate that product belongs to user's farm
+      const existingProduct = await storage.getProductById(req.params.id);
+      if (!existingProduct) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      if (existingProduct.farmId !== currentUser.farmId) {
+        return res.status(403).json({ message: "Unauthorized to update this product" });
+      }
+
+      // Validate and normalize numeric fields using centralized utilities
+      const input = req.body;
+      let normalized;
+      try {
+        normalized = normalizeNumericFields(input, {
+          integers: ['minOrderQuantity', 'stockQuantity'],
+          decimals: { currentPrice: 2 },
+          optional: ['minOrderQuantity', 'stockQuantity', 'currentPrice']
+        });
+      } catch (error) {
+        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      }
+
+      const updates = insertProductSchema.partial().parse(normalized);
       const product = await storage.updateProduct(req.params.id, updates);
       res.json(product);
     } catch (error) {
