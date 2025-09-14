@@ -43,7 +43,7 @@ import {
   type Notification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, ne } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -60,6 +60,7 @@ export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
+  getUsersByFarm(farmId: string): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Flock operations
@@ -275,6 +276,14 @@ export class DatabaseStorage implements IStorage {
 
   async getUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getUsersByFarm(farmId: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(and(eq(users.farmId, farmId), ne(users.role, 'admin')))
+      .orderBy(desc(users.createdAt));
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {

@@ -14,7 +14,9 @@ import {
   insertProductSchema,
   insertOrderSchema,
   insertOrderItemSchema,
-  insertDeliverySchema
+  insertDeliverySchema,
+  insertUserSchema,
+  insertManagerUserSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -37,12 +39,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users routes
   app.get('/api/users', isAuthenticated, async (req: any, res) => {
     try {
-      // Allow admins and managers to view users
+      // Allow admins and managers to view users with proper tenant scoping
       const currentUser = await storage.getUser(req.user.claims.sub);
-      if (!['admin', 'manager'].includes(currentUser?.role || '')) {
+      if (!currentUser || !['admin', 'manager'].includes(currentUser.role || '')) {
         return res.status(403).json({ message: "Access denied. Admin or manager role required." });
       }
-      const users = await storage.getUsers();
+      
+      let users;
+      if (currentUser.role === 'admin') {
+        // Admins can see all users
+        users = await storage.getUsers();
+      } else {
+        // Managers can only see users from their farm (excluding admins)
+        if (!currentUser.farmId) {
+          return res.status(400).json({ message: "Manager must be associated with a farm" });
+        }
+        users = await storage.getUsersByFarm(currentUser.farmId);
+      }
+      
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -58,37 +72,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied. Admin or manager role required." });
       }
 
-      const { firstName, lastName, email, role } = req.body;
+      let validatedData;
       
-      // Validate required fields
-      if (!firstName || !lastName || !email || !role) {
-        return res.status(400).json({ message: "All fields are required" });
-      }
-
-      // Role-based restrictions
       if (currentUser.role === 'manager') {
-        // Managers can only create staff, customers, and other managers
-        if (!['staff', 'customer', 'manager'].includes(role)) {
-          return res.status(403).json({ 
-            message: "Managers can only create staff, customer, and manager accounts" 
-          });
+        // Managers can only create staff and customers (no managers)
+        validatedData = insertManagerUserSchema.parse(req.body);
+        // Assign to manager's farm
+        if (!currentUser.farmId) {
+          return res.status(400).json({ message: "Manager must be associated with a farm" });
+        }
+        validatedData.farmId = currentUser.farmId;
+      } else {
+        // Admins can create any role
+        validatedData = insertUserSchema.parse(req.body);
+        
+        // For admins creating non-customer roles, require valid farmId
+        if (!['admin', 'customer'].includes(validatedData.role)) {
+          if (typeof validatedData.farmId !== 'string') {
+            return res.status(400).json({ 
+              message: "Farm ID is required for staff, manager, and farm_owner roles" 
+            });
+          }
+          // Verify the farm exists
+          const farm = await storage.getFarmById(validatedData.farmId);
+          if (!farm) {
+            return res.status(400).json({ message: "Invalid farm ID" });
+          }
+        } else {
+          // Admin and customer roles don't need farmId
+          validatedData.farmId = null;
         }
       }
-      // Admins can create any role
 
-      // Create user with the same farmId as the creator (for non-admin/customer roles)
-      const userData = {
-        firstName,
-        lastName,
-        email,
-        role,
-        farmId: ['admin', 'customer'].includes(role) ? null : currentUser.farmId
-      };
-
-      const newUser = await storage.upsertUser(userData);
+      const newUser = await storage.upsertUser(validatedData);
       res.status(201).json(newUser);
     } catch (error) {
       console.error("Error creating user:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       if (error instanceof Error && error.message.includes('unique')) {
         return res.status(400).json({ message: "Email already exists" });
       }

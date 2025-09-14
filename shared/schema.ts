@@ -426,6 +426,9 @@ export const deliveriesRelations = relations(deliveries, ({ one }) => ({
 // Insert schemas
 export const insertFarmSchema = createInsertSchema(farms).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertManagerUserSchema = insertUserSchema.omit({ role: true }).extend({
+  role: z.enum(["staff", "customer"])
+});
 export const insertFlockSchema = createInsertSchema(flocks).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDailyRecordSchema = createInsertSchema(dailyRecords).omit({ 
   id: true, 
@@ -478,6 +481,8 @@ export type Farm = typeof farms.$inferSelect;
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertManagerUser = z.infer<typeof insertManagerUserSchema>;
 export type InsertFlock = z.infer<typeof insertFlockSchema>;
 export type Flock = typeof flocks.$inferSelect;
 export type InsertDailyRecord = z.infer<typeof insertDailyRecordSchema>;
