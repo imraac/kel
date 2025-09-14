@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus, Edit, Eye } from "lucide-react";
+import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus, Edit, Eye, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Menu } from "lucide-react";
 import SimpleBroodingForm from "@/components/forms/simple-brooding-form";
 import FlockForm from "@/components/forms/flock-form";
@@ -18,7 +19,7 @@ import SimpleFlockForm from "@/components/forms/simple-flock-form";
 
 export default function ChickBrooding() {
   const { toast } = useToast();
-  const { isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const [flockDialogOpen, setFlockDialogOpen] = useState(false);
@@ -36,6 +37,32 @@ export default function ChickBrooding() {
   const handleEditFlock = (flock: any) => {
     setSelectedFlock(flock);
     setFlockEditOpen(true);
+  };
+
+  // Deactivate flock mutation (admin-only)
+  const deactivateFlockMutation = useMutation({
+    mutationFn: async (flockId: string) => {
+      return apiRequest('PATCH', `/api/flocks/${flockId}/deactivate`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Flock Deactivated",
+        description: "The flock has been successfully deactivated and hidden from the list.",
+      });
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Deactivation Failed",
+        description: error?.message || "Failed to deactivate flock. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeactivateFlock = (flockId: string, flockName: string) => {
+    deactivateFlockMutation.mutate(flockId);
   };
 
   // Redirect to login if not authenticated
@@ -92,7 +119,8 @@ export default function ChickBrooding() {
     return null;
   }
 
-  const broodingFlocks = flocks.filter((flock: any) => flock.status === 'brooding');
+  // Filter flocks to show only brooding flocks that are not deactivated
+  const broodingFlocks = flocks.filter((flock: any) => flock.status === 'brooding' && flock.status !== 'deactivated');
   const broodingRecords = dailyRecords.filter((record: any) => 
     record.temperature || record.lightingHours
   ) || [];
@@ -282,6 +310,38 @@ export default function ChickBrooding() {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </Button>
+                              {user?.role === 'admin' && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      size="sm" 
+                                      variant="destructive"
+                                      disabled={deactivateFlockMutation.isPending}
+                                      data-testid={`button-deactivate-flock-${flock.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      {deactivateFlockMutation.isPending ? "Deactivating..." : "Deactivate"}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Deactivate Flock</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to deactivate "{flock.name}"? This will hide the flock from the main list. This action can only be performed by administrators.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => handleDeactivateFlock(flock.id, flock.name)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Deactivate Flock
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
