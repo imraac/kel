@@ -64,12 +64,28 @@ export default function CustomerRegistration() {
 
   const registrationMutation = useMutation({
     mutationFn: async (data: CustomerRegistrationForm) => {
-      const response = await fetch('/api/public/customers', {
+      // Transform frontend form data to match backend schema
+      const customerData = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        location: `${data.city}, ${data.state} ${data.zipCode}`, // Combine into single location field
+        customerType: data.customerType,
+        notes: [
+          data.notes,
+          data.businessName ? `Business: ${data.businessName}` : '',
+          data.businessRegistration ? `Registration: ${data.businessRegistration}` : '',
+          data.preferredDeliveryMethod ? `Preferred delivery: ${data.preferredDeliveryMethod}` : ''
+        ].filter(Boolean).join('\n'), // Combine all notes
+      };
+      
+      const response = await fetch('/api/public/customers/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(customerData),
       });
       
       if (!response.ok) {
