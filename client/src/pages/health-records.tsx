@@ -268,7 +268,7 @@ export default function HealthRecords() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Flock</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value ?? ""}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-flock">
                                   <SelectValue placeholder="Select flock" />
@@ -347,9 +347,48 @@ export default function HealthRecords() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Medication/Vaccine</FormLabel>
-                            <FormControl>
-                              <Input {...field} value={field.value ?? ""} placeholder="Product name" data-testid="input-medication" />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} defaultValue={field.value ?? ""}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-medication">
+                                  <SelectValue placeholder="Select vaccine/medication" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="max-h-60 overflow-y-auto">
+                                <SelectItem value="custom">Custom/Other</SelectItem>
+                                
+                                {/* Day 1 Vaccines */}
+                                <SelectItem value="Marek's MD/IBD">Marek's MD/IBD</SelectItem>
+                                <SelectItem value="Rismavac">Rismavac</SelectItem>
+                                <SelectItem value="NCD+IB Live (Vitabron)">NCD+IB Live (Vitabron)</SelectItem>
+                                
+                                {/* Day 12-14 Vaccines */}
+                                <SelectItem value="NCD+IB Live (Ceva BiJI)">NCD+IB Live (Ceva BiJI)</SelectItem>
+                                
+                                {/* Day 16-18 Vaccines */}
+                                <SelectItem value="IBD Intermediate">IBD Intermediate</SelectItem>
+                                
+                                {/* Week 6-8 Vaccines */}
+                                <SelectItem value="Salmonella E&T">Salmonella E&T</SelectItem>
+                                <SelectItem value="Coryza (ABC) Killed">Coryza (ABC) Killed</SelectItem>
+                                
+                                {/* Week 8-10 Vaccines */}
+                                <SelectItem value="Fowl pox">Fowl pox</SelectItem>
+                                <SelectItem value="Fowl cholera">Fowl cholera</SelectItem>
+                                
+                                {/* Week 12-14 Vaccines */}
+                                <SelectItem value="Salmonella E&T (killed)">Salmonella E&T (killed)</SelectItem>
+                                <SelectItem value="Coryza (ABC) killed">Coryza (ABC) killed</SelectItem>
+                                
+                                {/* Week 16-18 Vaccines */}
+                                <SelectItem value="NCD+IB (Killed)">NCD+IB (Killed)</SelectItem>
+                                
+                                {/* Common Medications */}
+                                <SelectItem value="Antibiotics">Antibiotics</SelectItem>
+                                <SelectItem value="Vitamins">Vitamins</SelectItem>
+                                <SelectItem value="Dewormers">Dewormers</SelectItem>
+                                <SelectItem value="Probiotics">Probiotics</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -360,10 +399,27 @@ export default function HealthRecords() {
                         name="dosage"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Dosage</FormLabel>
-                            <FormControl>
-                              <Input {...field} value={field.value ?? ""} placeholder="e.g., 1ml per bird" data-testid="input-dosage" />
-                            </FormControl>
+                            <FormLabel>Dosage/Application Method</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value ?? ""}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-dosage">
+                                  <SelectValue placeholder="Select application method" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="S/C injection">S/C injection (Subcutaneous)</SelectItem>
+                                <SelectItem value="Intramuscular injection">Intramuscular injection</SelectItem>
+                                <SelectItem value="Eye drop/Drinking water">Eye drop/Drinking water</SelectItem>
+                                <SelectItem value="Drinking water">Drinking water</SelectItem>
+                                <SelectItem value="Coarse spray">Coarse spray</SelectItem>
+                                <SelectItem value="Wing stab">Wing stab</SelectItem>
+                                <SelectItem value="Subcutaneous injection">Subcutaneous injection</SelectItem>
+                                <SelectItem value="Oral">Oral</SelectItem>
+                                <SelectItem value="Feed mixing">Feed mixing</SelectItem>
+                                <SelectItem value="Topical">Topical</SelectItem>
+                                <SelectItem value="Custom">Custom/Other</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -545,6 +601,166 @@ export default function HealthRecords() {
               </CardContent>
             </Card>
           )}
+
+          {/* KENCHIC Vaccination Program */}
+          <Card data-testid="card-vaccination-program">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Syringe className="h-5 w-5 text-blue-600" />
+                <span>Standard Vaccination Program (KENCHIC)</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Recommended Layer/Kenbro vaccination schedule - Revised February 2023</p>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left p-3 font-medium text-muted-foreground">Age</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Vaccine</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Disease</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Application</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr className="hover:bg-muted/50">
+                      <td className="p-3 font-medium">Day 1</td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Marek's MD/IBD</div>
+                          <div>Rismavac</div>
+                          <div>NCD+IB Live (Vitabron)</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Marek's+NCD+IBD</div>
+                          <div>Marek's</div>
+                          <div>NCD+IB</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <Badge variant="outline" className="text-xs">S/C injection</Badge>
+                          <Badge variant="outline" className="text-xs">S/C injection</Badge>
+                          <Badge variant="outline" className="text-xs">Coarse spray</Badge>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-muted/50">
+                      <td className="p-3 font-medium">Day 12-14</td>
+                      <td className="p-3">NCD+IB Live (Ceva BiJI)</td>
+                      <td className="p-3">NCD+ IB</td>
+                      <td className="p-3">
+                        <Badge variant="outline" className="text-xs">Eye drop/Drinking water</Badge>
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-muted/50">
+                      <td className="p-3 font-medium">Day 16-18</td>
+                      <td className="p-3">IBD Intermediate</td>
+                      <td className="p-3">Gumboro</td>
+                      <td className="p-3">
+                        <Badge variant="outline" className="text-xs">Drinking water</Badge>
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-muted/50">
+                      <td className="p-3 font-medium">Week 6-8</td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Salmonella E&T</div>
+                          <div>Coryza (ABC) Killed</div>
+                          <div>NCD+IB Live (Ceva BiJI)</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Salmonella E&T</div>
+                          <div>Coryza</div>
+                          <div>NCD + IB</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <Badge variant="outline" className="text-xs">Intramuscular injection</Badge>
+                          <Badge variant="outline" className="text-xs">S/C injection</Badge>
+                          <Badge variant="outline" className="text-xs">Drinking water</Badge>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-muted/50">
+                      <td className="p-3 font-medium">Week 8-10</td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Fowl pox</div>
+                          <div>Fowl cholera <span className="text-xs text-muted-foreground">(optional*)</span></div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Pox</div>
+                          <div>Fowl cholera</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <Badge variant="outline" className="text-xs">Wing stab</Badge>
+                          <Badge variant="outline" className="text-xs">S/C injection</Badge>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-muted/50">
+                      <td className="p-3 font-medium">Week 12-14</td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Salmonella E&T (killed)</div>
+                          <div>Coryza (ABC) killed</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>Salmonella E&T</div>
+                          <div>Coryza</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <Badge variant="outline" className="text-xs">Intramuscular injection</Badge>
+                          <Badge variant="outline" className="text-xs">S/C injection</Badge>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-muted/50">
+                      <td className="p-3 font-medium">Week 16-18</td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>NCD+IB (Killed)</div>
+                          <div>Fowl cholera <span className="text-xs text-muted-foreground">(optional*)</span></div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div>NCD+IB</div>
+                          <div>Fowl cholera</div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <Badge variant="outline" className="text-xs">Intramuscular injection</Badge>
+                          <Badge variant="outline" className="text-xs">Subcutaneous injection</Badge>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Note:</strong> *Optional vaccines depend on disease history. Introduced Coryza and ND+IB killed vaccinations. 
+                    Please visit Kenchic poultry centres for any clarification.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Tabs defaultValue="all-records" className="space-y-4">
             <TabsList>
