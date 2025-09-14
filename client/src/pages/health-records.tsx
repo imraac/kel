@@ -607,9 +607,9 @@ export default function HealthRecords() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Syringe className="h-5 w-5 text-blue-600" />
-                <span>Standard Vaccination Program (KENCHIC)</span>
+                <span>Standard Vaccination Program</span>
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Recommended Layer/Kenbro vaccination schedule - Revised February 2023</p>
+              <p className="text-sm text-muted-foreground">Schedule adapted from publicly available vaccination guidelines; not affiliated with Kenchic.</p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -755,7 +755,7 @@ export default function HealthRecords() {
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>Note:</strong> *Optional vaccines depend on disease history. Introduced Coryza and ND+IB killed vaccinations. 
-                    Please visit Kenchic poultry centres for any clarification.
+                    Please consult with your local veterinarian for any clarification.
                   </p>
                 </div>
               </div>
