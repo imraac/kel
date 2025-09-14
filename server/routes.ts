@@ -537,9 +537,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Feed inventory routes
-  app.get('/api/feed-inventory', isAuthenticated, async (req, res) => {
+  app.get('/api/feed-inventory', isAuthenticated, async (req: any, res) => {
     try {
-      const inventory = await storage.getFeedInventory();
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to view feed inventory" });
+      }
+
+      const inventory = await storage.getFeedInventory(currentUser.farmId);
       res.json(inventory);
     } catch (error) {
       console.error("Error fetching feed inventory:", error);
