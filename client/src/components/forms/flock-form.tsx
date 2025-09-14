@@ -18,62 +18,82 @@ const flockFormSchema = insertFlockSchema.extend({
 type FlockFormData = z.infer<typeof flockFormSchema>;
 
 interface FlockFormProps {
+  flock?: any; // For editing existing flock
   onSuccess?: () => void;
 }
 
-export default function FlockForm({ onSuccess }: FlockFormProps) {
+export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const form = useForm<FlockFormData>({
     resolver: zodResolver(flockFormSchema),
     defaultValues: {
-      name: "",
-      breed: "",
-      initialCount: 0,
-      currentCount: 0,
-      hatchDate: new Date().toISOString().split('T')[0],
-      status: "brooding",
+      name: flock?.name || "",
+      breed: flock?.breed || "",
+      initialCount: flock?.initialCount || 0,
+      currentCount: flock?.currentCount || 0,
+      hatchDate: flock?.hatchDate ? new Date(flock.hatchDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      status: flock?.status || "brooding",
     },
   });
 
-  const createFlockMutation = useMutation({
+  const saveFlockMutation = useMutation({
     mutationFn: async (data: FlockFormData) => {
-      const flockData = {
-        ...data,
-        currentCount: data.initialCount, // Set current count to initial count for new flocks
-      };
-      await apiRequest("POST", "/api/flocks", flockData);
+      console.log("Mutation function called with data:", data);
+      if (flock) {
+        // Editing existing flock
+        console.log("Making PUT request to:", `/api/flocks/${flock.id}`);
+        const result = await apiRequest("PUT", `/api/flocks/${flock.id}`, data);
+        console.log("PUT request result:", result);
+        return result;
+      } else {
+        // Creating new flock
+        const flockData = {
+          ...data,
+          currentCount: data.initialCount, // Set current count to initial count for new flocks
+        };
+        console.log("Making POST request with data:", flockData);
+        const result = await apiRequest("POST", "/api/flocks", flockData);
+        console.log("POST request result:", result);
+        return result;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       toast({
         title: "Success",
-        description: "Flock created successfully",
+        description: flock ? "Flock updated successfully" : "Flock created successfully",
       });
-      form.reset();
+      if (!flock) {
+        form.reset();
+      }
       onSuccess?.();
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create flock",
+        description: error.message || (flock ? "Failed to update flock" : "Failed to create flock"),
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: FlockFormData) => {
-    createFlockMutation.mutate(data);
+    console.log("Form submit called with data:", data);
+    console.log("Is editing flock:", !!flock);
+    console.log("Flock ID:", flock?.id);
+    console.log("Form errors:", form.formState.errors);
+    saveFlockMutation.mutate(data);
   };
 
   return (
     <Card data-testid="card-flock-form">
       <CardHeader>
-        <CardTitle>Add New Flock</CardTitle>
+        <CardTitle>{flock ? "Edit Flock" : "Add New Flock"}</CardTitle>
         <CardDescription>
-          Create a new flock for your poultry farm. You can track this flock throughout its lifecycle.
+          {flock ? "Update the details for this flock." : "Create a new flock for your poultry farm. You can track this flock throughout its lifecycle."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -195,10 +215,10 @@ export default function FlockForm({ onSuccess }: FlockFormProps) {
 
             <Button 
               type="submit" 
-              disabled={createFlockMutation.isPending}
+              disabled={saveFlockMutation.isPending}
               data-testid="button-submit-flock"
             >
-              {createFlockMutation.isPending ? "Creating..." : "Create Flock"}
+              {saveFlockMutation.isPending ? (flock ? "Updating..." : "Creating...") : (flock ? "Update Flock" : "Create Flock")}
             </Button>
           </form>
         </Form>

@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus } from "lucide-react";
+import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus, Edit, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Menu } from "lucide-react";
@@ -22,7 +22,21 @@ export default function ChickBrooding() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const [flockDialogOpen, setFlockDialogOpen] = useState(false);
+  const [flockDetailsOpen, setFlockDetailsOpen] = useState(false);
+  const [flockEditOpen, setFlockEditOpen] = useState(false);
+  const [selectedFlock, setSelectedFlock] = useState<any>(null);
   const queryClient = useQueryClient();
+
+  // Handlers for flock actions
+  const handleViewDetails = (flock: any) => {
+    setSelectedFlock(flock);
+    setFlockDetailsOpen(true);
+  };
+
+  const handleEditFlock = (flock: any) => {
+    setSelectedFlock(flock);
+    setFlockEditOpen(true);
+  };
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -248,9 +262,27 @@ export default function ChickBrooding() {
                                 <span>{new Date(flock.hatchDate).toLocaleDateString()}</span>
                               </div>
                             </div>
-                            <Button size="sm" className="w-full mt-4" data-testid={`button-view-flock-${flock.id}`}>
-                              View Details
-                            </Button>
+                            <div className="flex gap-2 mt-4">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex-1" 
+                                onClick={() => handleViewDetails(flock)}
+                                data-testid={`button-view-flock-${flock.id}`}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                className="flex-1" 
+                                onClick={() => handleEditFlock(flock)}
+                                data-testid={`button-edit-flock-${flock.id}`}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Button>
+                            </div>
                           </CardContent>
                         </Card>
                       ))}
@@ -516,6 +548,90 @@ export default function ChickBrooding() {
           </Tabs>
         </div>
       </main>
+
+      {/* Flock Details Dialog */}
+      <Dialog open={flockDetailsOpen} onOpenChange={setFlockDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Flock Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about {selectedFlock?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedFlock && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Flock Name</label>
+                  <p className="text-lg font-semibold">{selectedFlock.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <p>
+                    <Badge variant={selectedFlock.status === 'brooding' ? 'secondary' : 'default'}>
+                      {selectedFlock.status.charAt(0).toUpperCase() + selectedFlock.status.slice(1)}
+                    </Badge>
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Breed</label>
+                  <p className="text-lg">{selectedFlock.breed}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Current Age</label>
+                  <p className="text-lg">Week {Math.floor((new Date().getTime() - new Date(selectedFlock.hatchDate).getTime()) / (1000 * 60 * 60 * 24 * 7))}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Initial Count</label>
+                  <p className="text-lg">{selectedFlock.initialCount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Current Count</label>
+                  <p className="text-lg">{selectedFlock.currentCount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Hatch Date</label>
+                  <p className="text-lg">{new Date(selectedFlock.hatchDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Mortality Rate</label>
+                  <p className="text-lg">
+                    {(((selectedFlock.initialCount - selectedFlock.currentCount) / selectedFlock.initialCount) * 100).toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+              <div className="pt-4 border-t">
+                <Button onClick={() => handleEditFlock(selectedFlock)} className="w-full">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Flock Details
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Flock Edit Dialog */}
+      <Dialog open={flockEditOpen} onOpenChange={setFlockEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Flock</DialogTitle>
+            <DialogDescription>
+              Update the details for {selectedFlock?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedFlock && (
+            <FlockForm 
+              flock={selectedFlock} 
+              onSuccess={() => {
+                setFlockEditOpen(false);
+                setFlockDetailsOpen(false);
+                setSelectedFlock(null);
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
