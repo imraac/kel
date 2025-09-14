@@ -11,11 +11,18 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertFlockSchema } from "@shared/schema";
 import { z } from "zod";
 
-const flockFormSchema = insertFlockSchema.extend({
+// Create a simple form schema that works with string inputs
+const flockFormSchema = z.object({
+  name: z.string().min(1, "Flock name is required"),
+  breed: z.string().min(1, "Breed is required"),
+  initialCount: z.number().min(1, "Initial count must be at least 1"),
+  currentCount: z.number().min(0, "Current count must be at least 0"),
   hatchDate: z.string().min(1, "Hatch date is required"),
+  status: z.enum(["brooding", "laying", "retired"]),
+  farmId: z.string().optional(), // Optional for validation, included for editing
 });
 
-type FlockFormData = z.infer<typeof flockFormSchema>;
+type FlockFormInputs = z.infer<typeof flockFormSchema>;
 
 interface FlockFormProps {
   flock?: any; // For editing existing flock
@@ -26,7 +33,7 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<FlockFormData>({
+  const form = useForm<FlockFormInputs>({
     resolver: zodResolver(flockFormSchema),
     defaultValues: {
       name: flock?.name || "",
@@ -35,24 +42,43 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
       currentCount: flock?.currentCount || 0,
       hatchDate: flock?.hatchDate ? new Date(flock.hatchDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       status: flock?.status || "brooding",
+      farmId: flock?.farmId || "", // Include farmId for validation (backend will strip it out)
     },
   });
 
   const saveFlockMutation = useMutation({
-    mutationFn: async (data: FlockFormData) => {
+    mutationFn: async (data: FlockFormInputs) => {
       console.log("Mutation function called with data:", data);
       
       if (flock) {
-        // Editing existing flock
+        // Editing existing flock - transform data to match backend expectations
+        const flockData = {
+          name: data.name,
+          breed: data.breed,
+          initialCount: data.initialCount,
+          currentCount: data.currentCount,
+          hatchDate: new Date(data.hatchDate), // Transform string to Date
+          status: data.status,
+        };
         console.log("Making PUT request to:", `/api/flocks/${flock.id}`);
-        const response = await apiRequest("PUT", `/api/flocks/${flock.id}`, data);
+        const response = await apiRequest("PUT", `/api/flocks/${flock.id}`, flockData);
         console.log("PUT response:", response);
+        
+        // Check for silent errors by status
+        if (!response) {
+          throw new Error('Update failed: No response received');
+        }
+        
         return response;
       } else {
-        // Creating new flock
+        // Creating new flock - transform data to match backend expectations
         const flockData = {
-          ...data,
+          name: data.name,
+          breed: data.breed,
+          initialCount: data.initialCount,
           currentCount: data.initialCount, // Set current count to initial count for new flocks
+          hatchDate: new Date(data.hatchDate), // Transform string to Date
+          status: data.status,
         };
         console.log("Making POST request with data:", flockData);
         const response = await apiRequest("POST", "/api/flocks", flockData);
@@ -81,23 +107,31 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
     },
   });
 
-  const onSubmit = (data: FlockFormData) => {
-    console.log("Form submit called with data:", data);
-    console.log("Form validation errors:", form.formState.errors);
-    console.log("Is editing flock:", !!flock);
+  const onSubmit = (data: FlockFormInputs) => {
+    console.log("🚀 FORM SUBMIT CALLED!", {
+      data,
+      formErrors: form.formState.errors,
+      isValid: form.formState.isValid,
+      isEditing: !!flock,
+      flockId: flock?.id,
+      mutationState: {
+        isPending: saveFlockMutation.isPending,
+        isError: saveFlockMutation.isError,
+        error: saveFlockMutation.error
+      }
+    });
     
-    // When editing, ensure we include the flock ID in the data
-    const submitData = flock ? { ...data, id: flock.id } : data;
-    
-    if (flock) {
-      console.log("Flock ID:", flock.id);
-      console.log("Submit data with ID:", submitData);
+    // Check if form has validation errors
+    if (!form.formState.isValid) {
+      console.log("❌ FORM VALIDATION FAILED:", form.formState.errors);
+      return;
     }
     
     try {
-      saveFlockMutation.mutate(submitData);
+      console.log("🔄 TRIGGERING MUTATION...");
+      saveFlockMutation.mutate(data);
     } catch (error) {
-      console.error("Error in mutation:", error);
+      console.error("❌ ERROR IN MUTATION:", error);
     }
   };
 
@@ -233,6 +267,7 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
               type="submit" 
               disabled={saveFlockMutation.isPending}
               data-testid="button-submit-flock"
+              onClick={() => console.log("🔘 BUTTON CLICKED - Form valid:", form.formState.isValid, "Errors:", form.formState.errors)}
             >
               {saveFlockMutation.isPending ? (flock ? "Updating..." : "Creating...") : (flock ? "Update Flock" : "Create Flock")}
             </Button>
