@@ -549,10 +549,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/feed-inventory', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertFeedInventorySchema.parse({
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to add feed inventory" });
+      }
+
+      // Auto-inject farmId and userId, and coerce numeric fields
+      const input = {
         ...req.body,
-        userId: req.user.claims.sub
-      });
+        userId,
+        farmId: currentUser.farmId
+      };
+
+      // Normalize numeric fields at the API boundary
+      const normalized = {
+        ...input,
+        quantityKg: input.quantityKg ? Number(input.quantityKg).toFixed(2) : undefined,
+        unitPrice: input.unitPrice ? Number(input.unitPrice).toFixed(2) : undefined,
+      };
+
+      const validatedData = insertFeedInventorySchema.parse(normalized);
       const feed = await storage.createFeedInventory(validatedData);
       res.status(201).json(feed);
     } catch (error) {
