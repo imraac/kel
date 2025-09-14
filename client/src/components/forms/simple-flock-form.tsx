@@ -26,22 +26,17 @@ export default function SimpleFlockForm({ onSuccess }: SimpleFlockFormProps) {
   const createFlockMutation = useMutation({
     mutationFn: async (flockData: any) => {
       console.log("Mutation function called with:", flockData);
-      
-      let response;
-      if (flockData.id) {
-        // Update existing flock using PUT
-        response = await apiRequest("PUT", `/api/flocks/${flockData.id}`, flockData);
-      } else {
-        // Create new flock using POST
-        response = await apiRequest("POST", "/api/flocks", flockData);
-      }
-      
+
+      // Decide once: create or update
+      const response = flockData.id
+        ? await apiRequest("PUT", `/api/flocks/${flockData.id}`, flockData)
+        : await apiRequest("POST", "/api/flocks", flockData);
+
       console.log("API response:", response);
       return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       toast({
         title: "Success",
         description: "Flock created successfully",
