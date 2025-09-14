@@ -353,6 +353,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete flock
+  app.delete('/api/flocks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to delete flocks" });
+      }
+
+      // Get the existing flock to verify ownership
+      const existingFlock = await storage.getFlockById(req.params.id);
+      if (!existingFlock) {
+        return res.status(404).json({ message: "Flock not found" });
+      }
+
+      // Verify the flock belongs to the user's farm
+      if (existingFlock.farmId !== currentUser.farmId) {
+        return res.status(403).json({ message: "Access denied. Flock belongs to different farm." });
+      }
+
+      await storage.deleteFlock(req.params.id);
+      res.status(204).send(); // No content response for successful deletion
+    } catch (error) {
+      console.error("Error deleting flock:", error);
+      res.status(500).json({ message: "Failed to delete flock" });
+    }
+  });
+
   // Daily records routes
   app.get('/api/daily-records', isAuthenticated, async (req, res) => {
     try {
