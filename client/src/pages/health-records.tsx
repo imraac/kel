@@ -609,7 +609,7 @@ export default function HealthRecords() {
                 <Syringe className="h-5 w-5 text-blue-600" />
                 <span>Standard Vaccination Program</span>
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Schedule adapted from publicly available vaccination guidelines; not affiliated with Kenchic.</p>
+              <p className="text-sm text-muted-foreground">Schedule adapted from publicly available vaccination guidelines.</p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
