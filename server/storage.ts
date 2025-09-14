@@ -89,7 +89,7 @@ export interface IStorage {
 
   // Feed inventory operations
   createFeedInventory(feed: InsertFeedInventory): Promise<FeedInventory>;
-  getFeedInventory(): Promise<FeedInventory[]>;
+  getFeedInventory(farmId: string): Promise<FeedInventory[]>;
   updateFeedInventory(id: string, updates: Partial<InsertFeedInventory>): Promise<FeedInventory>;
   deleteFeedInventory(id: string): Promise<void>;
 
@@ -498,8 +498,12 @@ export class DatabaseStorage implements IStorage {
     return newFeed;
   }
 
-  async getFeedInventory(): Promise<FeedInventory[]> {
-    return await db.select().from(feedInventory).orderBy(desc(feedInventory.createdAt));
+  async getFeedInventory(farmId: string): Promise<FeedInventory[]> {
+    return await db
+      .select()
+      .from(feedInventory)
+      .where(eq(feedInventory.farmId, farmId))
+      .orderBy(desc(feedInventory.createdAt));
   }
 
   async updateFeedInventory(id: string, updates: Partial<InsertFeedInventory>): Promise<FeedInventory> {
