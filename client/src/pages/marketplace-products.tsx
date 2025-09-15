@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Edit, Package, DollarSign, Archive, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -20,14 +20,35 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
+// Product form schema - use the actual database schema for consistency
+const productFormSchema = insertProductSchema.pick({
+  name: true,
+  category: true,
+  description: true,
+  unit: true,
+  currentPrice: true,
+  minOrderQuantity: true,
+  stockQuantity: true,
+  isAvailable: true,
+}).extend({
+  // Override price to handle string input like expense/health record pattern
+  currentPrice: z.string().min(1, "Price is required").refine(
+    (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+    "Invalid price - must be a positive number"
+  ),
+});
+
+type ProductFormData = z.infer<typeof productFormSchema>;
+
 
 export default function MarketplaceProducts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -63,6 +84,57 @@ export default function MarketplaceProducts() {
     }
   }, [productsError, toast]);
 
+  const productForm = useForm<ProductFormData>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: {
+      name: "",
+      category: "eggs",
+      description: "",
+      unit: "crates",
+      currentPrice: "",
+      minOrderQuantity: 1,
+      stockQuantity: 0,
+      isAvailable: true,
+    },
+  });
+
+  const createProductMutation = useMutation({
+    mutationFn: async (data: ProductFormData) => {
+      // Send data as-is - server will handle type coercion
+      await apiRequest("POST", "/api/products", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: "Success",
+        description: "Product created successfully",
+      });
+      productForm.reset();
+      setProductDialogOpen(false);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitProduct = (data: ProductFormData) => {
+    createProductMutation.mutate(data);
+  };
 
   const filteredProducts = products.filter((product: Product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -146,10 +218,179 @@ export default function MarketplaceProducts() {
             <p className="text-muted-foreground">Manage your marketplace products and inventory</p>
           </div>
           
-          <Button data-testid="button-add-product">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Product
-          </Button>
+          <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-product">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Product</DialogTitle>
+              </DialogHeader>
+              <Form {...productForm}>
+                <form onSubmit={productForm.handleSubmit(onSubmitProduct)} className="space-y-4">
+                  <FormField
+                    control={productForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-product-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={productForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value ?? ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-product-category">
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="eggs">Eggs</SelectItem>
+                              <SelectItem value="chickens">Chickens</SelectItem>
+                              <SelectItem value="feed">Feed</SelectItem>
+                              <SelectItem value="equipment">Equipment</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={productForm.control}
+                      name="unit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value ?? ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-product-unit">
+                                <SelectValue placeholder="Select unit" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="crates">Crates</SelectItem>
+                              <SelectItem value="pieces">Pieces</SelectItem>
+                              <SelectItem value="kg">Kilograms</SelectItem>
+                              <SelectItem value="bags">Bags</SelectItem>
+                              <SelectItem value="trays">Trays</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={productForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} value={field.value ?? ""} rows={2} data-testid="input-product-description" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={productForm.control}
+                      name="currentPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price (KES)</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" step="0.01" data-testid="input-product-price" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={productForm.control}
+                      name="stockQuantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Quantity</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" min="0" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)} data-testid="input-product-stock" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={productForm.control}
+                      name="minOrderQuantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Min Order Qty</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" min="1" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 1)} data-testid="input-product-min-order" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={productForm.control}
+                      name="isAvailable"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-sm">Available</FormLabel>
+                            <p className="text-xs text-muted-foreground">
+                              Show in marketplace
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value ?? true}
+                              onCheckedChange={field.onChange}
+                              data-testid="switch-product-available"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setProductDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createProductMutation.isPending} data-testid="button-submit-product">
+                      {createProductMutation.isPending ? "Adding..." : "Add Product"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Filters */}
@@ -199,7 +440,7 @@ export default function MarketplaceProducts() {
                     {searchTerm || categoryFilter !== "all" ? "No products found matching your criteria" : "No products yet"}
                   </p>
                   {!searchTerm && categoryFilter === "all" && (
-                    <Button onClick={() => setIsDialogOpen(true)} data-testid="button-add-first-product">
+                    <Button onClick={() => setProductDialogOpen(true)} data-testid="button-add-first-product">
                       <Plus className="mr-2 h-4 w-4" />
                       Add Your First Product
                     </Button>
