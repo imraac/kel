@@ -319,7 +319,7 @@ export default function MarketplaceProducts() {
                         <FormItem>
                           <FormLabel>Price (KES)</FormLabel>
                           <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-product-price" />
+                            <Input {...field} type="text" placeholder="0.00" data-testid="input-product-price" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
