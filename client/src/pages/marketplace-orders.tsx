@@ -732,14 +732,6 @@ export default function MarketplaceOrders() {
                       {createOrderMutation.isPending ? "Creating..." : "Create Order"}
                     </Button>
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setIsFormDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={createOrderMutation.isPending} data-testid="button-save-order">
-                      {createOrderMutation.isPending ? "Creating..." : "Create Order"}
-                    </Button>
-                  </div>
                 </form>
               </Form>
             ) : (

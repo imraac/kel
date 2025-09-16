@@ -885,6 +885,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { items, ...orderData } = req.body;
       
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser?.farmId) {
+        return res.status(400).json({ message: "User must be associated with a farm to create orders" });
+      }
+      
       // Validate the order data structure
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: "Order must contain at least one item" });
@@ -908,7 +915,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create order with server-side pricing and inventory validation
       const result = await storage.createOrderWithItems({
         ...orderData,
-        userId: req.user.claims.sub,
+        farmId: currentUser.farmId,
+        userId: userId,
         items
       });
 
