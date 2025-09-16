@@ -1,0 +1,75 @@
+The app is a TypeScript/React project using React Query, Prisma, and Zod.
+We have persistent failures when creating a new entry/order, and we also need the edit existing record flow to be fully reliable.
+
+Tasks to perform across the codebase
+
+Client-side
+
+Review every form component involved in creating or editing entries/orders.
+
+Check controlled/uncontrolled inputs and default values.
+
+Verify form libraries (e.g. react-hook-form) correctly register fields and update state.
+
+Add or improve state management:
+
+A clear “create” state for new entries.
+
+An “edit” state to track which record is being modified and pre-fill the form.
+
+Ensure the Create and Edit buttons have working event handlers that open the form dialog and correctly submit data.
+
+Implement defensive coercion:
+
+Convert all numeric fields from string inputs to numbers before submission (parseFloat or Number()).
+
+Validate optional fields so null/undefined values don’t trigger type errors.
+
+Add robust client-side validation and surface errors in the UI (e.g. toast or inline messages).
+
+Confirm React Query cache invalidation is triggered after successful create or update so UI reflects the latest data.
+
+API & Server-side
+7. Inspect all API route handlers for these forms:
+
+Correct HTTP methods (POST for create, PUT or PATCH for update).
+
+Proper schema validation with Zod (or equivalent) matching database types.
+
+Defensive checks that farmId (or equivalent user context id) is injected server-side when required.
+
+Clear error handling that returns meaningful messages to the client.
+
+Confirm the database schema (Prisma or ORM) matches the API expectations:
+
+No missing columns (e.g. the previous medication_vaccine error).
+
+Migrations applied and up-to-date.
+
+TypeScript & Testing
+9. Eliminate all TypeScript null/undefined mismatches in the create and edit code paths by adding type guards or optional chaining.
+10. Write or update integration tests to cover:
+- Successful creation of a new entry/order.
+- Successful editing of an existing record.
+- Validation failures when data types are wrong.
+11. Add logging or error-boundary reporting so future failures surface clearly.
+
+Deliverable
+
+Provide a pull-request style diff or updated code snippets for each affected file.
+
+For every change, include a short note describing the root cause and the fix.
+
+Confirm by testing that:
+
+A new entry/order can be created and saved to the database.
+
+An existing record can be edited and saved.
+
+Numeric and optional fields pass schema validation.
+
+No TypeScript errors remain.
+
+The UI immediately shows new or updated data after submission.
+
+Work through these steps systematically and resolve any additional hidden issues uncovered during testing.
