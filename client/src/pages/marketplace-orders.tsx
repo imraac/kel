@@ -52,7 +52,7 @@ export default function MarketplaceOrders() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [orderItems, setOrderItems] = useState([{ productId: "", quantity: 1 }]);
+  // Removed orderItems state - now using controlled form state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
   const [isDeliveryUpdateDialogOpen, setIsDeliveryUpdateDialogOpen] = useState(false);
@@ -121,7 +121,7 @@ export default function MarketplaceOrders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       setIsDialogOpen(false);
-      setOrderItems([{ productId: "", quantity: 1 }]);
+      form.reset(); // Reset form instead of separate state
       toast({
         title: "Success",
         description: "Order created successfully",
@@ -333,20 +333,26 @@ export default function MarketplaceOrders() {
     }
   };
 
+  // Form-controlled order items management
+  const watchedItems = form.watch("items");
+
   const addOrderItem = () => {
-    setOrderItems([...orderItems, { productId: "", quantity: 1 }]);
+    const currentItems = form.getValues("items");
+    form.setValue("items", [...currentItems, { productId: "", quantity: 1 }]);
   };
 
   const removeOrderItem = (index: number) => {
-    if (orderItems.length > 1) {
-      setOrderItems(orderItems.filter((_, i) => i !== index));
+    const currentItems = form.getValues("items");
+    if (currentItems.length > 1) {
+      form.setValue("items", currentItems.filter((_, i) => i !== index));
     }
   };
 
   const updateOrderItem = (index: number, field: string, value: any) => {
-    const updated = [...orderItems];
+    const currentItems = form.getValues("items");
+    const updated = [...currentItems];
     updated[index] = { ...updated[index], [field]: value };
-    setOrderItems(updated);
+    form.setValue("items", updated);
   };
 
   const getCustomerName = (customerId: string) => {
@@ -593,7 +599,7 @@ export default function MarketplaceOrders() {
                       </Button>
                     </div>
                     
-                    {orderItems.map((item, index) => (
+                    {watchedItems.map((item: any, index: number) => (
                       <div key={index} className="flex items-end space-x-4 p-4 border rounded-lg">
                         <div className="flex-1">
                           <label className="text-sm font-medium">Product</label>
@@ -625,7 +631,7 @@ export default function MarketplaceOrders() {
                           />
                         </div>
                         
-                        {orderItems.length > 1 && (
+                        {watchedItems.length > 1 && (
                           <Button
                             type="button"
                             variant="outline"
