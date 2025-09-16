@@ -76,6 +76,8 @@ export default function MarketplaceOrders() {
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
   const [isDeliveryUpdateDialogOpen, setIsDeliveryUpdateDialogOpen] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [isViewDetailDialogOpen, setIsViewDetailDialogOpen] = useState(false);
+  const [viewDetailOrder, setViewDetailOrder] = useState<Order | null>(null);
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
 
@@ -506,6 +508,11 @@ export default function MarketplaceOrders() {
     });
     setSelectedDelivery(delivery);
     setIsDeliveryUpdateDialogOpen(true);
+  };
+
+  const openViewDetailDialog = (order: Order) => {
+    setViewDetailOrder(order);
+    setIsViewDetailDialogOpen(true);
   };
 
   if (isLoading) {
@@ -1065,7 +1072,12 @@ export default function MarketplaceOrders() {
                   })()}
 
                   <div className="flex justify-end space-x-2 flex-wrap gap-2">
-                    <Button variant="outline" size="sm" data-testid={`button-view-order-${order.id}`}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => openViewDetailDialog(order)}
+                      data-testid={`button-view-order-${order.id}`}
+                    >
                       <Eye className="mr-2 h-4 w-4" />
                       View Details
                     </Button>
@@ -1338,6 +1350,144 @@ export default function MarketplaceOrders() {
                 </div>
               </form>
             </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Order Details Dialog */}
+        <Dialog open={isViewDetailDialogOpen} onOpenChange={setIsViewDetailDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Order Details</DialogTitle>
+              <DialogDescription className="sr-only">View complete order information</DialogDescription>
+            </DialogHeader>
+            
+            {viewDetailOrder && (
+              <div className="space-y-6">
+                {/* Basic Order Information */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Order ID</p>
+                    <p className="font-mono text-sm">{viewDetailOrder.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <Badge className={getStatusColor(viewDetailOrder.status)}>
+                      {viewDetailOrder.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Customer</p>
+                    <p className="font-medium">{getCustomerName(viewDetailOrder.customerId)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Order Date</p>
+                    <p className="font-medium">{viewDetailOrder.createdAt ? new Date(viewDetailOrder.createdAt).toLocaleDateString() : 'Not available'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Required Date</p>
+                    <p className="font-medium">{viewDetailOrder.requiredDate ? new Date(viewDetailOrder.requiredDate).toLocaleDateString() : 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Amount</p>
+                    <p className="font-medium text-lg">KSh {getTotalAmount(viewDetailOrder)}</p>
+                  </div>
+                </div>
+
+                {/* Payment Information */}
+                <div>
+                  <h3 className="font-semibold mb-2">Payment Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Payment Status</p>
+                      <Badge className={viewDetailOrder.paymentStatus === 'paid' ? 'bg-green-600 text-white' : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'}>
+                        {viewDetailOrder.paymentStatus}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Paid Amount</p>
+                      <p className="font-medium">KSh {viewDetailOrder.paidAmount ? parseFloat(viewDetailOrder.paidAmount).toLocaleString() : '0'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div>
+                  <h3 className="font-semibold mb-2">Order Items</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-muted rounded">
+                      <div>
+                        <p className="font-medium">Order Items</p>
+                        <p className="text-sm text-muted-foreground">Total Amount: KSh {getTotalAmount(viewDetailOrder)}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Details available in order management</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delivery Information */}
+                {viewDetailOrder.deliveryMethod === "delivery" && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Delivery Information</h3>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Delivery Address</p>
+                        <p className="font-medium">{viewDetailOrder.deliveryAddress || 'Not specified'}</p>
+                      </div>
+                      {(() => {
+                        const delivery = getDeliveryForOrder(viewDetailOrder.id);
+                        return delivery ? (
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Delivery Status</p>
+                              <Badge className={getDeliveryStatusColor(delivery.status)}>
+                                {getDeliveryStatusIcon(delivery.status)}
+                                <span className="ml-1">{delivery.status}</span>
+                              </Badge>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Scheduled Date</p>
+                              <p className="font-medium">{delivery.scheduledDate ? new Date(delivery.scheduledDate).toLocaleDateString() : 'Not scheduled'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Driver</p>
+                              <p className="font-medium">{getDriverName(delivery.driverId)}</p>
+                            </div>
+                            {delivery.actualDate && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Delivered Date</p>
+                                <p className="font-medium text-green-600">{new Date(delivery.actualDate).toLocaleDateString()}</p>
+                              </div>
+                            )}
+                            {delivery.deliveryNotes && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Delivery Notes</p>
+                                <p className="font-medium">{delivery.deliveryNotes}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Delivery not yet scheduled</p>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Notes */}
+                {viewDetailOrder.notes && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Order Notes</h3>
+                    <p className="text-sm bg-muted p-3 rounded">{viewDetailOrder.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" onClick={() => setIsViewDetailDialogOpen(false)}>
+                Close
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 
