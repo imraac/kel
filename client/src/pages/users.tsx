@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError, hasManagementRole } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserPlus, Menu, Settings, Crown, User } from "lucide-react";
+import { Users, Shield, UserPlus, Menu, Settings, Crown, User as UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
@@ -19,6 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { User } from "@shared/schema";
 
 const userFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -30,6 +31,15 @@ const userFormSchema = z.object({
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
+
+// Activity type based on the API response structure
+type Activity = {
+  id: string;
+  type: string; // flexible to support multiple activity types
+  description: string;
+  createdAt: string;
+  userId: string;
+};
 
 export default function UsersPage() {
   const { toast } = useToast();
@@ -68,12 +78,12 @@ export default function UsersPage() {
     }
   }, [currentUser, isAuthenticated, isLoading, toast]);
 
-  const { data: users, error: usersError } = useQuery<any[]>({
+  const { data: users, error: usersError } = useQuery<User[]>({
     queryKey: ["/api/users"],
     enabled: isAuthenticated && hasManagementRole(currentUser),
   });
 
-  const { data: activity, error: activityError } = useQuery<any[]>({
+  const { data: activity, error: activityError } = useQuery<Activity[]>({
     queryKey: ["/api/dashboard/activity"],
     enabled: isAuthenticated && hasManagementRole(currentUser),
   });
@@ -151,12 +161,12 @@ export default function UsersPage() {
   }
 
   const displayUsers = users || [];
-  const adminUsers = displayUsers.filter((user: any) => user.role === 'admin');
-  const managerUsers = displayUsers.filter((user: any) => user.role === 'manager');
-  const farmOwnerUsers = displayUsers.filter((user: any) => user.role === 'farm_owner');
-  const staffUsers = displayUsers.filter((user: any) => user.role === 'staff');
-  const customerUsers = displayUsers.filter((user: any) => user.role === 'customer');
-  const activeUsers = displayUsers.filter((user: any) => {
+  const adminUsers = displayUsers.filter((user: User) => user.role === 'admin');
+  const managerUsers = displayUsers.filter((user: User) => user.role === 'manager');
+  const farmOwnerUsers = displayUsers.filter((user: User) => user.role === 'farm_owner');
+  const staffUsers = displayUsers.filter((user: User) => user.role === 'staff');
+  const customerUsers = displayUsers.filter((user: User) => user.role === 'customer');
+  const activeUsers = displayUsers.filter((user: User) => {
     if (!user.lastActive) return false;
     const lastActive = new Date(user.lastActive);
     const yesterday = new Date();
@@ -173,8 +183,8 @@ export default function UsersPage() {
       case 'admin': return Crown;
       case 'farm_owner': return Shield;
       case 'manager': return Settings;
-      case 'customer': return User;
-      default: return User; // staff and others
+      case 'customer': return UserIcon;
+      default: return UserIcon; // staff and others
     }
   };
 
@@ -416,7 +426,7 @@ export default function UsersPage() {
                     <p className="text-xs text-gray-600">Standard access</p>
                   </div>
                   <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <User className="h-6 w-6 text-gray-600" />
+                    <UserIcon className="h-6 w-6 text-gray-600" />
                   </div>
                 </div>
               </CardContent>
@@ -467,7 +477,7 @@ export default function UsersPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {displayUsers.map((user: any) => {
+                    {displayUsers.map((user: User) => {
                       const RoleIcon = getRoleIcon(user.role);
                       const roleBadge = getRoleBadge(user.role);
                       
@@ -577,7 +587,7 @@ export default function UsersPage() {
 
                       <div className="p-4 border border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800 rounded-lg">
                         <div className="flex items-center space-x-2 mb-2">
-                          <User className="h-5 w-5 text-gray-600" />
+                          <UserIcon className="h-5 w-5 text-gray-600" />
                           <h3 className="font-semibold text-gray-800 dark:text-gray-200">Staff Member</h3>
                         </div>
                         <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
@@ -591,7 +601,7 @@ export default function UsersPage() {
 
                       <div className="p-4 border border-purple-200 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg">
                         <div className="flex items-center space-x-2 mb-2">
-                          <User className="h-5 w-5 text-purple-600" />
+                          <UserIcon className="h-5 w-5 text-purple-600" />
                           <h3 className="font-semibold text-purple-800 dark:text-purple-200">Customer</h3>
                         </div>
                         <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
