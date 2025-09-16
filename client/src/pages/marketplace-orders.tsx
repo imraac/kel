@@ -31,14 +31,7 @@ const createOrderSchema = z.object({
   notes: z.string().optional(),
   items: z.array(z.object({
     productId: z.string().min(1, "Product is required"),
-    quantity: z.string().min(1, "Quantity is required")
-      .transform((val) => {
-        const parsed = parseInt(val, 10);
-        if (isNaN(parsed) || parsed < 1) {
-          throw new Error("Quantity must be a positive number");
-        }
-        return parsed;
-      })
+    quantity: z.coerce.number().int().positive("Quantity must be a positive number")
   })).min(1, "At least one item is required"),
 });
 
@@ -50,13 +43,7 @@ const editOrderSchema = z.object({
   paymentStatus: z.enum(["pending", "partial", "paid", "refunded"], {
     required_error: "Payment status is required"
   }),
-  paidAmount: z.string().transform((val) => {
-    const parsed = parseFloat(val);
-    if (isNaN(parsed) || parsed < 0) {
-      return 0;
-    }
-    return parsed.toString();
-  }),
+  paidAmount: z.coerce.number().nonnegative(),
   deliveryMethod: z.enum(["pickup", "delivery"]),
   deliveryAddress: z.string().optional(),
   notes: z.string().optional(),
@@ -80,7 +67,6 @@ const deliveryUpdateSchema = z.object({
 export default function MarketplaceOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   // Removed old state - using new consolidated state above
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   // Removed - using new form-based item management
@@ -239,7 +225,7 @@ export default function MarketplaceOrders() {
     defaultValues: {
       status: "pending",
       paymentStatus: "pending",
-      paidAmount: "0",
+      paidAmount: 0,
       deliveryMethod: "pickup",
       deliveryAddress: "",
       notes: "",
@@ -324,7 +310,7 @@ export default function MarketplaceOrders() {
     editForm.reset({
       status: order.status as any,
       paymentStatus: order.paymentStatus as any,
-      paidAmount: order.paidAmount || "0",
+      paidAmount: Number(order.paidAmount) || 0,
       deliveryMethod: order.deliveryMethod as any,
       deliveryAddress: order.deliveryAddress || undefined,
       notes: order.notes || undefined,
@@ -564,14 +550,10 @@ export default function MarketplaceOrders() {
             <p className="text-muted-foreground">Manage customer orders and deliveries</p>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleCreateOrder} data-testid="button-create-order">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Order
-              </Button>
-            </DialogTrigger>
-        </Dialog>
+          <Button onClick={handleCreateOrder} data-testid="button-create-order">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Order
+          </Button>
         </div>  {/* Close the toolbar div from line 561 */}
 
         {/* NEW UNIFIED CREATE/EDIT DIALOG */}
@@ -584,7 +566,14 @@ export default function MarketplaceOrders() {
             </DialogHeader>
             {mode === "create" ? (
               <Form {...createForm}>
-                <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-6">
+                <form onSubmit={createForm.handleSubmit(onCreateSubmit, (errors) => {
+                  console.error('Create form validation errors:', errors);
+                  toast({
+                    title: "Form Validation Error",
+                    description: "Please check all required fields",
+                    variant: "destructive"
+                  });
+                })} className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={createForm.control}
@@ -939,7 +928,7 @@ export default function MarketplaceOrders() {
                     {searchTerm || statusFilter !== "all" ? "No orders found matching your criteria" : "No orders yet"}
                   </p>
                   {!searchTerm && statusFilter === "all" && (
-                    <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-first-order">
+                    <Button onClick={() => setIsFormDialogOpen(true)} data-testid="button-create-first-order">
                       <Plus className="mr-2 h-4 w-4" />
                       Create Your First Order
                     </Button>
