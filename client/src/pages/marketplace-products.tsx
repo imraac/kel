@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductSchema, type Product } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -200,7 +200,7 @@ export default function MarketplaceProducts() {
       category: product.category as any,
       description: product.description || "",
       unit: product.unit as any,
-      currentPrice: product.currentPrice,
+      currentPrice: String(product.currentPrice),
       minOrderQuantity: product.minOrderQuantity || 1,
       stockQuantity: product.stockQuantity || 0,
       isAvailable: product.isAvailable ?? true,
@@ -544,7 +544,7 @@ export default function MarketplaceProducts() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea {...field} rows={3} data-testid="input-edit-product-description" />
+                          <Textarea {...field} value={field.value || ""} rows={3} data-testid="input-edit-product-description" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -609,7 +609,7 @@ export default function MarketplaceProducts() {
                           </div>
                           <FormControl>
                             <Switch
-                              checked={field.value}
+                              checked={field.value ?? true}
                               onCheckedChange={field.onChange}
                               data-testid="switch-edit-product-available"
                             />
