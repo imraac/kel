@@ -849,20 +849,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized to update this product" });
       }
 
-      // Validate and normalize numeric fields using centralized utilities
-      const input = req.body;
-      let normalized;
-      try {
-        normalized = normalizeNumericFields(input, {
-          integers: ['minOrderQuantity', 'stockQuantity'],
-          decimals: { currentPrice: 2 },
-          optional: ['minOrderQuantity', 'stockQuantity', 'currentPrice']
-        });
-      } catch (error) {
-        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      // Defensive coercion: ensure currentPrice field is string for Drizzle schema
+      const input = { ...req.body };
+      if (typeof input.currentPrice === 'number') {
+        input.currentPrice = String(input.currentPrice);
       }
 
-      const updates = insertProductSchema.partial().parse(normalized);
+      const updates = insertProductSchema.partial().parse(input);
       const product = await storage.updateProduct(req.params.id, updates);
       res.json(product);
     } catch (error) {
