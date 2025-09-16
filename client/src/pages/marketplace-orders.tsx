@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -1125,6 +1125,7 @@ export default function MarketplaceOrders() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Schedule Delivery</DialogTitle>
+              <DialogDescription className="sr-only">Form actions</DialogDescription>
             </DialogHeader>
             <Form {...deliveryForm}>
               <form onSubmit={deliveryForm.handleSubmit(onDeliverySubmit)} className="space-y-4">
@@ -1160,38 +1161,36 @@ export default function MarketplaceOrders() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Scheduled Date</FormLabel>
-                        <div className="space-y-2">
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full justify-start text-left font-normal"
-                              onClick={() => setShowCalendar(!showCalendar)}
-                              data-testid="button-scheduled-date"
-                            >
-                              {field.value ? (
-                                format(new Date(field.value), "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                          {showCalendar && (
-                            <div className="border rounded-md p-0 bg-background">
-                              <Calendar
-                                mode="single"
-                                selected={field.value ? new Date(field.value) : undefined}
-                                onSelect={(date) => {
-                                  field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                  setShowCalendar(false); // Close calendar after selection
-                                }}
-                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                                initialFocus
-                              />
-                            </div>
-                          )}
-                        </div>
+                        <FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                            onClick={() => setShowCalendar(!showCalendar)}
+                            data-testid="button-scheduled-date"
+                          >
+                            {field.value ? (
+                              format(new Date(field.value), "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                        {showCalendar && (
+                          <div className="mt-2 rounded-md border bg-popover p-2 shadow-sm">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => {
+                                field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                setShowCalendar(false);
+                              }}
+                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                              initialFocus
+                            />
+                          </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
