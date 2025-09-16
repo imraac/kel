@@ -204,7 +204,8 @@ export default function UsersPage() {
   };
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+    const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+    return initials.trim() || '?';
   };
 
   const formatLastActive = (lastActive: string) => {
