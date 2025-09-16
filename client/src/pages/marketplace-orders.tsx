@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -221,8 +220,6 @@ export default function MarketplaceOrders() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   
-  // Calendar state for inline display
-  const [showCalendar, setShowCalendar] = useState(false);
 
   // Create form
   const createForm = useForm<z.infer<typeof createOrderSchema>>({
@@ -1162,35 +1159,8 @@ export default function MarketplaceOrders() {
                       <FormItem>
                         <FormLabel>Scheduled Date</FormLabel>
                         <FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                            onClick={() => setShowCalendar(!showCalendar)}
-                            data-testid="button-scheduled-date"
-                          >
-                            {field.value ? (
-                              format(new Date(field.value), "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
+                          <Input type="date" {...field} data-testid="input-scheduled-date" />
                         </FormControl>
-                        {showCalendar && (
-                          <div className="mt-2 rounded-md border bg-popover p-2 shadow-sm">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) => {
-                                field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                setShowCalendar(false);
-                              }}
-                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                              initialFocus
-                            />
-                          </div>
-                        )}
                         <FormMessage />
                       </FormItem>
                     )}
