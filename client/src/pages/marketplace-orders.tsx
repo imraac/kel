@@ -220,6 +220,16 @@ export default function MarketplaceOrders() {
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  
+  // Calendar popover state
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  // Close calendar when dialog closes
+  useEffect(() => {
+    if (!isDeliveryDialogOpen) {
+      setIsCalendarOpen(false);
+    }
+  }, [isDeliveryDialogOpen]);
 
   // Create form
   const createForm = useForm<z.infer<typeof createOrderSchema>>({
@@ -1157,20 +1167,22 @@ export default function MarketplaceOrders() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Scheduled Date</FormLabel>
-                        <Popover>
+                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                           <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-start text-left font-normal"
-                              data-testid="button-scheduled-date"
-                            >
-                              {field.value ? (
-                                format(new Date(field.value), "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start text-left font-normal"
+                                data-testid="button-scheduled-date"
+                              >
+                                {field.value ? (
+                                  format(new Date(field.value), "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
@@ -1178,6 +1190,7 @@ export default function MarketplaceOrders() {
                               selected={field.value ? new Date(field.value) : undefined}
                               onSelect={(date) => {
                                 field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                setIsCalendarOpen(false); // Close popover after selection
                               }}
                               disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                               initialFocus
