@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Eye, Truck, Clock, CheckCircle, XCircle, Filter, Menu, MapPin, User as UserIcon, Calendar, Package, AlertCircle } from "lucide-react";
+import { Plus, Search, Eye, Truck, Clock, CheckCircle, XCircle, Filter, Menu, MapPin, User as UserIcon, Calendar as CalendarIcon, Package, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/sidebar";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +20,7 @@ import { insertOrderSchema, insertDeliverySchema, type Order, type Customer, typ
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { format } from "date-fns";
 
 // COMPLETELY NEW ORDER FORM SCHEMAS
 // Create order schema with proper validation and defensive coercion
@@ -132,6 +135,18 @@ export default function MarketplaceOrders() {
     queryKey: ["/api/users"],
     enabled: isAuthenticated && user?.role === 'admin',
   });
+
+  // Dummy driver data for testing
+  const dummyDrivers = [
+    { id: "driver-1", firstName: "John", lastName: "Doe", role: "staff" },
+    { id: "driver-2", firstName: "Jane", lastName: "Smith", role: "admin" },
+    { id: "driver-3", firstName: "Mike", lastName: "Johnson", role: "staff" },
+    { id: "driver-4", firstName: "Sarah", lastName: "Wilson", role: "staff" },
+    { id: "driver-5", firstName: "David", lastName: "Brown", role: "admin" },
+  ];
+
+  // Combine real users with dummy drivers
+  const availableDrivers = [...users.filter((u: User) => u.role === 'admin' || u.role === 'staff'), ...dummyDrivers];
 
   // NEW CREATE MUTATION WITH PROPER LOGGING
   const createOrderMutation = useMutation({
@@ -1125,9 +1140,9 @@ export default function MarketplaceOrders() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="unassigned">No driver assigned</SelectItem>
-                            {users.filter((u: User) => u.role === 'admin' || u.role === 'staff').map((user: User) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.firstName} {user.lastName}
+                            {availableDrivers.map((driver) => (
+                              <SelectItem key={driver.id} value={driver.id}>
+                                {driver.firstName} {driver.lastName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1142,9 +1157,33 @@ export default function MarketplaceOrders() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Scheduled Date</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="datetime-local" data-testid="input-scheduled-date" />
-                        </FormControl>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                              data-testid="button-scheduled-date"
+                            >
+                              {field.value ? (
+                                format(new Date(field.value), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => {
+                                field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                              }}
+                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
