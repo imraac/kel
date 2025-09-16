@@ -514,9 +514,7 @@ export default function UsersPage() {
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm" data-testid={`button-edit-user-${user.id}`}>
-                              <Settings className="h-4 w-4" />
-                            </Button>
+                            {/* Edit functionality not yet implemented - removed to avoid dead-end UX */}
                             {user.id !== currentUser?.id && (
                               <Button 
                                 variant="outline" 
