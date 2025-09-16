@@ -27,6 +27,8 @@ const customerFormSchema = insertCustomerSchema.extend({
 export default function MarketplaceCustomers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -107,6 +109,76 @@ export default function MarketplaceCustomers() {
 
   const onSubmit = (data: z.infer<typeof customerFormSchema>) => {
     createCustomerMutation.mutate(data);
+  };
+
+  // Edit form
+  const editForm = useForm<z.infer<typeof customerFormSchema>>({
+    resolver: zodResolver(customerFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      location: "",
+      customerType: "retail",
+      status: "active",
+      notes: "",
+    },
+  });
+
+  const updateCustomerMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof customerFormSchema> }) => {
+      await apiRequest("PATCH", `/api/customers/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({
+        title: "Success",
+        description: "Customer updated successfully",
+      });
+      editForm.reset();
+      setEditDialogOpen(false);
+      setEditingCustomer(null);
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update customer",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitEdit = (data: z.infer<typeof customerFormSchema>) => {
+    if (editingCustomer) {
+      updateCustomerMutation.mutate({ id: editingCustomer.id, data });
+    }
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    setEditingCustomer(customer);
+    editForm.reset({
+      name: customer.name,
+      email: customer.email || "",
+      phone: customer.phone,
+      address: customer.address || "",
+      location: customer.location || "",
+      customerType: customer.customerType,
+      status: customer.status,
+      notes: customer.notes || "",
+    });
+    setEditDialogOpen(true);
   };
 
   const getCustomerTypeColor = (type: string) => {
@@ -331,6 +403,160 @@ export default function MarketplaceCustomers() {
               </Form>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Customer Dialog */}
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Customer</DialogTitle>
+              </DialogHeader>
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-edit-customer-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-edit-customer-phone" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email (Optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} type="email" data-testid="input-edit-customer-email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="location"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} data-testid="input-edit-customer-location" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={editForm.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} rows={2} data-testid="input-edit-customer-address" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="customerType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Type</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-edit-customer-type">
+                                <SelectValue placeholder="Select customer type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="retail">Retail</SelectItem>
+                              <SelectItem value="wholesale">Wholesale</SelectItem>
+                              <SelectItem value="distributor">Distributor</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={editForm.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-edit-customer-status">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={editForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || null)} rows={3} data-testid="input-edit-customer-notes" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={updateCustomerMutation.isPending} data-testid="button-update-customer">
+                      {updateCustomerMutation.isPending ? "Updating..." : "Update Customer"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Search */}
@@ -419,7 +645,12 @@ export default function MarketplaceCustomers() {
                     </p>
                   )}
                   <div className="flex justify-end mt-4">
-                    <Button variant="outline" size="sm" data-testid={`button-edit-customer-${customer.id}`}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleEditCustomer(customer)}
+                      data-testid={`button-edit-customer-${customer.id}`}
+                    >
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
                     </Button>
