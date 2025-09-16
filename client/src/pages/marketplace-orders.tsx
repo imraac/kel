@@ -1124,7 +1124,7 @@ export default function MarketplaceOrders() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No driver assigned</SelectItem>
+                            <SelectItem value="unassigned">No driver assigned</SelectItem>
                             {users.filter((u: User) => u.role === 'admin' || u.role === 'staff').map((user: User) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.firstName} {user.lastName}
