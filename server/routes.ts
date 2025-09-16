@@ -790,25 +790,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User must be associated with a farm to add products" });
       }
 
-      // Auto-inject farmId and coerce numeric fields
+      // Auto-inject farmId
       const input = {
         ...req.body,
         farmId: currentUser.farmId
       };
 
-      // Validate and normalize numeric fields using centralized utilities
-      let normalized;
-      try {
-        normalized = normalizeNumericFields(input, {
-          integers: ['minOrderQuantity', 'stockQuantity'],
-          decimals: { currentPrice: 2 },
-          optional: ['minOrderQuantity', 'stockQuantity', 'currentPrice']
-        });
-      } catch (error) {
-        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
+      // Defensive coercion: ensure currentPrice field is string for Drizzle schema
+      if (typeof input.currentPrice === 'number') {
+        input.currentPrice = String(input.currentPrice);
+      }
+      // Handle empty string for required currentPrice field
+      if (input.currentPrice === '') {
+        return res.status(400).json({ message: "Current price is required" });
       }
 
-      const validatedData = insertProductSchema.parse(normalized);
+      const validatedData = insertProductSchema.parse(input);
       const product = await storage.createProduct(validatedData);
       res.status(201).json(product);
     } catch (error) {
