@@ -49,6 +49,8 @@ export default function MarketplaceOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState([{ productId: "", quantity: 1 }]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -213,6 +215,81 @@ export default function MarketplaceOrders() {
     },
   });
 
+  // Order edit form and mutation
+  const orderEditSchema = z.object({
+    status: z.enum(["pending", "confirmed", "processing", "ready", "delivered", "cancelled"]),
+    paymentStatus: z.enum(["pending", "partial", "paid", "refunded"]),
+    paidAmount: z.string().min(0, "Paid amount must be 0 or greater"),
+    deliveryMethod: z.enum(["pickup", "delivery"]),
+    deliveryAddress: z.string().optional(),
+    notes: z.string().optional(),
+  });
+
+  const editForm = useForm<z.infer<typeof orderEditSchema>>({
+    resolver: zodResolver(orderEditSchema),
+    defaultValues: {
+      status: "pending",
+      paymentStatus: "pending", 
+      paidAmount: "0.00",
+      deliveryMethod: "pickup",
+      deliveryAddress: "",
+      notes: "",
+    },
+  });
+
+  const updateOrderMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof orderEditSchema> }) => {
+      await apiRequest("PATCH", `/api/orders/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      toast({
+        title: "Success",
+        description: "Order updated successfully",
+      });
+      editForm.reset();
+      setEditDialogOpen(false);
+      setEditingOrder(null);
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update order",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitEdit = (data: z.infer<typeof orderEditSchema>) => {
+    if (editingOrder) {
+      updateOrderMutation.mutate({ id: editingOrder.id, data });
+    }
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setEditingOrder(order);
+    editForm.reset({
+      status: order.status as any,
+      paymentStatus: order.paymentStatus as any,
+      paidAmount: order.paidAmount,
+      deliveryMethod: order.deliveryMethod as any,
+      deliveryAddress: order.deliveryAddress || undefined,
+      notes: order.notes || undefined,
+    });
+    setEditDialogOpen(true);
+  };
+
   const filteredOrders = orders.filter((order: Order) => {
     const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (order.notes && order.notes.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -227,7 +304,7 @@ export default function MarketplaceOrders() {
       deliveryMethod: data.deliveryMethod,
       deliveryAddress: data.deliveryAddress,
       notes: data.notes,
-      items: orderItems.filter(item => item.productId && item.quantity > 0),
+      items: data.items, // ✅ Use validated form data instead of state
     };
     createOrderMutation.mutate(orderData);
   };
@@ -803,7 +880,12 @@ export default function MarketplaceOrders() {
                     })()}
                     
                     {order.status !== "delivered" && order.status !== "cancelled" && (
-                      <Button variant="outline" size="sm" data-testid={`button-update-order-${order.id}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditOrder(order)}
+                        data-testid={`button-update-order-${order.id}`}
+                      >
                         Update Status
                       </Button>
                     )}
@@ -1032,6 +1114,145 @@ export default function MarketplaceOrders() {
                   </Button>
                   <Button type="submit" disabled={updateDeliveryMutation.isPending} data-testid="button-update-delivery">
                     {updateDeliveryMutation.isPending ? "Updating..." : "Update Delivery"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Order Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update Order</DialogTitle>
+            </DialogHeader>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Order Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-order-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="processing">Processing</SelectItem>
+                            <SelectItem value="ready">Ready</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="paymentStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-payment-status">
+                              <SelectValue placeholder="Select payment status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="partial">Partial</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="refunded">Refunded</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="paidAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Paid Amount (KES)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="text" placeholder="0.00" data-testid="input-edit-paid-amount" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="deliveryMethod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Delivery Method</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-delivery-method">
+                              <SelectValue placeholder="Select method" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pickup">Pickup</SelectItem>
+                            <SelectItem value="delivery">Delivery</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={editForm.control}
+                  name="deliveryAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delivery Address (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || undefined)} rows={2} data-testid="input-edit-delivery-address" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value || undefined)} rows={3} data-testid="input-edit-order-notes" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={updateOrderMutation.isPending} data-testid="button-update-order">
+                    {updateOrderMutation.isPending ? "Updating..." : "Update Order"}
                   </Button>
                 </div>
               </form>
