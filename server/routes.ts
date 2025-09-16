@@ -886,9 +886,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { items, ...orderData } = req.body;
       
       const userId = req.user.claims.sub;
+      console.log('Debug - userId:', userId);
       const currentUser = await storage.getUser(userId);
+      console.log('Debug - currentUser:', currentUser);
+      console.log('Debug - currentUser.farmId:', currentUser?.farmId);
       
       if (!currentUser?.farmId) {
+        console.log('Debug - No farmId found for user, rejecting request');
         return res.status(400).json({ message: "User must be associated with a farm to create orders" });
       }
       
