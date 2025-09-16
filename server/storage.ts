@@ -632,7 +632,7 @@ export class DatabaseStorage implements IStorage {
     const todayCrates = todayRecords.reduce((sum, record) => sum + (record.cratesProduced || 0), 0);
 
     // Get feed inventory total
-    const feedInventoryData = await this.getFeedInventory();
+    const feedInventoryData = await db.select().from(feedInventory);
     const totalFeedStock = feedInventoryData.reduce((sum, feed) => sum + parseFloat(feed.quantityKg || '0'), 0);
 
     // Get monthly revenue
@@ -918,6 +918,9 @@ export class DatabaseStorage implements IStorage {
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     const totalAmountStr = validation.totalAmount.toFixed(2);
     
+    console.log('Debug - orderData.farmId:', orderData.farmId);
+    console.log('Debug - full orderData:', orderData);
+    
     const orderInsertData = {
       orderNumber,
       farmId: orderData.farmId,
@@ -932,6 +935,8 @@ export class DatabaseStorage implements IStorage {
       paidAmount: '0.00',
       paymentStatus: 'pending' as const
     };
+    
+    console.log('Debug - orderInsertData:', orderInsertData);
 
     const [newOrder] = await db.insert(orders).values(orderInsertData).returning();
 
