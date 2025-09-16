@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
@@ -8,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { isUnauthorizedError, hasManagementRole } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { Users, Shield, UserPlus, Menu, Settings, Crown, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,7 @@ type UserFormData = z.infer<typeof userFormSchema>;
 
 export default function UsersPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { user: currentUser, isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
@@ -54,26 +56,26 @@ export default function UsersPage() {
 
   // Check if user is admin or manager
   useEffect(() => {
-    if (!isLoading && isAuthenticated && !['admin', 'manager'].includes(currentUser?.role || '')) {
+    if (!isLoading && isAuthenticated && !hasManagementRole(currentUser)) {
       toast({
         title: "Access Denied",
         description: "You need admin or manager privileges to access this page",
         variant: "destructive",
       });
       // Redirect to home page
-      window.location.href = "/";
+      setLocation("/");
       return;
     }
   }, [currentUser, isAuthenticated, isLoading, toast]);
 
   const { data: users, error: usersError } = useQuery<any[]>({
     queryKey: ["/api/users"],
-    enabled: isAuthenticated && (currentUser?.role === 'admin' || currentUser?.role === 'manager'),
+    enabled: isAuthenticated && hasManagementRole(currentUser),
   });
 
   const { data: activity, error: activityError } = useQuery<any[]>({
     queryKey: ["/api/dashboard/activity"],
-    enabled: isAuthenticated && (currentUser?.role === 'admin' || currentUser?.role === 'manager'),
+    enabled: isAuthenticated && hasManagementRole(currentUser),
   });
 
   // Handle unauthorized errors
@@ -144,7 +146,7 @@ export default function UsersPage() {
     );
   }
 
-  if (!isAuthenticated || !['admin', 'manager'].includes(currentUser?.role || '')) {
+  if (!isAuthenticated || !hasManagementRole(currentUser)) {
     return null;
   }
 
