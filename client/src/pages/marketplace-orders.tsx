@@ -449,7 +449,7 @@ export default function MarketplaceOrders() {
 
   const getDeliveryStatusIcon = (status: string) => {
     switch (status) {
-      case "scheduled": return <Calendar className="h-4 w-4" />;
+      case "scheduled": return <CalendarIcon className="h-4 w-4" />;
       case "in_transit": return <Truck className="h-4 w-4" />;
       case "delivered": return <CheckCircle className="h-4 w-4" />;
       case "failed": return <AlertCircle className="h-4 w-4" />;
@@ -1091,7 +1091,7 @@ export default function MarketplaceOrders() {
                             onClick={() => openDeliveryDialog(order)}
                             data-testid={`button-schedule-delivery-${order.id}`}
                           >
-                            <Calendar className="mr-2 h-4 w-4" />
+                            <CalendarIcon className="mr-2 h-4 w-4" />
                             Schedule Delivery
                           </Button>
                         )
