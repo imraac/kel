@@ -83,7 +83,7 @@ export default function UsersPage() {
     enabled: isAuthenticated && hasManagementRole(currentUser),
   });
 
-  const { data: activity, error: activityError } = useQuery<Activity[]>({
+  const { data: activity, error: activityError, isLoading: activityLoading } = useQuery<Activity[]>({
     queryKey: ["/api/dashboard/activity"],
     enabled: isAuthenticated && hasManagementRole(currentUser),
   });
@@ -666,25 +666,43 @@ export default function UsersPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {activity?.slice(0, 10).map((item: any, index: number) => (
-                      <div key={item.id || index} className="flex items-start space-x-3 p-3 bg-muted/50 rounded">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>
-                            {item.userId ? getInitials("User", "Name") : "SY"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm text-foreground">{item.description}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(item.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {item.type}
-                        </Badge>
+                    {activityLoading ? (
+                      // Loading skeleton
+                      <div data-testid="status-activity-loading">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <div key={index} className="flex items-start space-x-3 p-3 bg-muted/50 rounded animate-pulse">
+                            <div className="h-8 w-8 bg-muted rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-muted rounded w-3/4" />
+                              <div className="h-3 bg-muted rounded w-1/2" />
+                            </div>
+                            <div className="h-5 bg-muted rounded w-16" />
+                          </div>
+                        ))}
                       </div>
-                    )) || (
-                      <div className="text-center py-8">
+                    ) : activity && activity.length > 0 ? (
+                      // Activity items
+                      activity.slice(0, 10).map((item: any, index: number) => (
+                        <div key={item.id || index} className="flex items-start space-x-3 p-3 bg-muted/50 rounded">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>
+                              {item.userId ? getInitials("User", "Name") : "SY"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="text-sm text-foreground">{item.description}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(item.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {item.type}
+                          </Badge>
+                        </div>
+                      ))
+                    ) : (
+                      // Empty state
+                      <div data-testid="status-activity-empty" className="text-center py-8">
                         <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">No recent activity</p>
                       </div>
