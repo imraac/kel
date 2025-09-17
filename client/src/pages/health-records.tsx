@@ -117,6 +117,7 @@ export default function HealthRecords() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/health-records"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       toast({
         title: "Success",
         description: "Health record added successfully",

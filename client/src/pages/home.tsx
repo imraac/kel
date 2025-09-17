@@ -20,7 +20,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Bell, Menu, Plus, ClipboardList } from "lucide-react";
+import { Bell, Menu, Plus, ClipboardList, AlertCircle, RefreshCw } from "lucide-react";
 import { z } from "zod";
 import SimpleQuickEggForm from "@/components/forms/simple-quick-egg-form";
 
@@ -58,12 +58,12 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: metrics = {}, error: metricsError } = useQuery<any>({
+  const { data: metrics = {}, error: metricsError, isLoading: metricsLoading } = useQuery<any>({
     queryKey: ["/api/dashboard/metrics"],
     enabled: isAuthenticated,
   });
 
-  const { data: activity = [], error: activityError } = useQuery<any[]>({
+  const { data: activity = [], error: activityError, isLoading: activityLoading } = useQuery<any[]>({
     queryKey: ["/api/dashboard/activity"],
     enabled: isAuthenticated,
   });
@@ -246,36 +246,79 @@ export default function Home() {
         {/* Dashboard Content */}
         <div className="flex-1 p-4 md:p-6 space-y-6">
           {/* Key Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <MetricCard
-              title="Total Birds"
-              value={metrics?.totalBirds || 0}
-              subtitle="16 mortality this week"
-              icon="dove"
-              color="primary"
-            />
-            <MetricCard
-              title="Today's Eggs"
-              value={metrics?.todayEggs || 0}
-              subtitle={`↗ ${metrics?.layingRate || 0}% laying rate`}
-              icon="egg"
-              color="chart-3"
-            />
-            <MetricCard
-              title="Feed Stock"
-              value={`${(metrics?.totalFeedStock / 1000).toFixed(1)} tons`}
-              subtitle="⚠ 5 days remaining"
-              icon="wheat"
-              color="orange"
-            />
-            <MetricCard
-              title="Monthly Revenue"
-              value={`KSh ${metrics?.monthlyRevenue?.toLocaleString() || 0}`}
-              subtitle="↗ +12% from last month"
-              icon="coins"
-              color="green"
-            />
-          </div>
+          {metricsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} data-testid={`card-metric-loading-${i}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between animate-pulse">
+                      <div className="space-y-2">
+                        <div className="h-4 w-20 bg-muted rounded"></div>
+                        <div className="h-6 w-16 bg-muted rounded"></div>
+                        <div className="h-3 w-24 bg-muted rounded"></div>
+                      </div>
+                      <div className="w-12 h-12 bg-muted rounded-lg"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : metricsError && !isUnauthorizedError(metricsError) ? (
+            <Card data-testid="card-metrics-error">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-center space-x-3 text-center">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Failed to load dashboard metrics</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {metricsError.message || "Unable to fetch farm data. Please try again."}
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-2"
+                      onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] })}
+                      data-testid="button-retry-metrics"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <MetricCard
+                title="Total Birds"
+                value={metrics?.totalBirds || 0}
+                subtitle="16 mortality this week"
+                icon="dove"
+                color="primary"
+              />
+              <MetricCard
+                title="Today's Eggs"
+                value={metrics?.todayEggs || 0}
+                subtitle={`↗ ${metrics?.layingRate || 0}% laying rate`}
+                icon="egg"
+                color="chart-3"
+              />
+              <MetricCard
+                title="Feed Stock"
+                value={`${((metrics?.totalFeedStock || 0) / 1000).toFixed(1)} tons`}
+                subtitle="⚠ 5 days remaining"
+                icon="wheat"
+                color="orange"
+              />
+              <MetricCard
+                title="Monthly Revenue"
+                value={`KSh ${metrics?.monthlyRevenue?.toLocaleString() || 0}`}
+                subtitle="↗ +12% from last month"
+                icon="coins"
+                color="green"
+              />
+            </div>
+          )}
 
           {/* Alerts & Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -336,7 +379,58 @@ export default function Home() {
           {/* Recent Activity & Performance Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <ActivityFeed activity={activity || []} />
+              {activityLoading ? (
+                <Card data-testid="card-activity-loading">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Recent Activity</CardTitle>
+                      <div className="h-6 w-16 bg-muted rounded animate-pulse"></div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-start space-x-3 animate-pulse">
+                          <div className="w-8 h-8 bg-muted rounded-full"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-3/4 bg-muted rounded"></div>
+                            <div className="h-3 w-20 bg-muted rounded"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : activityError && !isUnauthorizedError(activityError) ? (
+                <Card data-testid="card-activity-error">
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-center space-x-3 text-center py-8">
+                      <AlertCircle className="h-8 w-8 text-destructive" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Failed to load recent activity</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {activityError.message || "Unable to fetch activity data. Please try again."}
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] })}
+                          data-testid="button-retry-activity"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          Retry
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <ActivityFeed activity={activity || []} />
+              )}
             </div>
             <PerformanceSummary />
           </div>
