@@ -64,6 +64,10 @@ async function upsertUser(
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+  
+  // Auto-link any existing customer profiles with matching email
+  // This handles cases where customers registered via public endpoint before logging in
+  await storage.linkCustomerByEmail(claims["email"], claims["sub"]);
 }
 
 export async function setupAuth(app: Express) {
@@ -102,6 +106,11 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    // Store returnTo in session for callback redirect
+    if (req.query.returnTo) {
+      (req.session as any).returnTo = req.query.returnTo;
+    }
+    
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
@@ -110,7 +119,7 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
+      successReturnToOrRedirect: (req.session as any)?.returnTo || "/",
       failureRedirect: "/api/login",
     })(req, res, next);
   });

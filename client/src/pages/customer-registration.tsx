@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +19,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User, Mail, Phone, MapPin, CheckCircle, Users } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { ArrowLeft, User, Mail, Phone, MapPin, CheckCircle, Users, ShoppingCart, LayoutDashboard } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const customerRegistrationSchema = z.object({
@@ -43,6 +44,29 @@ export default function CustomerRegistration() {
   const [isSuccess, setIsSuccess] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  // Handle completion of registration after login redirect
+  useEffect(() => {
+    const savedFormData = sessionStorage.getItem('customerRegistrationData');
+    if (savedFormData && isAuthenticated && !isLoading) {
+      try {
+        const formData = JSON.parse(savedFormData);
+        // Clear saved data
+        sessionStorage.removeItem('customerRegistrationData');
+        
+        // Submit the saved form data
+        authenticatedRegistrationMutation.mutate(formData);
+      } catch (error) {
+        console.error('Error processing saved registration data:', error);
+        toast({
+          title: "Registration Error",
+          description: "There was an issue completing your registration. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [isAuthenticated, isLoading]);
 
   const form = useForm<CustomerRegistrationForm>({
     resolver: zodResolver(customerRegistrationSchema),
@@ -62,23 +86,64 @@ export default function CustomerRegistration() {
     },
   });
 
-  const registrationMutation = useMutation({
+  // Helper function to transform form data
+  const transformFormData = (data: CustomerRegistrationForm) => ({
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    address: data.address,
+    location: `${data.city}, ${data.state} ${data.zipCode}`,
+    customerType: data.customerType,
+    notes: [
+      data.notes,
+      data.businessName ? `Business: ${data.businessName}` : '',
+      data.businessRegistration ? `Registration: ${data.businessRegistration}` : '',
+      data.preferredDeliveryMethod ? `Preferred delivery: ${data.preferredDeliveryMethod}` : ''
+    ].filter(Boolean).join('\n'),
+  });
+
+  // Authenticated registration (uses protected endpoint)
+  const authenticatedRegistrationMutation = useMutation({
     mutationFn: async (data: CustomerRegistrationForm) => {
-      // Transform frontend form data to match backend schema
-      const customerData = {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        location: `${data.city}, ${data.state} ${data.zipCode}`, // Combine into single location field
-        customerType: data.customerType,
-        notes: [
-          data.notes,
-          data.businessName ? `Business: ${data.businessName}` : '',
-          data.businessRegistration ? `Registration: ${data.businessRegistration}` : '',
-          data.preferredDeliveryMethod ? `Preferred delivery: ${data.preferredDeliveryMethod}` : ''
-        ].filter(Boolean).join('\n'), // Combine all notes
-      };
+      const customerData = transformFormData(data);
+      
+      const response = await fetch('/api/customers/me', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(customerData),
+        credentials: 'include', // Include cookies for authentication
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsSuccess(true);
+      toast({
+        title: "Registration Successful!",
+        description: "Your customer profile has been created! You can now place orders.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/customers/me'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Public registration (legacy endpoint for backwards compatibility)
+  const publicRegistrationMutation = useMutation({
+    mutationFn: async (data: CustomerRegistrationForm) => {
+      const customerData = transformFormData(data);
       
       const response = await fetch('/api/public/customers/register', {
         method: 'POST',
@@ -98,8 +163,8 @@ export default function CustomerRegistration() {
     onSuccess: () => {
       setIsSuccess(true);
       toast({
-        title: "Registration Successful!",
-        description: "Welcome to our marketplace! You can now contact farms directly to place orders.",
+        title: "Registration Submitted!",
+        description: "Please log in to activate your account and start placing orders.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
     },
@@ -115,7 +180,19 @@ export default function CustomerRegistration() {
   const watchCustomerType = form.watch("customerType");
 
   const onSubmit = (data: CustomerRegistrationForm) => {
-    registrationMutation.mutate(data);
+    if (isAuthenticated) {
+      // User is authenticated - submit directly to protected endpoint
+      authenticatedRegistrationMutation.mutate(data);
+    } else {
+      // User not authenticated - save form data and redirect to login
+      sessionStorage.setItem('customerRegistrationData', JSON.stringify(data));
+      toast({
+        title: "Login Required",
+        description: "Please log in to complete your customer registration.",
+      });
+      // Redirect to login with return path to come back to registration page
+      window.location.href = '/api/login?returnTo=' + encodeURIComponent('/customer-registration');
+    }
   };
 
   if (isSuccess) {
@@ -142,18 +219,39 @@ export default function CustomerRegistration() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                onClick={() => window.location.href = "/api/login"}
-                data-testid="button-login"
-              >
-                Login to Your Account
-              </Button>
-              <Link to="/marketplace">
-                <Button variant="outline" size="lg" data-testid="button-browse-marketplace">
-                  Browse Marketplace
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link to="/">
+                    <Button size="lg" data-testid="button-dashboard">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Go to Dashboard
+                    </Button>
+                  </Link>
+                  <Link to="/marketplace">
+                    <Button variant="outline" size="lg" data-testid="button-browse-marketplace">
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      Browse Marketplace
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    size="lg" 
+                    onClick={() => window.location.href = "/api/login"}
+                    data-testid="button-login"
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Login to Your Account
+                  </Button>
+                  <Link to="/marketplace">
+                    <Button variant="outline" size="lg" data-testid="button-browse-marketplace">
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      Browse Marketplace
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -424,10 +522,10 @@ export default function CustomerRegistration() {
                   type="submit"
                   size="lg"
                   className="w-full"
-                  disabled={registrationMutation.isPending}
+                  disabled={authenticatedRegistrationMutation.isPending || publicRegistrationMutation.isPending}
                   data-testid="button-register"
                 >
-                  {registrationMutation.isPending ? "Registering..." : "Register as Customer"}
+                  {(authenticatedRegistrationMutation.isPending || publicRegistrationMutation.isPending) ? "Registering..." : "Register as Customer"}
                 </Button>
               </form>
             </Form>

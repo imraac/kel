@@ -1113,6 +1113,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Protected customer profile endpoints
+  app.get('/api/customers/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const customer = await storage.getCustomerByUserId(userId);
+      
+      if (!customer) {
+        return res.status(404).json({ message: "Customer profile not found" });
+      }
+      
+      res.json(customer);
+    } catch (error) {
+      console.error("Error fetching customer profile:", error);
+      res.status(500).json({ message: "Failed to fetch customer profile" });
+    }
+  });
+
+  app.post('/api/customers/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      // Validate customer data but ignore client-provided email/userId
+      const validatedData = insertCustomerSchema.parse({
+        ...req.body,
+        email: userEmail, // Use authenticated user's email
+        status: 'active'  // Auto-activate authenticated customers
+      });
+      
+      // Create or update customer profile for authenticated user
+      const customer = await storage.upsertCustomerForUser(userId, validatedData);
+      res.status(201).json(customer);
+    } catch (error) {
+      console.error("Error creating/updating customer profile:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create customer profile" });
+      }
+    }
+  });
+
+  app.put('/api/customers/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      // Check if customer profile exists
+      const existingCustomer = await storage.getCustomerByUserId(userId);
+      if (!existingCustomer) {
+        return res.status(404).json({ message: "Customer profile not found. Use POST to create." });
+      }
+      
+      // Validate customer data but ignore client-provided email/userId
+      const validatedData = insertCustomerSchema.parse({
+        ...req.body,
+        email: userEmail, // Use authenticated user's email
+        status: 'active'  // Maintain active status
+      });
+      
+      // Update customer profile
+      const customer = await storage.updateCustomer(existingCustomer.id, validatedData);
+      res.json(customer);
+    } catch (error) {
+      console.error("Error updating customer profile:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update customer profile" });
+      }
+    }
+  });
+
   // Customer self-registration endpoint
   app.post('/api/public/customers/register', async (req, res) => {
     try {
