@@ -53,6 +53,7 @@ export default function ChickBrooding() {
       });
       // Invalidate queries to refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks", { includeDeactivated: true }] });
     },
     onError: (error: any) => {
       toast({
@@ -65,6 +66,33 @@ export default function ChickBrooding() {
 
   const handleDeactivateFlock = (flockId: string, flockName: string) => {
     deactivateFlockMutation.mutate(flockId);
+  };
+
+  // Reactivate flock mutation (admin-only)
+  const reactivateFlockMutation = useMutation({
+    mutationFn: async (flockId: string) => {
+      return apiRequest('PATCH', `/api/flocks/${flockId}/reactivate`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Flock Reactivated",
+        description: "The flock has been successfully reactivated and restored to active status.",
+      });
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks", { includeDeactivated: true }] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Reactivation Failed",
+        description: error?.message || "Failed to reactivate flock. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleReactivateFlock = (flockId: string, flockName: string) => {
+    reactivateFlockMutation.mutate(flockId);
   };
 
   // Redirect to login if not authenticated
@@ -87,6 +115,12 @@ export default function ChickBrooding() {
     enabled: isAuthenticated,
   });
 
+  // Query for deactivated flocks (admin only)
+  const { data: deactivatedFlocks = [], error: deactivatedFlocksError } = useQuery<any[]>({
+    queryKey: ["/api/flocks", { includeDeactivated: true }],
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+
   const { data: dailyRecords = [], error: recordsError } = useQuery<any[]>({
     queryKey: ["/api/daily-records"],
     enabled: isAuthenticated,
@@ -94,7 +128,9 @@ export default function ChickBrooding() {
 
   // Handle unauthorized errors
   useEffect(() => {
-    if ((flocksError && isUnauthorizedError(flocksError)) || (recordsError && isUnauthorizedError(recordsError))) {
+    if ((flocksError && isUnauthorizedError(flocksError)) || 
+        (recordsError && isUnauthorizedError(recordsError)) || 
+        (deactivatedFlocksError && isUnauthorizedError(deactivatedFlocksError))) {
       toast({
         title: "Unauthorized",
         description: "You are logged out. Logging in again...",
@@ -104,7 +140,7 @@ export default function ChickBrooding() {
         window.location.href = "/api/login";
       }, 500);
     }
-  }, [flocksError, recordsError, toast]);
+  }, [flocksError, recordsError, deactivatedFlocksError, toast]);
 
   if (isLoading) {
     return (
@@ -121,8 +157,8 @@ export default function ChickBrooding() {
     return null;
   }
 
-  // Filter flocks to show only brooding flocks that are not deactivated
-  const broodingFlocks = flocks.filter((flock: any) => flock.status === 'brooding' && flock.status !== 'deactivated');
+  // Filter flocks to show only brooding flocks
+  const broodingFlocks = flocks.filter((flock: any) => flock.status === 'brooding');
   const broodingRecords = dailyRecords.filter((record: any) => 
     record.temperature || record.lightingHours
   ) || [];
@@ -236,6 +272,9 @@ export default function ChickBrooding() {
               <TabsTrigger value="flocks">Brooding Flocks</TabsTrigger>
               <TabsTrigger value="records">Daily Records</TabsTrigger>
               <TabsTrigger value="schedule">Brooding Schedule</TabsTrigger>
+              {user?.role === 'admin' && (
+                <TabsTrigger value="deactivated">Deactivated Flocks</TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="flocks">
@@ -327,18 +366,52 @@ export default function ChickBrooding() {
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Deactivate Flock</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to deactivate "{flock.name}"? This will hide the flock from the main list. This action can only be performed by administrators.
+                                      <div className="flex items-center space-x-2">
+                                        <AlertCircle className="h-6 w-6 text-destructive" />
+                                        <AlertDialogTitle className="text-destructive">
+                                          ⚠️ Permanently Deactivate Flock
+                                        </AlertDialogTitle>
+                                      </div>
+                                      <AlertDialogDescription className="space-y-3 pt-2">
+                                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                                          <p className="font-semibold text-destructive-foreground">
+                                            Warning: This is a destructive action!
+                                          </p>
+                                        </div>
+                                        <p>
+                                          You are about to <strong>permanently deactivate</strong> the flock <strong>"{flock.name}"</strong>.
+                                        </p>
+                                        <div className="space-y-2 text-sm">
+                                          <p className="flex items-start space-x-2">
+                                            <span className="text-destructive font-bold">•</span>
+                                            <span>This flock will be <strong>hidden</strong> from all active flock lists</span>
+                                          </p>
+                                          <p className="flex items-start space-x-2">
+                                            <span className="text-destructive font-bold">•</span>
+                                            <span>All historical data will be <strong>preserved</strong> but not easily accessible</span>
+                                          </p>
+                                          <p className="flex items-start space-x-2">
+                                            <span className="text-destructive font-bold">•</span>
+                                            <span>Only administrators can <strong>recover</strong> this flock later</span>
+                                          </p>
+                                          <p className="flex items-start space-x-2">
+                                            <span className="text-destructive font-bold">•</span>
+                                            <span>Farm staff will <strong>lose access</strong> to this flock's data</span>
+                                          </p>
+                                        </div>
+                                        <p className="text-muted-foreground text-sm mt-4">
+                                          Consider if you really need to deactivate this flock. This action should only be used for permanently discontinued flocks.
+                                        </p>
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogFooter className="flex-col space-y-2 sm:flex-row sm:space-y-0">
+                                      <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
                                       <AlertDialogAction 
                                         onClick={() => handleDeactivateFlock(flock.id, flock.name)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
                                       >
-                                        Deactivate Flock
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Yes, Permanently Deactivate
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -986,6 +1059,148 @@ export default function ChickBrooding() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Deactivated Flocks Tab - Admin Only */}
+            {user?.role === 'admin' && (
+              <TabsContent value="deactivated">
+                <Card data-testid="card-deactivated-flocks">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                      <span>Deactivated Flocks</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {deactivatedFlocks.filter((flock: any) => flock.status === 'deactivated').length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="flex flex-col items-center">
+                          <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-muted-foreground">No deactivated flocks found</p>
+                          <p className="text-sm text-muted-foreground mt-2">Deactivated flocks will appear here for recovery</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <div className="flex items-start space-x-3">
+                            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                            <div>
+                              <h3 className="font-medium text-amber-800 dark:text-amber-200">Recovery Zone</h3>
+                              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                                These flocks have been deactivated and are hidden from normal operations. 
+                                You can reactivate them to restore full functionality.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {deactivatedFlocks.filter((flock: any) => flock.status === 'deactivated').map((flock: any) => (
+                            <Card key={flock.id} data-testid={`card-deactivated-flock-${flock.id}`} className="border-dashed border-muted-foreground/20">
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h3 className="font-semibold text-muted-foreground">{flock.name}</h3>
+                                  <Badge variant="outline" className="text-muted-foreground border-muted-foreground/50">
+                                    Deactivated
+                                  </Badge>
+                                </div>
+                                <div className="space-y-2 text-sm text-muted-foreground">
+                                  <div className="flex justify-between">
+                                    <span>Breed:</span>
+                                    <span>{flock.breed}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Total Birds:</span>
+                                    <span>{flock.currentCount.toLocaleString()}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Hatch Date:</span>
+                                    <span>{new Date(flock.hatchDate).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2 mt-4">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="flex-1" 
+                                    onClick={() => handleViewDetails(flock)}
+                                    data-testid={`button-view-deactivated-flock-${flock.id}`}
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Details
+                                  </Button>
+                                  
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button 
+                                        size="sm" 
+                                        className="flex-1 bg-green-600 hover:bg-green-700"
+                                        disabled={reactivateFlockMutation.isPending}
+                                        data-testid={`button-reactivate-flock-${flock.id}`}
+                                      >
+                                        <Scale className="h-4 w-4 mr-2" />
+                                        {reactivateFlockMutation.isPending ? "Reactivating..." : "Reactivate"}
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <div className="flex items-center space-x-2">
+                                          <Scale className="h-6 w-6 text-green-600" />
+                                          <AlertDialogTitle className="text-green-600">
+                                            ✅ Reactivate Flock
+                                          </AlertDialogTitle>
+                                        </div>
+                                        <AlertDialogDescription className="space-y-3 pt-2">
+                                          <p>
+                                            You are about to <strong>reactivate</strong> the flock <strong>"{flock.name}"</strong>.
+                                          </p>
+                                          <div className="space-y-2 text-sm">
+                                            <p className="flex items-start space-x-2">
+                                              <span className="text-green-600 font-bold">•</span>
+                                              <span>This flock will be <strong>restored</strong> to active status</span>
+                                            </p>
+                                            <p className="flex items-start space-x-2">
+                                              <span className="text-green-600 font-bold">•</span>
+                                              <span>It will <strong>reappear</strong> in the main brooding flocks list</span>
+                                            </p>
+                                            <p className="flex items-start space-x-2">
+                                              <span className="text-green-600 font-bold">•</span>
+                                              <span>Farm staff will <strong>regain access</strong> to all flock data</span>
+                                            </p>
+                                            <p className="flex items-start space-x-2">
+                                              <span className="text-green-600 font-bold">•</span>
+                                              <span>All historical records will remain <strong>intact</strong></span>
+                                            </p>
+                                          </div>
+                                          <p className="text-muted-foreground text-sm mt-4">
+                                            This action will restore the flock to full operational status.
+                                          </p>
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter className="flex-col space-y-2 sm:flex-row sm:space-y-0">
+                                        <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                          onClick={() => handleReactivateFlock(flock.id, flock.name)}
+                                          className="bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto"
+                                        >
+                                          <Scale className="h-4 w-4 mr-2" />
+                                          Yes, Reactivate Flock
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </main>

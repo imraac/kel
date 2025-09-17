@@ -272,9 +272,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Flock routes
-  app.get('/api/flocks', isAuthenticated, async (req, res) => {
+  app.get('/api/flocks', isAuthenticated, async (req: any, res) => {
     try {
-      const flocks = await storage.getFlocks();
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      // Parse query parameter for including deactivated flocks
+      const includeDeactivated = req.query.includeDeactivated === 'true';
+      
+      // Only admins can view deactivated flocks
+      if (includeDeactivated && currentUser?.role !== 'admin') {
+        return res.status(403).json({ 
+          message: "Access denied. Administrator role required to view deactivated flocks." 
+        });
+      }
+      
+      const flocks = await storage.getFlocks(includeDeactivated);
       res.json(flocks);
     } catch (error) {
       console.error("Error fetching flocks:", error);
@@ -389,6 +402,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deactivating flock:", error);
       res.status(500).json({ message: "Failed to deactivate flock" });
+    }
+  });
+
+  // Reactivate flock (admin-only)
+  app.patch('/api/flocks/:id/reactivate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      // Only administrators can reactivate flocks
+      if (currentUser?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied. Administrator role required to reactivate flocks." });
+      }
+
+      // Get the existing flock
+      const existingFlock = await storage.getFlockById(req.params.id);
+      if (!existingFlock) {
+        return res.status(404).json({ message: "Flock not found" });
+      }
+
+      // Check if flock is actually deactivated
+      if (existingFlock.status !== 'deactivated') {
+        return res.status(400).json({ message: "Flock is not currently deactivated and cannot be reactivated." });
+      }
+
+      // Update the flock status to brooding (default active state for new flocks)
+      const reactivatedFlock = await storage.updateFlock(req.params.id, { 
+        status: 'brooding' 
+      });
+      
+      res.json({ 
+        message: "Flock reactivated successfully", 
+        flock: reactivatedFlock 
+      });
+    } catch (error) {
+      console.error("Error reactivating flock:", error);
+      res.status(500).json({ message: "Failed to reactivate flock" });
     }
   });
 
