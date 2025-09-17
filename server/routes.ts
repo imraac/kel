@@ -22,11 +22,21 @@ import { z } from "zod";
 import { normalizeNumericFields } from "./utils/numbers";
 import { safeDate } from "./utils/dates";
 
-// Farm context resolution helper - handles admin vs non-admin users
-function requireFarmContext(req: any, currentUser: any): string {
+// Farm context resolution helper - handles admin vs non-admin users with flockId fallback
+async function requireFarmContext(req: any, currentUser: any): Promise<string> {
   if (currentUser.role === 'admin') {
-    // Admin users must provide explicit farmId in request body or query
-    const farmId = req.body.farmId || req.query.farmId;
+    // Admin users: try explicit farmId first, then derive from flockId
+    let farmId = req.body.farmId || req.query.farmId;
+    
+    if (!farmId && req.body.flockId) {
+      // Fallback: derive farmId from flockId
+      const flock = await storage.getFlockById(req.body.flockId);
+      if (!flock) {
+        throw new Error("Invalid flockId: flock not found");
+      }
+      farmId = flock.farmId;
+    }
+    
     if (!farmId) {
       throw new Error("Admin must specify farmId in request body or query parameter");
     }
@@ -36,6 +46,18 @@ function requireFarmContext(req: any, currentUser: any): string {
     if (!currentUser.farmId) {
       throw new Error("User must be associated with a farm");
     }
+    
+    // If flockId is provided, validate it belongs to user's farm (tenant isolation)
+    if (req.body.flockId) {
+      const flock = await storage.getFlockById(req.body.flockId);
+      if (!flock) {
+        throw new Error("Invalid flockId: flock not found");
+      }
+      if (flock.farmId !== currentUser.farmId) {
+        throw new Error("Access denied: flock does not belong to your farm");
+      }
+    }
+    
     return currentUser.farmId;
   }
 }
@@ -320,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -487,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -569,7 +591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -590,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -634,7 +656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -654,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -721,7 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -785,7 +807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -897,7 +919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
@@ -1002,7 +1024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUser = await storage.getUser(userId);
       let farmId;
       try {
-        farmId = requireFarmContext(req, currentUser);
+        farmId = await requireFarmContext(req, currentUser);
       } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
       }
