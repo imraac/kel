@@ -2,6 +2,8 @@ import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 import {
   index,
+  uniqueIndex,
+  check,
   jsonb,
   pgTable,
   timestamp,
@@ -33,11 +35,17 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("staff"), // admin, farm_owner, manager, staff, customer
-  farmId: varchar("farm_id"), // null for customers and global admin
+  role: varchar("role").notNull().default("customer"), // admin, farm_owner, manager, staff, customer
+  farmId: varchar("farm_id").references(() => farms.id, { onDelete: "restrict", onUpdate: "cascade" }), // null for customers and global admin
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_users_farm_id").on(table.farmId),
+  check("chk_users_role_farm", sql`
+    (role in ('customer', 'admin') and farm_id is null) or 
+    (role in ('farm_owner', 'manager', 'staff') and farm_id is not null)
+  `),
+]);
 
 // Farms table - multi-tenant support
 export const farms = pgTable("farms", {
@@ -70,7 +78,7 @@ export const farms = pgTable("farms", {
 // Flocks table
 export const flocks = pgTable("flocks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  farmId: varchar("farm_id").notNull(), // Associate with specific farm
+  farmId: varchar("farm_id").notNull().references(() => farms.id, { onDelete: "restrict", onUpdate: "cascade" }), // Associate with specific farm
   name: varchar("name").notNull(),
   breed: varchar("breed"),
   initialCount: integer("initial_count").notNull(),
@@ -79,14 +87,17 @@ export const flocks = pgTable("flocks", {
   status: varchar("status").notNull().default("brooding"), // brooding, laying, retired, deactivated
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_flocks_farm_id").on(table.farmId),
+  check("chk_flocks_counts", sql`initial_count >= 0 and current_count >= 0`),
+]);
 
 // Daily records table
 export const dailyRecords = pgTable("daily_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  flockId: varchar("flock_id").notNull(),
+  flockId: varchar("flock_id").notNull().references(() => flocks.id, { onDelete: "cascade" }),
   recordDate: date("record_date").notNull(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   
   // Egg production
   eggsCollected: integer("eggs_collected"),
@@ -102,8 +113,8 @@ export const dailyRecords = pgTable("daily_records", {
   feedType: varchar("feed_type"),
   
   // Brooding data
-  temperature: decimal("temperature", { precision: 4, scale: 1 }),
-  lightingHours: decimal("lighting_hours", { precision: 3, scale: 1 }),
+  temperature: decimal("temperature", { precision: 5, scale: 2 }),
+  lightingHours: decimal("lighting_hours", { precision: 4, scale: 2 }),
   
   // Weight tracking
   averageWeight: decimal("average_weight", { precision: 6, scale: 2 }),
@@ -114,52 +125,77 @@ export const dailyRecords = pgTable("daily_records", {
   // Review system
   reviewStatus: varchar("review_status").notNull().default("approved"), // approved, pending_review, rejected
   isDuplicate: boolean("is_duplicate").notNull().default(false),
-  duplicateOfId: varchar("duplicate_of_id"), // references daily_records.id
-  reviewerId: varchar("reviewer_id"), // user who reviewed the entry
+  duplicateOfId: varchar("duplicate_of_id"), // self-reference - will add constraint later
+  reviewerId: varchar("reviewer_id").references(() => users.id, { onDelete: "set null" }),
   reviewNote: text("review_note"),
-  reviewedAt: timestamp("reviewed_at"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_daily_records_flock_id").on(table.flockId),
+  index("idx_daily_records_user_id").on(table.userId),
+  uniqueIndex("uniq_daily_records_flock_date_active").on(table.flockId, table.recordDate).where(sql`is_duplicate = false`),
+  check("chk_daily_records_nonneg", sql`
+    eggs_collected >= 0 and 
+    broken_eggs >= 0 and 
+    crates_produced >= 0 and 
+    mortality_count >= 0
+  `),
+]);
 
 // Sales table
 export const sales = pgTable("sales", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  farmId: varchar("farm_id").notNull(), // Associate with specific farm
+  farmId: varchar("farm_id").notNull().references(() => farms.id, { onDelete: "restrict", onUpdate: "cascade" }), // Associate with specific farm
   saleDate: date("sale_date").notNull(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   customerName: varchar("customer_name"),
   cratesSold: integer("crates_sold").notNull(),
-  pricePerCrate: decimal("price_per_crate", { precision: 10, scale: 2 }).notNull(),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  pricePerCrate: decimal("price_per_crate", { precision: 12, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
   paymentStatus: varchar("payment_status").notNull().default("pending"), // pending, paid, overdue
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_sales_farm_id").on(table.farmId),
+  index("idx_sales_user_id").on(table.userId),
+  check("chk_sales_nonneg", sql`
+    crates_sold >= 0 and 
+    price_per_crate >= 0 and 
+    total_amount >= 0
+  `),
+]);
 
 // Feed inventory table
 export const feedInventory = pgTable("feed_inventory", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  farmId: varchar("farm_id").notNull(), // Associate with specific farm
+  farmId: varchar("farm_id").notNull().references(() => farms.id, { onDelete: "restrict", onUpdate: "cascade" }), // Associate with specific farm
   feedType: varchar("feed_type").notNull(),
   supplier: varchar("supplier"),
-  quantityKg: decimal("quantity_kg", { precision: 10, scale: 2 }).notNull(),
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
+  quantityKg: decimal("quantity_kg", { precision: 10, scale: 3 }).notNull(), // finer kg fractions
+  unitPrice: decimal("unit_price", { precision: 12, scale: 2 }),
   purchaseDate: date("purchase_date"),
   expiryDate: date("expiry_date"),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_feed_inventory_farm_id").on(table.farmId),
+  index("idx_feed_inventory_user_id").on(table.userId),
+  check("chk_feed_inventory_nonneg", sql`
+    quantity_kg >= 0 and 
+    (unit_price is null or unit_price >= 0)
+  `),
+]);
 
 // Health records table
 export const healthRecords = pgTable("health_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  flockId: varchar("flock_id").notNull(),
+  flockId: varchar("flock_id").notNull().references(() => flocks.id, { onDelete: "cascade" }),
   recordDate: date("record_date").notNull(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   recordType: varchar("record_type").notNull(), // vaccination, medication, treatment, checkup
   title: varchar("title").notNull(),
   description: text("description"),
@@ -167,27 +203,35 @@ export const healthRecords = pgTable("health_records", {
   dosage: varchar("dosage"),
   administeredBy: varchar("administered_by"),
   nextDueDate: date("next_due_date"),
-  cost: decimal("cost", { precision: 10, scale: 2 }),
+  cost: decimal("cost", { precision: 12, scale: 2 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_health_records_flock_id").on(table.flockId),
+  index("idx_health_records_user_id").on(table.userId),
+  check("chk_health_records_cost", sql`cost is null or cost >= 0`),
+]);
 
 // Expenses table
 export const expenses = pgTable("expenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  farmId: varchar("farm_id").notNull(), // Associate with specific farm
+  farmId: varchar("farm_id").notNull().references(() => farms.id, { onDelete: "restrict", onUpdate: "cascade" }), // Associate with specific farm
   expenseDate: date("expense_date").notNull(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   category: varchar("category").notNull(), // feed, medication, labor, utilities, equipment, other
   description: varchar("description").notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   supplier: varchar("supplier"),
   receiptNumber: varchar("receipt_number"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_expenses_farm_id").on(table.farmId),
+  index("idx_expenses_user_id").on(table.userId),
+  check("chk_expenses_amount", sql`amount >= 0`),
+]);
 
 // Marketplace tables
 
@@ -209,55 +253,80 @@ export const customers = pgTable("customers", {
 // Products table
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  farmId: varchar("farm_id").notNull(), // Associate with specific farm
+  farmId: varchar("farm_id").notNull().references(() => farms.id, { onDelete: "restrict", onUpdate: "cascade" }), // Associate with specific farm
   name: varchar("name").notNull(),
   category: varchar("category").notNull(), // eggs, chickens, feed
   description: text("description"),
   unit: varchar("unit").notNull(), // crates, pieces, kg
-  currentPrice: decimal("current_price", { precision: 10, scale: 2 }).notNull(),
+  currentPrice: decimal("current_price", { precision: 12, scale: 2 }).notNull(),
   minOrderQuantity: integer("min_order_quantity").default(1),
   stockQuantity: integer("stock_quantity").default(0),
   isAvailable: boolean("is_available").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_products_farm_id").on(table.farmId),
+  check("chk_products_nonneg", sql`
+    current_price >= 0 and 
+    min_order_quantity >= 0 and 
+    stock_quantity >= 0
+  `),
+]);
 
 // Orders table
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderNumber: varchar("order_number").notNull().unique(),
-  farmId: varchar("farm_id").notNull(), // Associate with specific farm
-  customerId: varchar("customer_id").notNull(),
-  userId: varchar("user_id").notNull(), // staff who processed the order
-  orderDate: timestamp("order_date").defaultNow(),
+  farmId: varchar("farm_id").notNull().references(() => farms.id, { onDelete: "restrict", onUpdate: "cascade" }), // Associate with specific farm
+  customerId: varchar("customer_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }), // staff who processed the order
+  orderDate: timestamp("order_date", { withTimezone: true }).defaultNow(),
   requiredDate: date("required_date"),
   status: varchar("status").notNull().default("pending"), // pending, confirmed, processing, ready, delivered, cancelled
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  paidAmount: decimal("paid_amount", { precision: 12, scale: 2 }).default("0"),
   paymentStatus: varchar("payment_status").notNull().default("pending"), // pending, partial, paid
   deliveryMethod: varchar("delivery_method").notNull(), // pickup, delivery
   deliveryAddress: text("delivery_address"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_orders_farm_id").on(table.farmId),
+  index("idx_orders_customer_id").on(table.customerId),
+  index("idx_orders_user_id").on(table.userId),
+  check("chk_orders_amounts", sql`
+    total_amount >= 0 and 
+    paid_amount >= 0 and 
+    paid_amount <= total_amount
+  `),
+]);
 
 // Order items table
 export const orderItems = pgTable("order_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderId: varchar("order_id").notNull(),
-  productId: varchar("product_id").notNull(),
+  orderId: varchar("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
   quantity: integer("quantity").notNull(),
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
-  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  unitPrice: decimal("unit_price", { precision: 12, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_order_items_order_id").on(table.orderId),
+  index("idx_order_items_product_id").on(table.productId),
+  check("chk_order_items_nonneg", sql`
+    quantity > 0 and 
+    unit_price >= 0 and 
+    total_price >= 0
+  `),
+]);
 
 // Deliveries table
 export const deliveries = pgTable("deliveries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderId: varchar("order_id").notNull(),
-  driverId: varchar("driver_id"), // could be staff member
+  orderId: varchar("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  driverId: varchar("driver_id").references(() => users.id, { onDelete: "set null" }), // could be staff member
   vehicleInfo: varchar("vehicle_info"),
   scheduledDate: timestamp("scheduled_date"),
   actualDate: timestamp("actual_date"),
@@ -267,7 +336,10 @@ export const deliveries = pgTable("deliveries", {
   recipientPhone: varchar("recipient_phone"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_deliveries_order_id").on(table.orderId),
+  index("idx_deliveries_driver_id").on(table.driverId),
+]);
 
 // Notifications table
 export const notifications = pgTable("notifications", {

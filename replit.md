@@ -44,13 +44,22 @@ Preferred communication style: Simple, everyday language.
 - **Font Services**: Google Fonts for typography (Architects Daughter, DM Sans, Fira Code, Geist Mono)
 - **Build & Deployment**: Replit hosting with automatic deployment and cartographer integration for development
 
+### Database Security & Data Integrity (Updated September 2025)
+- **Foreign Key Constraints**: All tables enforce referential integrity at database level with appropriate CASCADE/RESTRICT behaviors
+- **Multi-Tenant Security**: Role-based validation ensures staff/managers belong to farms while customers/admins remain global
+- **Enhanced Precision**: Money fields upgraded to DECIMAL(12,2) for better accuracy and future-proofing against inflation
+- **Performance Indexing**: Foreign key columns indexed for optimal query performance and constraint validation
+- **Data Validation**: CHECK constraints prevent negative values in financial fields and enforce business logic
+- **Orphan Prevention**: Database-level constraints prevent orphaned records and maintain data consistency
+
 ### Key Features Architecture
 - **Dashboard**: Real-time metrics aggregation with performance analytics
-- **Flock Management**: Complete lifecycle tracking from brooding to production
-- **Daily Records**: Temperature, lighting, mortality, and production logging
-- **Sales Tracking**: Egg sales with pricing and customer management
-- **Feed Inventory**: Stock levels, consumption tracking, and low-stock alerts
-- **Health Records**: Vaccination schedules, treatments, and veterinary care tracking
-- **Expense Management**: Operating cost tracking with categorization
+- **Flock Management**: Complete lifecycle tracking from brooding to production with data integrity constraints
+- **Daily Records**: Temperature, lighting, mortality, and production logging with duplicate prevention
+- **Sales Tracking**: Egg sales with pricing and customer management, secured by foreign key relationships
+- **Feed Inventory**: Stock levels, consumption tracking, and low-stock alerts with farm-level isolation
+- **Health Records**: Vaccination schedules, treatments, and veterinary care tracking linked to specific flocks
+- **Expense Management**: Operating cost tracking with categorization and enhanced monetary precision
 - **Reporting**: Comprehensive analytics with date range filtering and export capabilities
-- **User Management**: Role-based access control with user profile management
+- **User Management**: Multi-tenant role-based access control with database-enforced farm relationships
+- **Marketplace**: Customer-facing ordering system with referential integrity across orders, products, and deliveries
