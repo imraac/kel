@@ -191,23 +191,26 @@ export default function FeedManagement() {
 
   const createFeedMutation = useMutation({
     mutationFn: async (data: FeedFormData) => {
-      // Calculate final quantity in kg
-      let finalQuantityKg: number;
+      // Calculate final quantity in kg as string (backend expects strings)
+      let finalQuantityKgStr: string;
       if (data.recordType === "bags") {
         const bagSize = parseFloat(data.bagSize || "0");
         const numberOfBags = parseFloat(data.numberOfBags || "0");
-        finalQuantityKg = bagSize * numberOfBags;
+        const calculatedKg = bagSize * numberOfBags;
+        finalQuantityKgStr = calculatedKg.toFixed(2); // Convert to string with 2 decimal places
       } else {
-        finalQuantityKg = parseFloat(data.quantityKg || "0");
+        // Use the direct kg input as string
+        const quantity = parseFloat(data.quantityKg || "0");
+        finalQuantityKgStr = quantity.toFixed(2);
       }
 
       const feedData = {
         feedType: data.feedType,
-        supplier: data.supplier,
-        quantityKg: finalQuantityKg,
-        unitPrice: data.unitPrice ? Number(data.unitPrice) : undefined,
+        supplier: data.supplier || undefined, // Convert empty string to undefined
+        quantityKg: finalQuantityKgStr,
+        unitPrice: data.unitPrice && data.unitPrice.trim() !== "" ? data.unitPrice : undefined,
         purchaseDate: data.purchaseDate,
-        expiryDate: data.expiryDate,
+        expiryDate: data.expiryDate && data.expiryDate.trim() !== "" ? data.expiryDate : undefined,
       };
       await apiRequest("POST", "/api/feed-inventory", feedData);
     },
