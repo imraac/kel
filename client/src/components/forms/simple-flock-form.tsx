@@ -146,6 +146,7 @@ export default function SimpleFlockForm({ onSuccess }: SimpleFlockFormProps) {
                 <SelectContent>
                   <SelectItem value="rhode-island-red">Rhode Island Red</SelectItem>
                   <SelectItem value="leghorn">Leghorn</SelectItem>
+                  <SelectItem value="hy-line-brown">Hy-Line Brown</SelectItem>
                   <SelectItem value="sussex">Sussex</SelectItem>
                   <SelectItem value="plymouth-rock">Plymouth Rock</SelectItem>
                   <SelectItem value="new-hampshire">New Hampshire</SelectItem>
