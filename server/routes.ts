@@ -1135,15 +1135,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const userEmail = req.user.claims.email;
       
-      // Validate customer data but ignore client-provided email/userId
-      const validatedData = insertCustomerSchema.parse({
+      // SECURITY: Never trust client-provided email/userId - always use authenticated claims
+      const validatedData = insertCustomerSchema.omit({ email: true }).parse({
         ...req.body,
-        email: userEmail, // Use authenticated user's email
         status: 'active'  // Auto-activate authenticated customers
       });
       
+      // Force server-side identity from authenticated claims
+      const customerData = {
+        ...validatedData,
+        email: userEmail.toLowerCase(), // Use authenticated user's email (normalized)
+      };
+      
+      // Log for debugging (redact sensitive data in production)
+      console.log(`Creating customer profile for user ${userId} with email domain: ${userEmail.split('@')[1]}`);
+      if (req.body.email && req.body.email !== userEmail) {
+        console.warn(`Client provided email '${req.body.email}' ignored, using claims email for security`);
+      }
+      
       // Create or update customer profile for authenticated user
-      const customer = await storage.upsertCustomerForUser(userId, validatedData);
+      const customer = await storage.upsertCustomerForUser(userId, customerData);
       res.status(201).json(customer);
     } catch (error) {
       console.error("Error creating/updating customer profile:", error);
