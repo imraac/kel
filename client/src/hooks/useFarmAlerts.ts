@@ -167,7 +167,16 @@ export function useFarmAlerts() {
       
       const recentProductionRecords = dailyRecords.filter(record => {
         const recordDate = new Date(record.recordDate);
-        return recordDate >= fourteenDaysAgo && recordDate < today && record.eggsCollected > 0;
+        return recordDate >= fourteenDaysAgo && recordDate < today && (record.eggsCollected || 0) > 0;
+      });
+
+      // Add debug info and ensure alert always shows for testing
+      console.log('Production Alert Debug:', {
+        todayStr,
+        todayEggs,
+        recentRecordsCount: recentProductionRecords.length,
+        totalRecords: dailyRecords.length,
+        totalBirds: metrics.totalBirds
       });
 
       if (recentProductionRecords.length > 0) {
@@ -176,6 +185,8 @@ export function useFarmAlerts() {
 
         const productionDrop = avgDailyProduction > 0 ? 
           ((avgDailyProduction - todayEggs) / avgDailyProduction) * 100 : 0;
+
+        console.log('Production calculation:', { avgDailyProduction, productionDrop });
 
         if (productionDrop > 30) {
           calculatedAlerts.push({
@@ -196,6 +207,16 @@ export function useFarmAlerts() {
             priority: "Medium",
           });
         }
+      } else if (dailyRecords.length > 5) {
+        // If no recent production records but we have daily records, show alert
+        calculatedAlerts.push({
+          id: "production-no-data",
+          type: "info",
+          icon: "trending-down",
+          title: "Production Monitoring",
+          description: `No recent egg production data found. Ensure daily production records are being logged.`,
+          priority: "Low",
+        });
       }
     }
 
