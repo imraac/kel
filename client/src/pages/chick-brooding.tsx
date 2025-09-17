@@ -431,13 +431,26 @@ export default function ChickBrooding() {
                       onClick={() => {
                         const scheduleData = [
                           ['Week', 'Temperature (°C)', 'Lighting (hours)', 'Feed (g/bird/day)', 'Feed Type', 'Expected Weight (g)', 'Key Notes'],
-                          ['Week 1', '35-32°C', '24', '15g', 'Chick Starter (22-24% protein)', '35-45g', 'Critical growth period - monitor closely'],
-                          ['Week 2', '32-29°C', '20', '25g', 'Chick Starter (20-22% protein)', '65-85g', 'Rapid growth phase begins'],
-                          ['Week 3', '29-26°C', '16', '35g', 'Chick Grower (18-20% protein)', '120-150g', 'Feed transition period'],
-                          ['Week 4', '26-23°C', '14', '45g', 'Grower Feed (16-18% protein)', '190-230g', 'Feather development peak'],
-                          ['Week 5', '23-21°C', '14', '55g', 'Grower Feed (16-18% protein)', '270-320g', 'Steady growth continues'],
-                          ['Week 6', '21°C', '14', '60g', 'Developer Feed (15-17% protein)', '360-420g', 'Prepare for grower phase'],
-                          ['Week 7-8', '21°C', '14', '70g', 'Developer Feed (15-17% protein)', '450-620g', 'Ready to transition to grower facility']
+                          ['Week 1', '35-32°C', '24', '12g', 'Chick and Duck Mash', '40-60g', 'Critical growth period - monitor closely'],
+                          ['Week 2', '32-29°C', '20', '18g', 'Chick and Duck Mash', '85-120g', 'Rapid growth phase begins'],
+                          ['Week 3', '29-26°C', '16', '25g', 'Chick and Duck Mash', '150-200g', 'Feed transition period'],
+                          ['Week 4', '26-23°C', '14', '31g', 'Chick and Duck Mash', '220-300g', 'Feather development peak'],
+                          ['Week 5', '23-21°C', '14', '38g', 'Chick and Duck Mash', '380-400g', 'Steady growth continues'],
+                          ['Week 6', '21°C', '14', '41g', 'Chick and Duck Mash', '470-500g', 'Prepare for grower phase'],
+                          ['Week 7', '21°C', '14', '45g', 'Chick and Duck Mash', '560-600g', 'Transition preparation'],
+                          ['Week 8', '21°C', '14', '49g', 'Gradual change to Growers Mash', '650g', 'Begin grower feed transition'],
+                          ['Week 9', '21°C', '14', '52g', 'Growers Mash', '740-780g', 'Full grower feed'],
+                          ['Week 10', '21°C', '14', '60g', 'Growers Mash', '830-870g', 'Rapid growth phase'],
+                          ['Week 11', '21°C', '14', '70g', 'Growers Mash', '920-980g', 'Peak growth period'],
+                          ['Week 12', '21°C', '14', '75g', 'Growers Mash', '1010-1050g', 'Consistent growth'],
+                          ['Week 13', '21°C', '14', '80g', 'Growers Mash', '1100-1140g', 'Continued development'],
+                          ['Week 14', '21°C', '14', '85g', 'Growers Mash', '1185-1230g', 'Pre-layer development'],
+                          ['Week 15', '21°C', '14', '92g', 'Growers Mash', '1270-1320g', 'Final grower phase'],
+                          ['Week 16', '21°C', '14', '100g', 'Gradual change to Layers Mash', '1355-1410g', 'Begin layer feed transition'],
+                          ['Week 17', '21°C', '14', '107g', 'Layers Mash', '1440-1500g', 'Layer feed establishment'],
+                          ['Week 18', '21°C', '14', '114g', 'Layers Mash', '1530-1600g', 'Pre-laying preparation'],
+                          ['Week 19', '21°C', '14', '118g', 'Layers Mash', '1580-1680g', 'Approaching laying'],
+                          ['Week 20', '21°C', '14', '120g', 'Layers Mash', '1645-1750g', 'Ready for egg production']
                         ];
                         const csvContent = scheduleData.map(row => row.join(',')).join('\n');
                         const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -495,16 +508,16 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">15g/day</span>
+                                <span className="font-medium">12g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Chick Starter</div>
-                              <Badge variant="secondary" className="text-xs mt-1">22-24% protein</Badge>
+                              <div>Chick and Duck Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">High protein starter</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">35-45g</span>
+                                <span className="font-medium">40-60g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Critical period</div>
                             </TableCell>
@@ -529,16 +542,16 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">25g/day</span>
+                                <span className="font-medium">18g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Chick Starter</div>
-                              <Badge variant="secondary" className="text-xs mt-1">20-22% protein</Badge>
+                              <div>Chick and Duck Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">High protein starter</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">65-85g</span>
+                                <span className="font-medium">85-120g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Rapid growth</div>
                             </TableCell>
@@ -563,16 +576,16 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">35g/day</span>
+                                <span className="font-medium">25g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Chick Grower</div>
-                              <Badge variant="secondary" className="text-xs mt-1">18-20% protein</Badge>
+                              <div>Chick and Duck Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">High protein starter</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">120-150g</span>
+                                <span className="font-medium">150-200g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Feed transition</div>
                             </TableCell>
@@ -597,16 +610,16 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">45g/day</span>
+                                <span className="font-medium">31g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Grower Feed</div>
-                              <Badge variant="secondary" className="text-xs mt-1">16-18% protein</Badge>
+                              <div>Chick and Duck Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">High protein starter</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">190-230g</span>
+                                <span className="font-medium">220-300g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Feather development</div>
                             </TableCell>
@@ -631,16 +644,16 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">55g/day</span>
+                                <span className="font-medium">38g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Grower Feed</div>
-                              <Badge variant="secondary" className="text-xs mt-1">16-18% protein</Badge>
+                              <div>Chick and Duck Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">High protein starter</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">270-320g</span>
+                                <span className="font-medium">380-400g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Steady growth</div>
                             </TableCell>
@@ -665,24 +678,24 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">60g/day</span>
+                                <span className="font-medium">41g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Developer Feed</div>
-                              <Badge variant="secondary" className="text-xs mt-1">15-17% protein</Badge>
+                              <div>Chick and Duck Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">High protein starter</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">360-420g</span>
+                                <span className="font-medium">470-500g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Grower preparation</div>
                             </TableCell>
                           </TableRow>
                           <TableRow className="bg-blue-50/50 dark:bg-blue-950/20">
                             <TableCell className="font-medium">
-                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Week 7-8</Badge>
-                              <div className="text-xs text-muted-foreground mt-1">43-56 days</div>
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Week 8</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">50-56 days</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
@@ -699,18 +712,120 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">70g/day</span>
+                                <span className="font-medium">49g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Developer Feed</div>
-                              <Badge variant="secondary" className="text-xs mt-1">15-17% protein</Badge>
+                              <div>Gradual change to Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Feed transition</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">450-620g</span>
+                                <span className="font-medium">650g</span>
                               </div>
-                              <div className="text-xs text-muted-foreground">Ready for transition</div>
+                              <div className="text-xs text-muted-foreground">Begin grower feed transition</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-purple-50/50 dark:bg-purple-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Week 9-12</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">57-84 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-purple-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">52-75g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">740-1050g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Grower phase</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-indigo-50/50 dark:bg-indigo-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">Week 13-16</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">85-112 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-indigo-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">80-100g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Growers to Layers transition</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Pre-layer feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1100-1410g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Pre-layer development</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-pink-50/50 dark:bg-pink-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">Week 17-20</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">113-140 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-pink-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">107-120g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Layers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Layer feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1440-1750g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Ready for egg production</div>
                             </TableCell>
                           </TableRow>
                         </TableBody>
@@ -805,13 +920,13 @@ export default function ChickBrooding() {
                           </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-3">
-                              <h4 className="font-medium">Feed Types & Protein</h4>
+                              <h4 className="font-medium">Feed Types & Stages</h4>
                               <ul className="text-sm space-y-2">
-                                <li>• <strong>Chick Starter (22-24%):</strong> Week 0-1 - High protein for rapid initial growth</li>
-                                <li>• <strong>Chick Starter (20-22%):</strong> Week 2 - Continued high nutrition needs</li>
-                                <li>• <strong>Chick Grower (18-20%):</strong> Week 3 - Transition to grower nutrition</li>
-                                <li>• <strong>Grower Feed (16-18%):</strong> Week 4-5 - Sustained growth period</li>
-                                <li>• <strong>Developer Feed (15-17%):</strong> Week 6+ - Preparation for layer transition</li>
+                                <li>• <strong>Chick and Duck Mash:</strong> Week 1-7 - Complete starter nutrition (12-45g/day)</li>
+                                <li>• <strong>Gradual Transition:</strong> Week 8 - Change to Growers Mash (49g/day)</li>
+                                <li>• <strong>Growers Mash:</strong> Week 9-15 - Growth and development (52-92g/day)</li>
+                                <li>• <strong>Layer Feed Transition:</strong> Week 16 - Change to Layers Mash (100g/day)</li>
+                                <li>• <strong>Layers Mash:</strong> Week 17-20+ - Pre-laying and production (107-120g/day)</li>
                               </ul>
                             </div>
                             <div className="space-y-3">
@@ -843,15 +958,14 @@ export default function ChickBrooding() {
                           </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-3">
-                              <h4 className="font-medium">Weight Targets by Week</h4>
+                              <h4 className="font-medium">Weight Targets by Phase</h4>
                               <ul className="text-sm space-y-2">
-                                <li>• <strong>Week 1:</strong> 35-45g (Birth weight doubles)</li>
-                                <li>• <strong>Week 2:</strong> 65-85g (Critical growth acceleration)</li>
-                                <li>• <strong>Week 3:</strong> 120-150g (Feed transition success indicator)</li>
-                                <li>• <strong>Week 4:</strong> 190-230g (Feathering development period)</li>
-                                <li>• <strong>Week 5:</strong> 270-320g (Steady growth maintenance)</li>
-                                <li>• <strong>Week 6:</strong> 360-420g (Preparation for next phase)</li>
-                                <li>• <strong>Week 7-8:</strong> 450-620g (Ready for grower transition)</li>
+                                <li>• <strong>Week 1-2:</strong> 40-120g (Critical establishment phase)</li>
+                                <li>• <strong>Week 3-5:</strong> 150-400g (Rapid growth phase)</li>
+                                <li>• <strong>Week 6-8:</strong> 470-650g (Transition to grower)</li>
+                                <li>• <strong>Week 9-12:</strong> 740-1050g (Active growth period)</li>
+                                <li>• <strong>Week 13-16:</strong> 1100-1410g (Pre-layer development)</li>
+                                <li>• <strong>Week 17-20:</strong> 1440-1750g (Layer preparation)</li>
                               </ul>
                             </div>
                             <div className="space-y-3">
