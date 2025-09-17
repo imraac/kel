@@ -595,8 +595,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure dates are properly formatted as strings (YYYY-MM-DD)
       const feedData = {
         ...normalized,
-        purchaseDate: normalized.purchaseDate ? normalized.purchaseDate.slice(0, 10) : null,
-        expiryDate: normalized.expiryDate ? normalized.expiryDate.slice(0, 10) : null
+        purchaseDate: normalized.purchaseDate ? String(normalized.purchaseDate).slice(0, 10) : null,
+        expiryDate: normalized.expiryDate ? String(normalized.expiryDate).slice(0, 10) : null
       };
 
       // Temporary logging for debugging
@@ -1194,6 +1194,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to update customer profile" });
       }
+    }
+  });
+
+  // Customer orders endpoint - Get authenticated customer's orders
+  app.get('/api/customers/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get customer profile first
+      const customer = await storage.getCustomerByUserId(userId);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer profile not found" });
+      }
+      
+      // Get customer's orders
+      const orders = await storage.getOrdersByCustomer(customer.id);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching customer orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Customer deliveries endpoint - Get authenticated customer's deliveries  
+  app.get('/api/customers/deliveries', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get customer profile first
+      const customer = await storage.getCustomerByUserId(userId);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer profile not found" });
+      }
+      
+      // Get customer's orders first, then their deliveries
+      const orders = await storage.getOrdersByCustomer(customer.id);
+      const orderIds = orders.map(order => order.id);
+      
+      // Get deliveries for all customer orders
+      const deliveries = [];
+      for (const orderId of orderIds) {
+        const delivery = await storage.getDeliveryByOrderId(orderId);
+        if (delivery) {
+          deliveries.push(delivery);
+        }
+      }
+      
+      res.json(deliveries);
+    } catch (error) {
+      console.error("Error fetching customer deliveries:", error);
+      res.status(500).json({ message: "Failed to fetch deliveries" });
     }
   });
 
