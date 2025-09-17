@@ -329,8 +329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to update flocks" });
+      if (!currentUser) {
+        return res.status(403).json({ message: "User not found" });
       }
 
       // Get the existing flock to verify ownership
@@ -339,8 +339,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Flock not found" });
       }
 
-      // Verify the flock belongs to the user's farm
-      if (existingFlock.farmId !== currentUser.farmId) {
+      // Resource-based authorization: Allow admins to update any flock, others only their farm's flocks
+      if (currentUser.role !== 'admin' && currentUser.farmId !== existingFlock.farmId) {
         return res.status(403).json({ message: "Access denied. Flock belongs to different farm." });
       }
 
