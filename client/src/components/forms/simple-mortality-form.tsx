@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useFarmContext } from "@/contexts/FarmContext";
 
 interface SimpleMortalityFormProps {
   onSuccess?: () => void;
@@ -29,6 +30,7 @@ const mortalityReasons = [
 export default function SimpleMortalityForm({ onSuccess }: SimpleMortalityFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
 
   // Form state
   const [recordDate, setRecordDate] = useState(new Date().toISOString().split('T')[0]);
@@ -77,6 +79,15 @@ export default function SimpleMortalityForm({ onSuccess }: SimpleMortalityFormPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!hasActiveFarm) {
+      toast({
+        title: "Farm Required",
+        description: "Please select an active farm before submitting records.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!flockId) {
       toast({
         title: "Error",
@@ -119,6 +130,7 @@ export default function SimpleMortalityForm({ onSuccess }: SimpleMortalityFormPr
       averageWeight: null,
       sampleSize: 0,
       notes: notes.trim(),
+      farmId: activeFarmId,
     };
 
     createMortalityRecordMutation.mutate(recordData);
