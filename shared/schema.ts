@@ -521,7 +521,11 @@ export const insertDailyRecordSchema = createInsertSchema(dailyRecords).omit({
   reviewNote: true,
   reviewedAt: true,
 });
-export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  saleDate: z.string().min(1, "Sale date is required"),
+  pricePerCrate: z.number().positive("Price per crate must be positive"),
+  totalAmount: z.number().positive("Total amount must be positive"),
+});
 export const insertFeedInventorySchema = createInsertSchema(feedInventory).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertHealthRecordSchema = createInsertSchema(healthRecords).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true });

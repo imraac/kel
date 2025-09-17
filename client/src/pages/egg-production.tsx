@@ -6,33 +6,14 @@ import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { Egg, TrendingUp, AlertCircle, Plus, Menu, DollarSign } from "lucide-react";
+import { Egg, TrendingUp, Plus, Menu, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import SimpleEggProductionForm from "@/components/forms/simple-egg-production-form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { insertSaleSchema } from "@shared/schema";
-import { z } from "zod";
-
-const saleFormSchema = z.object({
-  saleDate: z.string().min(1, "Sale date is required"),
-  customerName: z.string().optional(),
-  cratesSold: z.number().min(0, "Crates sold must be 0 or more"),
-  pricePerCrate: z.string().min(1, "Price per crate is required"),
-  totalAmount: z.string().min(1, "Total amount is required"),
-  paymentStatus: z.enum(["pending", "paid", "overdue"]),
-  notes: z.string().optional(),
-});
-
-type SaleFormData = z.infer<typeof saleFormSchema>;
+import SalesForm from "@/components/forms/SalesForm";
 
 export default function EggProduction() {
   const { toast } = useToast();
@@ -82,62 +63,6 @@ export default function EggProduction() {
     }
   }, [recordsError, salesError, toast]);
 
-  const saleForm = useForm<SaleFormData>({
-    resolver: zodResolver(saleFormSchema),
-    defaultValues: {
-      saleDate: new Date().toISOString().split('T')[0],
-      customerName: "",
-      cratesSold: 0,
-      pricePerCrate: "",
-      totalAmount: "",
-      paymentStatus: "pending",
-      notes: "",
-    },
-  });
-
-  const createSaleMutation = useMutation({
-    mutationFn: async (data: SaleFormData) => {
-      if (!hasActiveFarm) {
-        throw new Error("Farm Required: Please select an active farm before submitting records.");
-      }
-      const saleData = {
-        ...data,
-        cratesSold: Number(data.cratesSold),
-        pricePerCrate: data.pricePerCrate,
-        totalAmount: data.totalAmount,
-        farmId: activeFarmId,
-      };
-      await apiRequest("POST", "/api/sales", saleData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/sales?farmId=${activeFarmId}`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
-      toast({
-        title: "Success",
-        description: "Sale recorded successfully",
-      });
-      saleForm.reset();
-      setSaleDialogOpen(false);
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to record sale",
-        variant: "destructive",
-      });
-    },
-  });
 
   if (isLoading) {
     return (
@@ -179,27 +104,6 @@ export default function EggProduction() {
   });
   const weekRevenue = weekSales.reduce((sum: number, sale: any) => sum + parseFloat(sale.totalAmount || '0'), 0);
 
-  // Auto-calculate total amount when cratesSold or pricePerCrate changes
-  useEffect(() => {
-    const subscription = saleForm.watch((value, { name }) => {
-      if (name === 'cratesSold' || name === 'pricePerCrate') {
-        const cratesSold = value.cratesSold || 0;
-        const pricePerCrate = parseFloat(value.pricePerCrate || "0");
-        const totalAmount = cratesSold * pricePerCrate;
-        
-        if (totalAmount >= 0 && !isNaN(totalAmount)) {
-          saleForm.setValue('totalAmount', totalAmount.toFixed(2));
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [saleForm]);
-
-  const onSubmitSale = (data: SaleFormData) => {
-    console.log("Form submitted with data:", data);
-    console.log("Form errors:", saleForm.formState.errors);
-    createSaleMutation.mutate(data);
-  };
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -265,132 +169,13 @@ export default function EggProduction() {
                     Record egg sales including customer details and payment information.
                   </DialogDescription>
                 </DialogHeader>
-                <Form {...saleForm}>
-                  <form onSubmit={saleForm.handleSubmit(onSubmitSale)} className="space-y-4">
-                    <FormField
-                      control={saleForm.control}
-                      name="saleDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sale Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-sale-date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={saleForm.control}
-                      name="customerName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Customer Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} value={field.value || ""} placeholder="Enter customer name" data-testid="input-customer-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={saleForm.control}
-                        name="cratesSold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Crates Sold</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                {...field} 
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                data-testid="input-crates-sold"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={saleForm.control}
-                        name="pricePerCrate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Price per Crate</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                {...field} 
-                                placeholder="550.00"
-                                data-testid="input-price-per-crate"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={saleForm.control}
-                      name="totalAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Total Amount</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              {...field} 
-                              placeholder="Auto-calculated"
-                              data-testid="input-total-amount"
-                              readOnly
-                              className="bg-muted"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={saleForm.control}
-                      name="paymentStatus"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Payment Status</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-payment-status">
-                                <SelectValue placeholder="Select payment status" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="paid">Paid</SelectItem>
-                              <SelectItem value="overdue">Overdue</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={createSaleMutation.isPending}
-                      data-testid="button-submit-sale"
-                    >
-                      {createSaleMutation.isPending ? "Recording..." : "Record Sale"}
-                    </Button>
-                  </form>
-                </Form>
+                <SalesForm 
+                  mode="dialog"
+                  customerNameRequired={false}
+                  showNotes={false}
+                  compact={true}
+                  onSuccess={() => setSaleDialogOpen(false)}
+                />
               </DialogContent>
             </Dialog>
             </div>

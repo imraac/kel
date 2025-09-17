@@ -617,25 +617,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: (error as Error).message });
       }
 
-      // Auto-inject farmId and userId, and coerce numeric fields
+      // Auto-inject farmId and userId
       const input = {
         ...req.body,
         userId,
         farmId
       };
 
-      // Validate and normalize numeric fields using centralized utilities
-      let normalized;
-      try {
-        normalized = normalizeNumericFields(input, {
-          integers: ['cratesSold'],
-          decimals: { pricePerCrate: 2, totalAmount: 2 }
-        });
-      } catch (error) {
-        return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
-      }
-
-      const validatedData = insertSaleSchema.parse(normalized);
+      const validatedData = insertSaleSchema.parse(input);
       const sale = await storage.createSale(validatedData);
       res.status(201).json(sale);
     } catch (error) {
