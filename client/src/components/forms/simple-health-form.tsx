@@ -23,6 +23,9 @@ export default function SimpleHealthForm({ onSuccess }: SimpleHealthFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [medicationUsed, setMedicationUsed] = useState("");
+  const [dosage, setDosage] = useState("");
+  const [administeredBy, setAdministeredBy] = useState("");
+  const [nextDueDate, setNextDueDate] = useState("");
   const [cost, setCost] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -51,6 +54,9 @@ export default function SimpleHealthForm({ onSuccess }: SimpleHealthFormProps) {
       setTitle("");
       setDescription("");
       setMedicationUsed("");
+      setDosage("");
+      setAdministeredBy("");
+      setNextDueDate("");
       setCost("");
       setNotes("");
       
@@ -94,9 +100,9 @@ export default function SimpleHealthForm({ onSuccess }: SimpleHealthFormProps) {
       title: title.trim(),
       description: description.trim(),
       medicationUsed: medicationUsed.trim() || undefined,
-      dosage: undefined,
-      administeredBy: undefined,
-      nextDueDate: undefined,
+      dosage: dosage.trim() || undefined,
+      administeredBy: administeredBy.trim() || undefined,
+      nextDueDate: nextDueDate || undefined,
       cost: cost.trim() || undefined,
       notes: notes.trim(),
     };
@@ -189,14 +195,93 @@ export default function SimpleHealthForm({ onSuccess }: SimpleHealthFormProps) {
         />
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="medicationUsed">Medication/Vaccine</Label>
+          <Select value={medicationUsed} onValueChange={setMedicationUsed}>
+            <SelectTrigger data-testid="select-health-medication">
+              <SelectValue placeholder="Select vaccine/medication" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto">
+              <SelectItem value="custom">Custom/Other</SelectItem>
+              
+              {/* Day 1 Vaccines */}
+              <SelectItem value="Marek's MD/IBD">Marek's MD/IBD</SelectItem>
+              <SelectItem value="Rismavac">Rismavac</SelectItem>
+              <SelectItem value="NCD+IB Live (Vitabron)">NCD+IB Live (Vitabron)</SelectItem>
+              
+              {/* Day 12-14 Vaccines */}
+              <SelectItem value="NCD+IB Live (Ceva BiJI)">NCD+IB Live (Ceva BiJI)</SelectItem>
+              
+              {/* Day 16-18 Vaccines */}
+              <SelectItem value="IBD Intermediate">IBD Intermediate</SelectItem>
+              
+              {/* Week 6-8 Vaccines */}
+              <SelectItem value="Salmonella E&T">Salmonella E&T</SelectItem>
+              <SelectItem value="Coryza (ABC) Killed">Coryza (ABC) Killed</SelectItem>
+              
+              {/* Week 8-10 Vaccines */}
+              <SelectItem value="Fowl pox">Fowl pox</SelectItem>
+              <SelectItem value="Fowl cholera">Fowl cholera</SelectItem>
+              
+              {/* Week 12-14 Vaccines */}
+              <SelectItem value="Salmonella E&T (killed)">Salmonella E&T (killed)</SelectItem>
+              <SelectItem value="Coryza (ABC) killed">Coryza (ABC) killed</SelectItem>
+              
+              {/* Week 16-18 Vaccines */}
+              <SelectItem value="NCD+IB (Killed)">NCD+IB (Killed)</SelectItem>
+              
+              {/* Common Medications */}
+              <SelectItem value="Antibiotics">Antibiotics</SelectItem>
+              <SelectItem value="Vitamins">Vitamins</SelectItem>
+              <SelectItem value="Dewormers">Dewormers</SelectItem>
+              <SelectItem value="Probiotics">Probiotics</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="dosage">Dosage/Application Method</Label>
+          <Select value={dosage} onValueChange={setDosage}>
+            <SelectTrigger data-testid="select-health-dosage">
+              <SelectValue placeholder="Select application method" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="S/C injection">S/C injection (Subcutaneous)</SelectItem>
+              <SelectItem value="Intramuscular injection">Intramuscular injection</SelectItem>
+              <SelectItem value="Eye drop/Drinking water">Eye drop/Drinking water</SelectItem>
+              <SelectItem value="Drinking water">Drinking water</SelectItem>
+              <SelectItem value="Coarse spray">Coarse spray</SelectItem>
+              <SelectItem value="Wing stab">Wing stab</SelectItem>
+              <SelectItem value="Subcutaneous injection">Subcutaneous injection</SelectItem>
+              <SelectItem value="Oral">Oral</SelectItem>
+              <SelectItem value="Feed mixing">Feed mixing</SelectItem>
+              <SelectItem value="Topical">Topical</SelectItem>
+              <SelectItem value="Custom">Custom/Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="space-y-2">
-        <Label htmlFor="medicationUsed">Medication/Vaccine Used</Label>
+        <Label htmlFor="administeredBy">Administered By</Label>
         <Input
-          id="medicationUsed"
-          placeholder="e.g., Newcastle vaccine, Amoxicillin"
-          value={medicationUsed}
-          onChange={(e) => setMedicationUsed(e.target.value)}
-          data-testid="input-health-medication"
+          id="administeredBy"
+          placeholder="Veterinarian or staff name"
+          value={administeredBy}
+          onChange={(e) => setAdministeredBy(e.target.value)}
+          data-testid="input-health-administered-by"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="nextDueDate">Next Due Date</Label>
+        <Input
+          id="nextDueDate"
+          type="date"
+          value={nextDueDate}
+          onChange={(e) => setNextDueDate(e.target.value)}
+          data-testid="input-health-next-due-date"
         />
       </div>
 
