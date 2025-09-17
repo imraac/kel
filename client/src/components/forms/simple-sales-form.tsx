@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useFarmContext } from "@/contexts/FarmContext";
 
 interface SimpleSalesFormProps {
   onSuccess?: () => void;
@@ -16,6 +17,7 @@ interface SimpleSalesFormProps {
 export default function SimpleSalesForm({ onSuccess }: SimpleSalesFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
 
   // Form state
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
@@ -40,7 +42,7 @@ export default function SimpleSalesForm({ onSuccess }: SimpleSalesFormProps) {
       await apiRequest("POST", "/api/sales", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/sales?farmId=${activeFarmId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
       toast({
@@ -71,6 +73,15 @@ export default function SimpleSalesForm({ onSuccess }: SimpleSalesFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!hasActiveFarm) {
+      toast({
+        title: "Farm Required",
+        description: "Please select an active farm before submitting records.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (!customerName.trim()) {
       toast({
@@ -107,6 +118,7 @@ export default function SimpleSalesForm({ onSuccess }: SimpleSalesFormProps) {
       totalAmount: totalAmount, // Send as string to match decimal field
       paymentStatus,
       notes: notes.trim(),
+      farmId: activeFarmId,
     };
 
     createSaleMutation.mutate(saleData);

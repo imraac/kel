@@ -239,7 +239,7 @@ export default function QuickActions() {
       await apiRequest("POST", "/api/sales", saleData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/sales?farmId=${activeFarmId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
       toast({ title: "Success", description: "Sale recorded" });
