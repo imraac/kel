@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sprout, Shield, Users, ShoppingCart, Settings } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WelcomePanelProps {
   onDashboardClick: () => void;
@@ -10,7 +9,6 @@ interface WelcomePanelProps {
 
 export default function WelcomePanel({ onDashboardClick }: WelcomePanelProps) {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
 
   const getRoleInfo = (role: string) => {
     switch (role) {
