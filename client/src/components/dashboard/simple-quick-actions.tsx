@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Egg, Skull, Wheat, Coins, Heart, Receipt } from "lucide-react";
+import { Egg, Skull, Wheat, Coins, Heart, Receipt, Building2, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import SimpleQuickEggForm from "@/components/forms/simple-quick-egg-form";
 import SimpleMortalityForm from "@/components/forms/simple-mortality-form";
 import SimpleFeedForm from "@/components/forms/simple-feed-form"; 
@@ -56,12 +58,42 @@ const actions = [
 ];
 
 export default function SimpleQuickActions() {
+  const { user } = useAuth();
   const [eggDialogOpen, setEggDialogOpen] = useState(false);
   const [mortalityDialogOpen, setMortalityDialogOpen] = useState(false);
   const [feedDialogOpen, setFeedDialogOpen] = useState(false);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
   const [healthDialogOpen, setHealthDialogOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+
+  // Show farm registration message if user doesn't have a farm
+  if (user && !user.farmId) {
+    return (
+      <Card data-testid="card-quick-actions">
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 space-y-4">
+            <Building2 className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="font-medium text-foreground">Farm Registration Required</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                To access quick actions and manage your poultry operations, you need to register your farm first.
+              </p>
+            </div>
+            <Link to="/farm-registration">
+              <Button className="mt-4" data-testid="button-register-farm">
+                <Building2 className="h-4 w-4 mr-2" />
+                Register Your Farm
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card data-testid="card-quick-actions">
