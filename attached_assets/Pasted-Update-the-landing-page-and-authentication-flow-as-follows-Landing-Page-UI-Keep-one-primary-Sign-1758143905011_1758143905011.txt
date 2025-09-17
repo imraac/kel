@@ -1,0 +1,69 @@
+Update the landing page and authentication flow as follows:
+
+Landing Page UI
+
+Keep one primary “Sign In” button for all users.
+
+Directly under it, add two optional secondary buttons:
+
+“I’m a Farmer”
+
+“I’m a Customer”
+
+Clicking a secondary button should store the user’s intended role (for example in a temporary cookie, sessionStorage, or context) so this intent is available immediately after login.
+
+Post-Sign-In Behaviour
+
+After authentication, read the user’s actual role from the database or auth provider.
+
+Show a welcome panel before redirecting to any dashboard.
+
+The panel should display:
+
+The user’s name (if available) and their assigned role.
+
+A one-sentence explanation of what that role can do (use the descriptions already in the app: admin, farm_owner, manager, staff, customer).
+
+A clearly visible “Go to Dashboard” button that links to the correct dashboard route for that role.
+
+Role-Based Routing
+
+Create a single role-router function or hook that maps roles to their dashboards:
+
+admin → /admin/dashboard
+
+farm_owner → /farm/setup-or-dashboard
+
+manager → /manager/dashboard
+
+staff → /staff/dashboard
+
+customer → /marketplace
+
+If the role requires a farmId (manager, staff, farm_owner) and it is missing, redirect to the farm setup/onboarding page before the dashboard.
+
+Access Control
+
+Keep API-level guards so each endpoint still validates that the user has permission for the requested resource.
+
+Use a shared usePermissions() hook or context to hide or show navigation links and quick actions according to role.
+
+Deliverables
+
+Updated React components for the landing page (with the new buttons and styling).
+
+New welcome panel component that appears once after sign-in and then redirects to the correct dashboard when the user clicks “Go to Dashboard”.
+
+Implementation of the role-router function and any necessary updates to the auth context or routing logic.
+
+Brief inline comments explaining where intent is stored and how the welcome panel reads the user role.
+
+Provide the updated code or a pull-request style diff and confirm that:
+
+the landing page shows the new sign-in and intent buttons,
+
+the welcome panel displays correct role information after sign-in,
+
+users are routed to the right dashboard and cannot access dashboards outside their role,
+
+and all API endpoints continue to enforce role and farmId requirements.
