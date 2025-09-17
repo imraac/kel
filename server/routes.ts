@@ -20,6 +20,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { normalizeNumericFields } from "./utils/numbers";
+import { safeDate } from "./utils/dates";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -585,7 +586,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
       }
 
-      const validatedData = insertFeedInventorySchema.parse(normalized);
+      // Coerce date fields using safeDate utility
+      const feedData = {
+        ...normalized,
+        purchaseDate: safeDate(normalized.purchaseDate),
+        expiryDate: normalized.expiryDate ? safeDate(normalized.expiryDate) : null
+      };
+
+      const validatedData = insertFeedInventorySchema.parse(feedData);
       const feed = await storage.createFeedInventory(validatedData);
       res.status(201).json(feed);
     } catch (error) {

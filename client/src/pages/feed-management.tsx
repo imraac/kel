@@ -181,13 +181,24 @@ export default function FeedManagement() {
 
   // Calculate total cost for summary
   const totalCost = useMemo(() => {
-    const quantity = watchRecordType === "bags" ? calculatedKg : parseFloat(watchQuantityKg || "0");
     const unitPrice = parseFloat(watchUnitPrice || "0");
-    if (!isNaN(quantity) && !isNaN(unitPrice) && quantity > 0 && unitPrice > 0) {
-      return quantity * unitPrice;
+    if (!isNaN(unitPrice) && unitPrice > 0) {
+      if (watchRecordType === "bags") {
+        // Price per bag × number of bags
+        const numBags = parseFloat(watchNumberOfBags || "0");
+        if (!isNaN(numBags) && numBags > 0) {
+          return numBags * unitPrice;
+        }
+      } else {
+        // Price per kg × quantity in kg
+        const quantity = parseFloat(watchQuantityKg || "0");
+        if (!isNaN(quantity) && quantity > 0) {
+          return quantity * unitPrice;
+        }
+      }
     }
     return 0;
-  }, [watchRecordType, calculatedKg, watchQuantityKg, watchUnitPrice]);
+  }, [watchRecordType, watchNumberOfBags, watchQuantityKg, watchUnitPrice]);
 
   const createFeedMutation = useMutation({
     mutationFn: async (data: FeedFormData) => {
@@ -460,7 +471,7 @@ export default function FeedManagement() {
                             name="numberOfBags"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Number of Bags</FormLabel>
+                                <FormLabel>Number of Bags (pieces)</FormLabel>
                                 <FormControl>
                                   <Input 
                                     type="number" 
@@ -514,14 +525,16 @@ export default function FeedManagement() {
                       name="unitPrice"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Unit Price (KSh/kg)</FormLabel>
+                          <FormLabel>
+                            Unit Price ({watchRecordType === "bags" ? "KSh/bag" : "KSh/kg"})
+                          </FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 
                               step="0.01" 
                               min="0"
                               {...field} 
-                              placeholder="45.00"
+                              placeholder={watchRecordType === "bags" ? "3500.00" : "45.00"}
                               data-testid="input-unit-price"
                             />
                           </FormControl>
@@ -570,9 +583,16 @@ export default function FeedManagement() {
                               {watchRecordType === "bags" ? calculatedKg.toLocaleString() : parseFloat(watchQuantityKg || "0").toLocaleString()} kg
                             </span> of feed
                             {watchUnitPrice && (
-                              <> at <span className="font-medium">KSh {parseFloat(watchUnitPrice).toFixed(2)}/kg</span></>
+                              <> at <span className="font-medium">
+                                KSh {parseFloat(watchUnitPrice).toFixed(2)}/{watchRecordType === "bags" ? "bag" : "kg"}
+                              </span></>
                             )}
                           </p>
+                          {watchRecordType === "bags" && watchNumberOfBags && (
+                            <p className="text-xs text-muted-foreground">
+                              ({parseFloat(watchNumberOfBags)} bags × KSh {parseFloat(watchUnitPrice || "0").toFixed(2)}/bag)
+                            </p>
+                          )}
                           <p className="font-medium text-primary">
                             Total Cost: KSh {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
