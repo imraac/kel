@@ -24,9 +24,10 @@ import MarketplaceOrders from "@/pages/marketplace-orders";
 import PublicMarketplace from "@/pages/public-marketplace";
 import FarmStorefront from "@/pages/farm-storefront";
 import CustomerRegistration from "@/pages/customer-registration";
+import CustomerDashboard from "@/pages/customer-dashboard";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   // Global fallback: Handle saved customer registration data from any page
@@ -38,6 +39,9 @@ function Router() {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
+  // Determine if user is a customer
+  const isCustomer = user?.role === 'customer';
+
   return (
     <Switch>
       {/* Public routes - always accessible */}
@@ -48,7 +52,14 @@ function Router() {
       
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
+      ) : isCustomer ? (
+        // Customer-specific routes
+        <>
+          <Route path="/" component={CustomerDashboard} />
+          <Route path="/settings" component={Settings} />
+        </>
       ) : (
+        // Farm management routes (admin, farm_owner, manager, staff)
         <>
           <Route path="/" component={Home} />
           <Route path="/chick-brooding" component={ChickBrooding} />
