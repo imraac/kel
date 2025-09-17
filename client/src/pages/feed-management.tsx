@@ -243,6 +243,7 @@ export default function FeedManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/feed-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
       toast({
         title: "Success",
         description: "Feed inventory added successfully",
