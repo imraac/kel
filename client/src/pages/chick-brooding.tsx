@@ -8,9 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus, Edit, Eye, Trash2 } from "lucide-react";
+import { Baby, Thermometer, Sun, Utensils, AlertCircle, Plus, Edit, Eye, Trash2, Download, Filter, Scale } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Menu } from "lucide-react";
 import SimpleBroodingForm from "@/components/forms/simple-brooding-form";
@@ -416,192 +418,457 @@ export default function ChickBrooding() {
             <TabsContent value="schedule">
               <Card data-testid="card-brooding-schedule">
                 <CardHeader>
-                  <CardTitle>Brooding Schedule Guidelines</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Brooding Schedule Guidelines</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Comprehensive week-by-week brooding management guide for optimal chick development and health
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const scheduleData = [
+                          ['Week', 'Temperature (°C)', 'Lighting (hours)', 'Feed (g/bird/day)', 'Feed Type', 'Expected Weight (g)', 'Key Notes'],
+                          ['Week 1', '35-32°C', '24', '15g', 'Chick Starter (22-24% protein)', '35-45g', 'Critical growth period - monitor closely'],
+                          ['Week 2', '32-29°C', '20', '25g', 'Chick Starter (20-22% protein)', '65-85g', 'Rapid growth phase begins'],
+                          ['Week 3', '29-26°C', '16', '35g', 'Chick Grower (18-20% protein)', '120-150g', 'Feed transition period'],
+                          ['Week 4', '26-23°C', '14', '45g', 'Grower Feed (16-18% protein)', '190-230g', 'Feather development peak'],
+                          ['Week 5', '23-21°C', '14', '55g', 'Grower Feed (16-18% protein)', '270-320g', 'Steady growth continues'],
+                          ['Week 6', '21°C', '14', '60g', 'Developer Feed (15-17% protein)', '360-420g', 'Prepare for grower phase'],
+                          ['Week 7-8', '21°C', '14', '70g', 'Developer Feed (15-17% protein)', '450-620g', 'Ready to transition to grower facility']
+                        ];
+                        const csvContent = scheduleData.map(row => row.join(',')).join('\n');
+                        const blob = new Blob([csvContent], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'brooding-schedule-guidelines.csv';
+                        link.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      data-testid="button-export-schedule"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold mb-4">Temperature Schedule</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 0-1 (0-7 days)</span>
-                          <span className="font-medium">35-32°C</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 2-3 (8-21 days)</span>
-                          <span className="font-medium">32-29°C</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 4-5 (22-35 days)</span>
-                          <span className="font-medium">29-26°C</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 6-8 (36-56 days)</span>
-                          <span className="font-medium">26-21°C</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-semibold mb-4">Lighting Schedule</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 0-1 (0-7 days)</span>
-                          <span className="font-medium">24 hours</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 2-3 (8-21 days)</span>
-                          <span className="font-medium">20 hours</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 4-5 (22-35 days)</span>
-                          <span className="font-medium">16 hours</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded">
-                          <span>Week 6-8 (36-56 days)</span>
-                          <span className="font-medium">14 hours</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-4">Feed Guide by Age</h3>
-                      <div className="space-y-3">
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium">Week 0-1 (0-7 days)</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <div>• 15g per bird/day</div>
-                            <div>• Chick Starter (22-24% protein)</div>
-                            <div>• Crumbled or mash feed</div>
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium">Week 2 (8-14 days)</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <div>• 25g per bird/day</div>
-                            <div>• Chick Starter (20-22% protein)</div>
-                            <div>• Small pellets or crumbles</div>
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium">Week 3 (15-21 days)</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <div>• 35g per bird/day</div>
-                            <div>• Chick Grower (18-20% protein)</div>
-                            <div>• Transition to pellets</div>
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium">Week 4-5 (22-35 days)</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <div>• 45-55g per bird/day</div>
-                            <div>• Grower Feed (16-18% protein)</div>
-                            <div>• Standard pellets</div>
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium">Week 6+ (36+ days)</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <div>• 60-70g per bird/day</div>
-                            <div>• Developer Feed (15-17% protein)</div>
-                            <div>• Prepare for layer transition</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-4">Expected Weight by Age</h3>
-                      <div className="space-y-3">
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Week 0-1</span>
-                            <span className="text-sm font-medium">35-45g</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Critical growth period - monitor closely
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Week 2</span>
-                            <span className="text-sm font-medium">65-85g</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Rapid growth phase begins
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Week 3</span>
-                            <span className="text-sm font-medium">120-150g</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Feed transition period
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Week 4</span>
-                            <span className="text-sm font-medium">190-230g</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Feather development peak
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Week 5</span>
-                            <span className="text-sm font-medium">270-320g</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Steady growth continues
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Week 6</span>
-                            <span className="text-sm font-medium">360-420g</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Prepare for grower phase
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Week 7-8</span>
-                            <span className="text-sm font-medium">450-620g</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Ready to transition to grower facility
-                          </div>
-                        </div>
-                      </div>
+                  {/* Week-by-Week Overview Table */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <Baby className="h-5 w-5 mr-2" />
+                      Week-by-Week Overview
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[80px]">Week</TableHead>
+                            <TableHead className="min-w-[120px]">Temperature</TableHead>
+                            <TableHead className="min-w-[100px]">Lighting</TableHead>
+                            <TableHead className="min-w-[120px]">Feed Amount</TableHead>
+                            <TableHead className="min-w-[140px]">Feed Type & Protein</TableHead>
+                            <TableHead className="min-w-[120px]">Expected Weight</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow className="bg-red-50/50 dark:bg-red-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="destructive" className="text-xs">Week 1</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">0-7 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-red-500" />
+                                <span className="font-medium">35-32°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>24 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">15g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Chick Starter</div>
+                              <Badge variant="secondary" className="text-xs mt-1">22-24% protein</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">35-45g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Critical period</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-orange-50/50 dark:bg-orange-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">Week 2</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">8-14 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-orange-500" />
+                                <span className="font-medium">32-29°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>20 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">25g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Chick Starter</div>
+                              <Badge variant="secondary" className="text-xs mt-1">20-22% protein</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">65-85g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Rapid growth</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-yellow-50/50 dark:bg-yellow-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Week 3</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">15-21 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-yellow-600" />
+                                <span className="font-medium">29-26°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>16 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">35g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Chick Grower</div>
+                              <Badge variant="secondary" className="text-xs mt-1">18-20% protein</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">120-150g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Feed transition</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-green-50/50 dark:bg-green-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Week 4</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">22-28 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-green-600" />
+                                <span className="font-medium">26-23°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">45g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Grower Feed</div>
+                              <Badge variant="secondary" className="text-xs mt-1">16-18% protein</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">190-230g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Feather development</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-green-50/50 dark:bg-green-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Week 5</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">29-35 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-green-600" />
+                                <span className="font-medium">23-21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">55g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Grower Feed</div>
+                              <Badge variant="secondary" className="text-xs mt-1">16-18% protein</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">270-320g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Steady growth</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-blue-50/50 dark:bg-blue-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Week 6</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">36-42 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-blue-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">60g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Developer Feed</div>
+                              <Badge variant="secondary" className="text-xs mt-1">15-17% protein</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">360-420g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Grower preparation</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-blue-50/50 dark:bg-blue-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Week 7-8</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">43-56 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-blue-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">70g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Developer Feed</div>
+                              <Badge variant="secondary" className="text-xs mt-1">15-17% protein</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">450-620g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Ready for transition</div>
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
 
-                  {/* Additional Tips Section */}
-                  <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">💡 Pro Tips for Successful Brooding</h4>
-                    <ul className="text-sm space-y-1 text-blue-800 dark:text-blue-200">
-                      <li>• Monitor feed consumption daily - sudden changes indicate health issues</li>
-                      <li>• Weigh a sample of 10-20 birds weekly to track growth rates</li>
-                      <li>• Adjust temperature gradually - never drop more than 2-3°C per week</li>
-                      <li>• Ensure adequate ventilation while maintaining temperature</li>
-                      <li>• Keep feed fresh - replace any wet or moldy feed immediately</li>
-                      <li>• Provide adequate feeder and drinker space (2.5cm per bird)</li>
-                    </ul>
-                  </div>
+                  {/* Detailed Guidelines Accordion */}
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="temperature">
+                      <AccordionTrigger className="text-left" data-testid="accordion-temperature">
+                        <div className="flex items-center">
+                          <Thermometer className="h-5 w-5 mr-2 text-red-500" />
+                          <span>Temperature Management Guide</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Proper temperature control is critical for chick survival and development. Temperature should be reduced gradually as chicks develop their own thermoregulation.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Temperature Zones</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• <strong>Critical Zone (Week 1):</strong> 35-32°C - Chicks cannot regulate body temperature</li>
+                                <li>• <strong>Growth Zone (Week 2-3):</strong> 32-26°C - Rapid development period</li>
+                                <li>• <strong>Comfort Zone (Week 4+):</strong> 26-21°C - Approaching adult thermoregulation</li>
+                              </ul>
+                            </div>
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Temperature Tips</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• Monitor chick behavior - huddling indicates cold, spreading indicates heat</li>
+                                <li>• Use multiple thermometers at chick level, not air temperature</li>
+                                <li>• Reduce temperature by 2-3°C per week after week 1</li>
+                                <li>• Provide temperature gradient areas in the brooding space</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    <AccordionItem value="lighting">
+                      <AccordionTrigger className="text-left" data-testid="accordion-lighting">
+                        <div className="flex items-center">
+                          <Sun className="h-5 w-5 mr-2 text-yellow-500" />
+                          <span>Lighting Schedule Guide</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Lighting programs affect feed consumption, growth rate, and natural behavior patterns. Gradual reduction helps establish normal day/night cycles.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Lighting Phases</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• <strong>24 Hours (Week 1):</strong> Continuous lighting ensures feed/water access</li>
+                                <li>• <strong>20 Hours (Week 2):</strong> Introduce 4 hours of darkness</li>
+                                <li>• <strong>16 Hours (Week 3):</strong> Establish day/night rhythm</li>
+                                <li>• <strong>14 Hours (Week 4+):</strong> Natural lighting pattern</li>
+                              </ul>
+                            </div>
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Lighting Best Practices</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• Use 20-40 lux intensity for brooding</li>
+                                <li>• Avoid sudden lighting changes - use dimmer systems</li>
+                                <li>• Ensure even light distribution throughout brooding area</li>
+                                <li>• Provide backup lighting systems for power outages</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    <AccordionItem value="feeding">
+                      <AccordionTrigger className="text-left" data-testid="accordion-feeding">
+                        <div className="flex items-center">
+                          <Utensils className="h-5 w-5 mr-2 text-green-500" />
+                          <span>Feed & Nutrition Guide</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Proper nutrition is essential for healthy growth and development. Feed requirements change as chicks grow and develop.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Feed Types & Protein</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• <strong>Chick Starter (22-24%):</strong> Week 0-1 - High protein for rapid initial growth</li>
+                                <li>• <strong>Chick Starter (20-22%):</strong> Week 2 - Continued high nutrition needs</li>
+                                <li>• <strong>Chick Grower (18-20%):</strong> Week 3 - Transition to grower nutrition</li>
+                                <li>• <strong>Grower Feed (16-18%):</strong> Week 4-5 - Sustained growth period</li>
+                                <li>• <strong>Developer Feed (15-17%):</strong> Week 6+ - Preparation for layer transition</li>
+                              </ul>
+                            </div>
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Feeding Guidelines</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• Provide fresh, clean water at all times (ratio 2:1 water to feed)</li>
+                                <li>• Use appropriate feeder height - adjust as chicks grow</li>
+                                <li>• Monitor feed consumption daily - sudden changes indicate health issues</li>
+                                <li>• Transition feeds gradually over 3-5 days to avoid digestive upset</li>
+                                <li>• Store feed in cool, dry conditions to prevent spoilage</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    <AccordionItem value="weight">
+                      <AccordionTrigger className="text-left" data-testid="accordion-weight">
+                        <div className="flex items-center">
+                          <Scale className="h-5 w-5 mr-2 text-blue-500" />
+                          <span>Weight Monitoring Guide</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Regular weight monitoring helps ensure proper growth and early detection of health issues. Sample weights weekly from different areas of the brooding facility.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Weight Targets by Week</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• <strong>Week 1:</strong> 35-45g (Birth weight doubles)</li>
+                                <li>• <strong>Week 2:</strong> 65-85g (Critical growth acceleration)</li>
+                                <li>• <strong>Week 3:</strong> 120-150g (Feed transition success indicator)</li>
+                                <li>• <strong>Week 4:</strong> 190-230g (Feathering development period)</li>
+                                <li>• <strong>Week 5:</strong> 270-320g (Steady growth maintenance)</li>
+                                <li>• <strong>Week 6:</strong> 360-420g (Preparation for next phase)</li>
+                                <li>• <strong>Week 7-8:</strong> 450-620g (Ready for grower transition)</li>
+                              </ul>
+                            </div>
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Monitoring Best Practices</h4>
+                              <ul className="text-sm space-y-2">
+                                <li>• Weigh 10-15 chicks from different areas weekly</li>
+                                <li>• Record weights at the same time of day consistently</li>
+                                <li>• Track weight gain trends, not just absolute weights</li>
+                                <li>• Investigate if &gt;20% of chicks fall below target weight</li>
+                                <li>• Adjust feeding program based on growth performance</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </CardContent>
               </Card>
             </TabsContent>
