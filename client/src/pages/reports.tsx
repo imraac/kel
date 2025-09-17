@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Progress } from "@/components/ui/progress";
 export default function Reports() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("30");
 
@@ -39,8 +41,8 @@ export default function Reports() {
   });
 
   const { data: sales, error: salesError } = useQuery({
-    queryKey: ["/api/sales"],
-    enabled: isAuthenticated,
+    queryKey: [`/api/sales?farmId=${activeFarmId}`],
+    enabled: isAuthenticated && hasActiveFarm,
   });
 
   const { data: expenses, error: expensesError } = useQuery({
@@ -49,8 +51,8 @@ export default function Reports() {
   });
 
   const { data: feedInventory, error: feedError } = useQuery({
-    queryKey: ["/api/feed-inventory"],
-    enabled: isAuthenticated,
+    queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`],
+    enabled: isAuthenticated && hasActiveFarm,
   });
 
   // Handle unauthorized errors

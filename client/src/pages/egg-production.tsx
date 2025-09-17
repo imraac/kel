@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ type SaleFormData = z.infer<typeof saleFormSchema>;
 export default function EggProduction() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
@@ -62,8 +64,8 @@ export default function EggProduction() {
   });
 
   const { data: sales = [], error: salesError } = useQuery<any[]>({
-    queryKey: ["/api/sales"],
-    enabled: isAuthenticated,
+    queryKey: [`/api/sales?farmId=${activeFarmId}`],
+    enabled: isAuthenticated && hasActiveFarm,
   });
 
   // Handle unauthorized errors
@@ -95,16 +97,20 @@ export default function EggProduction() {
 
   const createSaleMutation = useMutation({
     mutationFn: async (data: SaleFormData) => {
+      if (!hasActiveFarm) {
+        throw new Error("Farm Required: Please select an active farm before submitting records.");
+      }
       const saleData = {
         ...data,
         cratesSold: Number(data.cratesSold),
         pricePerCrate: data.pricePerCrate,
         totalAmount: data.totalAmount,
+        farmId: activeFarmId,
       };
       await apiRequest("POST", "/api/sales", saleData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/sales?farmId=${activeFarmId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       toast({
         title: "Success",

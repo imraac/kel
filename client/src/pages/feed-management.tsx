@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ type FeedFormData = z.infer<typeof feedFormSchema>;
 export default function FeedManagement() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [feedDialogOpen, setFeedDialogOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -111,8 +113,8 @@ export default function FeedManagement() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: feedInventory, error: inventoryError } = useQuery({
-    queryKey: ["/api/feed-inventory"],
-    enabled: isAuthenticated,
+    queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`],
+    enabled: isAuthenticated && hasActiveFarm,
   });
 
   const { data: dailyRecords, error: recordsError } = useQuery({
@@ -238,10 +240,11 @@ export default function FeedManagement() {
         purchaseDate: data.purchaseDate,
         expiryDate: data.expiryDate && data.expiryDate.trim() !== "" ? data.expiryDate : undefined,
       };
-      await apiRequest("POST", "/api/feed-inventory", feedData);
+      const feedDataWithFarm = { ...feedData, farmId: activeFarmId };
+      await apiRequest("POST", "/api/feed-inventory", feedDataWithFarm);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/feed-inventory"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
       toast({
