@@ -196,7 +196,12 @@ export default function MarketplaceProducts() {
 
   const onSubmitEdit = (data: ProductFormData) => {
     if (editingProduct) {
-      updateProductMutation.mutate({ id: editingProduct.id, data });
+      // Include farmId from context as required by the API
+      const productData = {
+        ...data,
+        farmId: activeFarmId,
+      };
+      updateProductMutation.mutate({ id: editingProduct.id, data: productData });
     }
   };
 
