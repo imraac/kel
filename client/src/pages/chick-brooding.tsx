@@ -118,6 +118,15 @@ export default function ChickBrooding() {
   // Query for deactivated flocks (admin only)
   const { data: deactivatedFlocks = [], error: deactivatedFlocksError } = useQuery<any[]>({
     queryKey: ["/api/flocks", { includeDeactivated: true }],
+    queryFn: async () => {
+      const response = await fetch('/api/flocks?includeDeactivated=true', {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch deactivated flocks');
+      }
+      return response.json();
+    },
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
