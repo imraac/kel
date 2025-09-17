@@ -580,7 +580,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         normalized = normalizeNumericFields(input, {
           decimals: { quantityKg: 2, unitPrice: 2 },
-          optional: ['quantityKg', 'unitPrice']
+          optional: ['quantityKg', 'unitPrice'],
+          returnStrings: true // Return strings for Drizzle schema compatibility
         });
       } catch (error) {
         return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
