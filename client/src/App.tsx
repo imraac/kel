@@ -60,8 +60,8 @@ function Router() {
           <Route path="/" component={CustomerDashboard} />
           <Route path="/settings" component={Settings} />
         </>
-      ) : !user?.farmId ? (
-        // Farm management users without a farm - redirect to setup
+      ) : !user?.farmId && user?.role !== 'admin' ? (
+        // Non-admin farm management users without a farm - redirect to setup
         <Route path="/" component={FarmSetupPage} />
       ) : (
         // Farm management routes (admin, farm_owner, manager, staff with farms)
