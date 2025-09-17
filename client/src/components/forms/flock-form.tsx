@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertFlockSchema } from "@shared/schema";
 import { z } from "zod";
+import { BREED_OPTIONS } from "@/lib/constants";
 
 // Create a simple form schema that works with string inputs
 const flockFormSchema = z.object({
@@ -158,17 +159,11 @@ export default function FlockForm({ flock, onSuccess }: FlockFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="rhode-island-red">Rhode Island Red</SelectItem>
-                        <SelectItem value="leghorn">Leghorn</SelectItem>
-                        <SelectItem value="hy-line-brown">Hy-Line Brown</SelectItem>
-                        <SelectItem value="sussex">Sussex</SelectItem>
-                        <SelectItem value="plymouth-rock">Plymouth Rock</SelectItem>
-                        <SelectItem value="new-hampshire">New Hampshire</SelectItem>
-                        <SelectItem value="wyandotte">Wyandotte</SelectItem>
-                        <SelectItem value="orpington">Orpington</SelectItem>
-                        <SelectItem value="australorp">Australorp</SelectItem>
-                        <SelectItem value="brahma">Brahma</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        {BREED_OPTIONS.map((breed) => (
+                          <SelectItem key={breed.value} value={breed.value}>
+                            {breed.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

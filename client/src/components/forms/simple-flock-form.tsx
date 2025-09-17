@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { BREED_OPTIONS } from "@/lib/constants";
 
 interface SimpleFlockFormProps {
   onSuccess?: () => void;
@@ -144,17 +145,11 @@ export default function SimpleFlockForm({ onSuccess }: SimpleFlockFormProps) {
                   <SelectValue placeholder="Select breed" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="rhode-island-red">Rhode Island Red</SelectItem>
-                  <SelectItem value="leghorn">Leghorn</SelectItem>
-                  <SelectItem value="hy-line-brown">Hy-Line Brown</SelectItem>
-                  <SelectItem value="sussex">Sussex</SelectItem>
-                  <SelectItem value="plymouth-rock">Plymouth Rock</SelectItem>
-                  <SelectItem value="new-hampshire">New Hampshire</SelectItem>
-                  <SelectItem value="wyandotte">Wyandotte</SelectItem>
-                  <SelectItem value="orpington">Orpington</SelectItem>
-                  <SelectItem value="australorp">Australorp</SelectItem>
-                  <SelectItem value="brahma">Brahma</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {BREED_OPTIONS.map((breed) => (
+                    <SelectItem key={breed.value} value={breed.value}>
+                      {breed.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
