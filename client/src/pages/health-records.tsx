@@ -167,10 +167,11 @@ export default function HealthRecords() {
 
   // Calculate upcoming vaccinations
   const upcomingVaccinations = healthRecords.filter((record: any) => {
-    if (!record.nextDueDate) return false;
+    // Fix: database uses snake_case field name, not camelCase
+    if (!record.next_due_date) return false;
     
     // Normalize dates to remove time component for accurate comparison
-    const dueDate = new Date(record.nextDueDate);
+    const dueDate = new Date(record.next_due_date);
     dueDate.setHours(0, 0, 0, 0);
     
     const today = new Date();
