@@ -22,6 +22,24 @@ import { z } from "zod";
 import { normalizeNumericFields } from "./utils/numbers";
 import { safeDate } from "./utils/dates";
 
+// Farm context resolution helper - handles admin vs non-admin users
+function requireFarmContext(req: any, currentUser: any): string {
+  if (currentUser.role === 'admin') {
+    // Admin users must provide explicit farmId in request body or query
+    const farmId = req.body.farmId || req.query.farmId;
+    if (!farmId) {
+      throw new Error("Admin must specify farmId in request body or query parameter");
+    }
+    return farmId;
+  } else {
+    // Non-admin users must have farmId in their profile
+    if (!currentUser.farmId) {
+      throw new Error("User must be associated with a farm");
+    }
+    return currentUser.farmId;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -300,14 +318,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to create flocks" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       // Auto-inject farmId and userId for security
       const flockData = {
         ...req.body,
-        farmId: currentUser.farmId,
+        farmId,
       };
 
       const validatedData = insertFlockSchema.parse(flockData);
@@ -464,8 +485,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User not found" });
       }
 
-      if (!currentUser.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to create records" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       const validatedData = insertDailyRecordSchema.parse({
@@ -479,7 +503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Flock not found" });
       }
       
-      if (flock.farmId !== currentUser.farmId) {
+      if (flock.farmId !== farmId) {
         return res.status(403).json({ message: "Access denied. You can only create records for your own farm's flocks." });
       }
 
@@ -501,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         // Atomic operation: Create record and notify managers in transaction
-        record = await storage.createDailyRecordWithNotification(recordWithReview, flock.farmId, {
+        record = await storage.createDailyRecordWithNotification(recordWithReview, farmId, {
           type: 'duplicate_entry',
           title: 'Duplicate Daily Record Detected',
           message: `A potential duplicate daily record has been submitted for ${validatedData.recordDate}. Please review and approve or reject.`,
@@ -543,12 +567,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to view sales" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       const limit = parseInt(req.query.limit as string) || 50;
-      const sales = await storage.getSalesByFarm(currentUser.farmId, limit);
+      const sales = await storage.getSalesByFarm(farmId, limit);
       res.json(sales);
     } catch (error) {
       console.error("Error fetching sales:", error);
@@ -561,15 +588,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to create sales" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       // Auto-inject farmId and userId, and coerce numeric fields
       const input = {
         ...req.body,
         userId,
-        farmId: currentUser.farmId
+        farmId
       };
 
       // Validate and normalize numeric fields using centralized utilities
@@ -602,11 +632,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to view feed inventory" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
-      const inventory = await storage.getFeedInventory(currentUser.farmId);
+      const inventory = await storage.getFeedInventory(farmId);
       res.json(inventory);
     } catch (error) {
       console.error("Error fetching feed inventory:", error);
@@ -619,15 +652,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to add feed inventory" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       // Auto-inject farmId and userId, and coerce numeric fields
       const input = {
         ...req.body,
         userId,
-        farmId: currentUser.farmId
+        farmId
       };
 
       // Validate and normalize numeric fields using centralized utilities
@@ -683,14 +719,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to add health records" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       // Validate that flockId belongs to user's farm
       if (req.body.flockId) {
         const flock = await storage.getFlockById(req.body.flockId);
-        if (!flock || flock.farmId !== currentUser.farmId) {
+        if (!flock || flock.farmId !== farmId) {
           return res.status(400).json({ message: "Invalid flock selection" });
         }
       }
@@ -744,15 +783,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to add expenses" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       // Auto-inject farmId and userId
       const input = {
         ...req.body,
         userId,
-        farmId: currentUser.farmId
+        farmId
       };
 
       // Defensive coercion: ensure amount field is string for Drizzle schema
@@ -853,14 +895,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const currentUser = await storage.getUser(userId);
       
-      if (!currentUser?.farmId) {
-        return res.status(400).json({ message: "User must be associated with a farm to add products" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
 
       // Auto-inject farmId
       const input = {
         ...req.body,
-        farmId: currentUser.farmId
+        farmId
       };
 
       // Defensive coercion: ensure currentPrice field is string for Drizzle schema
@@ -955,12 +1000,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       console.log('Debug - userId:', userId);
       const currentUser = await storage.getUser(userId);
-      console.log('Debug - currentUser:', currentUser);
-      console.log('Debug - currentUser.farmId:', currentUser?.farmId);
-      
-      if (!currentUser?.farmId) {
-        console.log('Debug - No farmId found for user, rejecting request');
-        return res.status(400).json({ message: "User must be associated with a farm to create orders" });
+      let farmId;
+      try {
+        farmId = requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
       }
       
       // Validate the order data structure
@@ -986,7 +1030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create order with server-side pricing and inventory validation
       const result = await storage.createOrderWithItems({
         ...orderData,
-        farmId: currentUser.farmId,
+        farmId,
         userId: userId,
         items
       });

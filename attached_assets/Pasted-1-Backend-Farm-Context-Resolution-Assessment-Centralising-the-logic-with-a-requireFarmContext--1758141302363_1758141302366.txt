@@ -1,0 +1,45 @@
+1. Backend – Farm Context Resolution
+
+Assessment:
+Centralising the logic with a requireFarmContext() (or similar) is the key change. Right now each API route separately checks if (!currentUser.farmId), which breaks when an admin intentionally has no farm. Moving that check into one helper that understands “admin with no farm must provide an explicit farmId” will remove duplicated logic and keep behaviour consistent.
+
+Permanent protection:
+
+Write unit tests for that helper to cover all roles (admin, manager, staff, customer) and farmId combinations.
+
+Apply the helper to every farm-scoped endpoint so future routes inherit the same rule set automatically.
+
+2. Frontend – Farm Selector Context
+
+Assessment:
+Admins need a way to specify which farm they’re operating on when creating or editing records. A global activeFarmId (for example a top-level context or Redux store) that’s passed in every mutation solves the “no farmId provided” failures.
+
+Permanent protection:
+
+Require the active farm to be set before enabling any “add” or “edit” buttons.
+
+Integrate this ID into React Query keys (['/api/sales', activeFarmId]) so caches are scoped correctly and don’t leak data between farms.
+
+3. Schema / Validation Updates
+
+Assessment:
+Aligning the API’s validation so that:
+
+non-admins: server fills farmId from the user’s profile,
+
+admins: farmId must be supplied in the request body
+closes the gap that caused the 400 errors.
+
+Permanent protection:
+
+Codify these rules in the Zod (or equivalent) schemas so they can’t drift.
+
+Add automated tests that attempt form submissions for each role without a farmId and confirm the expected behaviour.
+
+Other steps for lasting reliability
+
+Integration tests: Create end-to-end tests that log in as each role and attempt to create, edit and list records for every form.
+
+CI checks: Run those tests in your CI pipeline so a future routing change can’t silently break forms again.
+
+Documentation: Record the role semantics and the “admin must select farm context” rule for future developers.
