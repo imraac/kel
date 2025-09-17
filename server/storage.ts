@@ -184,22 +184,43 @@ export class DatabaseStorage implements IStorage {
       // Step 1: Create the farm
       const [newFarm] = await tx.insert(farms).values(farm).returning();
 
-      // Step 2: Atomically bind user to farm and upgrade role to farm_owner
-      const [updatedUser] = await tx
-        .update(users)
-        .set({
-          farmId: newFarm.id,
-          role: 'farm_owner',
-          updatedAt: new Date()
-        })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        throw new Error('Failed to bind user to farm - user not found');
+      // Step 2: Get current user to check if they're admin
+      const [currentUser] = await tx.select().from(users).where(eq(users.id, userId));
+      if (!currentUser) {
+        throw new Error('User not found');
       }
 
-      return { farm: newFarm, user: updatedUser };
+      // Step 3: Admin users remain global admins, others become farm owners
+      if (currentUser.role === 'admin') {
+        // Admin users create farms but remain global (no farmId binding)
+        // This satisfies the check constraint: admin role must have farmId = null
+        const [updatedUser] = await tx
+          .update(users)
+          .set({
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId))
+          .returning();
+        
+        return { farm: newFarm, user: updatedUser };
+      } else {
+        // Regular users become farm owners and get bound to the farm
+        const [updatedUser] = await tx
+          .update(users)
+          .set({
+            farmId: newFarm.id,
+            role: 'farm_owner',
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId))
+          .returning();
+
+        if (!updatedUser) {
+          throw new Error('Failed to bind user to farm - user not found');
+        }
+
+        return { farm: newFarm, user: updatedUser };
+      }
     });
   }
 
@@ -327,7 +348,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
           ...userData,
           updatedAt: new Date(),

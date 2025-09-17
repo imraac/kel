@@ -63,6 +63,7 @@ async function upsertUser(
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    role: claims["role"], // Include role from OIDC claims
   });
   
   // Auto-link any existing customer profiles with matching email
