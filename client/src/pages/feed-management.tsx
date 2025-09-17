@@ -215,11 +215,26 @@ export default function FeedManagement() {
         finalQuantityKgStr = quantity.toFixed(2);
       }
 
+      // Calculate unit price per kg (backend expects per-kg pricing)
+      let finalUnitPrice: string | undefined;
+      if (data.unitPrice && data.unitPrice.trim() !== "") {
+        const unitPriceValue = parseFloat(data.unitPrice);
+        if (data.recordType === "bags") {
+          // Convert from per-bag to per-kg
+          const bagSize = parseFloat(data.bagSize || "1");
+          const unitPricePerKg = unitPriceValue / bagSize;
+          finalUnitPrice = unitPricePerKg.toFixed(2);
+        } else {
+          // Direct per-kg pricing
+          finalUnitPrice = unitPriceValue.toFixed(2);
+        }
+      }
+
       const feedData = {
         feedType: data.feedType,
         supplier: data.supplier || undefined, // Convert empty string to undefined
         quantityKg: finalQuantityKgStr,
-        unitPrice: data.unitPrice && data.unitPrice.trim() !== "" ? data.unitPrice : undefined,
+        unitPrice: finalUnitPrice,
         purchaseDate: data.purchaseDate,
         expiryDate: data.expiryDate && data.expiryDate.trim() !== "" ? data.expiryDate : undefined,
       };

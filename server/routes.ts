@@ -586,12 +586,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Validation error", errors: [(error as Error).message] });
       }
 
-      // Coerce date fields using safeDate utility
+      // Ensure dates are properly formatted as strings (YYYY-MM-DD)
       const feedData = {
         ...normalized,
-        purchaseDate: safeDate(normalized.purchaseDate),
-        expiryDate: normalized.expiryDate ? safeDate(normalized.expiryDate) : null
+        purchaseDate: normalized.purchaseDate ? normalized.purchaseDate.slice(0, 10) : null,
+        expiryDate: normalized.expiryDate ? normalized.expiryDate.slice(0, 10) : null
       };
+
+      // Temporary logging for debugging
+      console.log("Feed data before validation:", JSON.stringify(feedData, null, 2));
 
       const validatedData = insertFeedInventorySchema.parse(feedData);
       const feed = await storage.createFeedInventory(validatedData);
