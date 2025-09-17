@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Egg, Skull, Wheat, Coins, Heart, Receipt, Building2, ArrowRight } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Egg, Skull, Wheat, Coins, Heart, Receipt, Building2, ArrowRight, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import SimpleQuickEggForm from "@/components/forms/simple-quick-egg-form";
@@ -66,47 +67,90 @@ export default function SimpleQuickActions() {
   const [healthDialogOpen, setHealthDialogOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
 
-  // Show farm registration message if user doesn't have a farm
-  if (user && !user.farmId) {
-    return (
+  const hasFarm = user && user.farmId;
+  const needsFarmRegistration = user && !user.farmId;
+
+  // Actions that require a farm to function
+  const farmDependentActions = ["record-eggs", "add-mortality", "update-feed", "record-sale", "add-health"];
+  
+  const isActionDisabled = (actionId: string) => {
+    return needsFarmRegistration && farmDependentActions.includes(actionId);
+  };
+
+  return (
+    <TooltipProvider>
       <Card data-testid="card-quick-actions">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 space-y-4">
-            <Building2 className="h-12 w-12 mx-auto text-muted-foreground" />
-            <div>
-              <h3 className="font-medium text-foreground">Farm Registration Required</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                To access quick actions and manage your poultry operations, you need to register your farm first.
-              </p>
-            </div>
-            <Link to="/farm-registration">
-              <Button className="mt-4" data-testid="button-register-farm">
-                <Building2 className="h-4 w-4 mr-2" />
-                Register Your Farm
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card data-testid="card-quick-actions">
-      <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+          <div className="space-y-3">
+            {/* Non-blocking farm registration banner */}
+            {needsFarmRegistration && (
+              <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  </div>
+                  <div className="flex-grow min-w-0">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Farm Registration Recommended
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                      Register your farm to unlock all quick actions and manage poultry operations.
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <Link to="/farm-registration">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-xs h-7 px-2 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900"
+                        data-testid="button-register-farm"
+                      >
+                        <Building2 className="h-3 w-3 mr-1" />
+                        Register
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
           {actions.map((action) => {
             const Icon = action.icon;
             
             // Record Eggs Dialog
             if (action.id === "record-eggs") {
+              const disabled = isActionDisabled(action.id);
+              
+              if (disabled) {
+                return (
+                  <Tooltip key={action.id}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block w-full">
+                        <Button 
+                          variant="ghost" 
+                          disabled 
+                          className="w-full flex items-center space-x-3 p-3 h-auto justify-start opacity-50 cursor-not-allowed pointer-events-none" 
+                          data-testid={`button-${action.id}-disabled`}
+                        >
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${action.color} opacity-50`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-foreground">{action.title}</p>
+                            <p className="text-xs text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Register your farm to record egg production</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              
               return (
                 <Dialog key={action.id} open={eggDialogOpen} onOpenChange={setEggDialogOpen}>
                   <DialogTrigger asChild>
@@ -133,6 +177,36 @@ export default function SimpleQuickActions() {
             
             // Record Mortality Dialog
             if (action.id === "add-mortality") {
+              const disabled = isActionDisabled(action.id);
+              
+              if (disabled) {
+                return (
+                  <Tooltip key={action.id}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block w-full">
+                        <Button 
+                          variant="ghost" 
+                          disabled 
+                          className="w-full flex items-center space-x-3 p-3 h-auto justify-start opacity-50 cursor-not-allowed pointer-events-none" 
+                          data-testid={`button-${action.id}-disabled`}
+                        >
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${action.color} opacity-50`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-foreground">{action.title}</p>
+                            <p className="text-xs text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Register your farm to track bird mortality</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              
               return (
                 <Dialog key={action.id} open={mortalityDialogOpen} onOpenChange={setMortalityDialogOpen}>
                   <DialogTrigger asChild>
@@ -159,6 +233,36 @@ export default function SimpleQuickActions() {
             
             // Update Feed Dialog
             if (action.id === "update-feed") {
+              const disabled = isActionDisabled(action.id);
+              
+              if (disabled) {
+                return (
+                  <Tooltip key={action.id}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block w-full">
+                        <Button 
+                          variant="ghost" 
+                          disabled 
+                          className="w-full flex items-center space-x-3 p-3 h-auto justify-start opacity-50 cursor-not-allowed pointer-events-none" 
+                          data-testid={`button-${action.id}-disabled`}
+                        >
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${action.color} opacity-50`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-foreground">{action.title}</p>
+                            <p className="text-xs text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Register your farm to track feed consumption</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              
               return (
                 <Dialog key={action.id} open={feedDialogOpen} onOpenChange={setFeedDialogOpen}>
                   <DialogTrigger asChild>
@@ -185,6 +289,36 @@ export default function SimpleQuickActions() {
             
             // Record Sale Dialog
             if (action.id === "record-sale") {
+              const disabled = isActionDisabled(action.id);
+              
+              if (disabled) {
+                return (
+                  <Tooltip key={action.id}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block w-full">
+                        <Button 
+                          variant="ghost" 
+                          disabled 
+                          className="w-full flex items-center space-x-3 p-3 h-auto justify-start opacity-50 cursor-not-allowed pointer-events-none" 
+                          data-testid={`button-${action.id}-disabled`}
+                        >
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${action.color} opacity-50`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-foreground">{action.title}</p>
+                            <p className="text-xs text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Register your farm to record sales</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              
               return (
                 <Dialog key={action.id} open={saleDialogOpen} onOpenChange={setSaleDialogOpen}>
                   <DialogTrigger asChild>
@@ -211,6 +345,36 @@ export default function SimpleQuickActions() {
 
             // Add Health Record Dialog
             if (action.id === "add-health") {
+              const disabled = isActionDisabled(action.id);
+              
+              if (disabled) {
+                return (
+                  <Tooltip key={action.id}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block w-full">
+                        <Button 
+                          variant="ghost" 
+                          disabled 
+                          className="w-full flex items-center space-x-3 p-3 h-auto justify-start opacity-50 cursor-not-allowed pointer-events-none" 
+                          data-testid={`button-${action.id}-disabled`}
+                        >
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${action.color} opacity-50`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-foreground">{action.title}</p>
+                            <p className="text-xs text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Register your farm to track health records</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              
               return (
                 <Dialog key={action.id} open={healthDialogOpen} onOpenChange={setHealthDialogOpen}>
                   <DialogTrigger asChild>
@@ -263,8 +427,9 @@ export default function SimpleQuickActions() {
             
             return null;
           })}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 }
