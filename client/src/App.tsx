@@ -18,6 +18,7 @@ import Expenses from "@/pages/expenses";
 import Users from "@/pages/users";
 import Settings from "@/pages/settings";
 import { FarmRegistrationPage } from "@/pages/farm-registration";
+import { FarmSetupPage } from "@/pages/farm-setup";
 import MarketplaceCustomers from "@/pages/marketplace-customers";
 import MarketplaceProducts from "@/pages/marketplace-products";
 import MarketplaceOrders from "@/pages/marketplace-orders";
@@ -49,6 +50,7 @@ function Router() {
       <Route path="/farm/:farmId" component={FarmStorefront} />
       <Route path="/customer-registration" component={CustomerRegistration} />
       <Route path="/farm-registration" component={FarmRegistrationPage} />
+      <Route path="/farm-setup" component={FarmSetupPage} />
       
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
@@ -58,8 +60,11 @@ function Router() {
           <Route path="/" component={CustomerDashboard} />
           <Route path="/settings" component={Settings} />
         </>
+      ) : !user?.farmId ? (
+        // Farm management users without a farm - redirect to setup
+        <Route path="/" component={FarmSetupPage} />
       ) : (
-        // Farm management routes (admin, farm_owner, manager, staff)
+        // Farm management routes (admin, farm_owner, manager, staff with farms)
         <>
           <Route path="/" component={Home} />
           <Route path="/chick-brooding" component={ChickBrooding} />
