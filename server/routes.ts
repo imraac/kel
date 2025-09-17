@@ -79,11 +79,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (currentUser.role === 'manager') {
         // Managers can only create staff and customers (no managers)
         validatedData = insertManagerUserSchema.parse(req.body);
-        // Assign to manager's farm
+        // Assign to manager's farm ONLY for staff roles, customers get farmId = null
         if (!currentUser.farmId) {
           return res.status(400).json({ message: "Manager must be associated with a farm" });
         }
-        validatedData.farmId = currentUser.farmId;
+        
+        if (validatedData.role === 'staff') {
+          validatedData.farmId = currentUser.farmId;
+        } else if (validatedData.role === 'customer') {
+          validatedData.farmId = null;
+        }
       } else {
         // Admins can create any role
         validatedData = insertUserSchema.parse(req.body);
