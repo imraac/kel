@@ -124,24 +124,27 @@ export interface FieldConfig {
   integers?: string[];
   optional?: string[];
   allowNegative?: string[];
+  returnStrings?: boolean; // New option to return strings instead of numbers
 }
 
 export function normalizeNumericFields(
   obj: Record<string, unknown>,
   config: FieldConfig
 ): Record<string, unknown> {
-  const { decimals = {}, integers = [], optional = [], allowNegative = [] } = config;
+  const { decimals = {}, integers = [], optional = [], allowNegative = [], returnStrings = false } = config;
   const result = { ...obj };
 
   // Process decimal fields
   for (const [field, decimalPlaces] of Object.entries(decimals)) {
     if (field in obj) {
       try {
-        result[field] = parseDecimal(obj[field], {
+        const numValue = parseDecimal(obj[field], {
           decimals: decimalPlaces,
           optional: optional.includes(field),
           allowNegative: allowNegative.includes(field)
         });
+        // Return as string if returnStrings is true, otherwise as number
+        result[field] = returnStrings && numValue !== undefined ? numValue.toFixed(decimalPlaces) : numValue;
       } catch (error) {
         throw new Error(`${field}: ${(error as Error).message}`);
       }
@@ -152,11 +155,13 @@ export function normalizeNumericFields(
   for (const field of integers) {
     if (field in obj) {
       try {
-        result[field] = parseIntStrict(obj[field], {
+        const intValue = parseIntStrict(obj[field], {
           optional: optional.includes(field),
           allowNegative: allowNegative.includes(field),
           allowZero: true
         });
+        // Return as string if returnStrings is true, otherwise as number
+        result[field] = returnStrings && intValue !== undefined ? intValue.toString() : intValue;
       } catch (error) {
         throw new Error(`${field}: ${(error as Error).message}`);
       }
