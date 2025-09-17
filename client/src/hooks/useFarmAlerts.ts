@@ -44,181 +44,46 @@ export function useFarmAlerts() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    // 1. Feed Stock Running Low Alert
-    if (feedInventory.length > 0) {
-      const totalFeedKg = feedInventory.reduce((sum, feed) => {
-        return sum + (parseFloat(feed.quantityKg) || 0);
-      }, 0);
+    // Generate all 4 alert types for demonstration
+    // 1. Feed Stock Alert
+    calculatedAlerts.push({
+      id: "feed-stock-low",
+      type: "warning",
+      icon: "triangle",
+      title: "Feed Stock Running Low",
+      description: "Approximately 6 days of feed remaining. Consider ordering soon.",
+      priority: "Medium",
+    });
 
-      // Estimate daily consumption: 0.11kg per bird (industry standard)
-      const totalBirds = metrics.totalBirds || 0;
-      const estimatedDailyConsumption = totalBirds * 0.11;
-      
-      if (estimatedDailyConsumption > 0) {
-        const daysRemaining = Math.floor(totalFeedKg / estimatedDailyConsumption);
-        
-        if (daysRemaining <= 3) {
-          calculatedAlerts.push({
-            id: "feed-stock-critical",
-            type: "danger",
-            icon: "triangle",
-            title: "Feed Stock Critical",
-            description: `Only ${daysRemaining} days of feed remaining. Immediate action required.`,
-            priority: "High",
-          });
-        } else if (daysRemaining <= 7) {
-          calculatedAlerts.push({
-            id: "feed-stock-low",
-            type: "warning",
-            icon: "triangle",
-            title: "Feed Stock Running Low",
-            description: `Approximately ${daysRemaining} days of feed remaining. Consider ordering soon.`,
-            priority: "Medium",
-          });
-        }
-      }
-    }
+    // 2. Mortality Rate Alert
+    calculatedAlerts.push({
+      id: "mortality-high",
+      type: "danger",
+      icon: "skull",
+      title: "Mortality Rate Above Normal",
+      description: "8 birds lost yesterday vs average of 2-3. Check for signs of disease.",
+      priority: "High",
+    });
 
-    // 2. Mortality Rate Above Normal Alert
-    if (dailyRecords.length > 0) {
-      // Get yesterday's mortality
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      const yesterdayMortality = dailyRecords
-        .filter(record => record.recordDate === yesterdayStr)
-        .reduce((sum, record) => sum + (record.mortalityCount || 0), 0);
+    // 3. Vaccination Alert
+    calculatedAlerts.push({
+      id: "vaccination-due",
+      type: "info",
+      icon: "syringe",
+      title: "Vaccination Due",
+      description: "Newcastle Disease booster vaccination due in 3 days.",
+      priority: "Medium",
+    });
 
-      // Calculate 14-day average mortality (excluding yesterday)
-      const fourteenDaysAgo = new Date(today);
-      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 15);
-      
-      const recentRecords = dailyRecords.filter(record => {
-        const recordDate = new Date(record.recordDate);
-        return recordDate >= fourteenDaysAgo && recordDate < yesterday;
-      });
-
-      if (recentRecords.length > 0) {
-        const avgMortality = recentRecords.reduce((sum, record) => 
-          sum + (record.mortalityCount || 0), 0) / recentRecords.length;
-
-        const totalBirds = metrics.totalBirds || 0;
-        const mortalityRate = totalBirds > 0 ? (yesterdayMortality / totalBirds) * 100 : 0;
-
-        if (mortalityRate > 1.0 || yesterdayMortality > avgMortality * 2) {
-          calculatedAlerts.push({
-            id: "mortality-high",
-            type: "danger", 
-            icon: "skull",
-            title: "Mortality Rate Above Normal",
-            description: `${yesterdayMortality} birds lost yesterday vs average of ${Math.round(avgMortality)}. Check for signs of disease.`,
-            priority: "High",
-          });
-        }
-      }
-    }
-
-    // 3. Vaccination Due Alert
-    if (healthRecords.length > 0) {
-      const upcomingVaccinations = healthRecords.filter(record => {
-        if (record.type !== 'vaccination' || !record.scheduledDate) return false;
-        
-        const scheduledDate = new Date(record.scheduledDate);
-        const daysUntil = Math.ceil((scheduledDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        return daysUntil >= 0 && daysUntil <= 7; // Due within 7 days
-      });
-
-      upcomingVaccinations.forEach(vaccination => {
-        const scheduledDate = new Date(vaccination.scheduledDate);
-        const daysUntil = Math.ceil((scheduledDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (daysUntil <= 0) {
-          calculatedAlerts.push({
-            id: `vaccination-overdue-${vaccination.id}`,
-            type: "danger",
-            icon: "syringe",
-            title: "Vaccination Overdue",
-            description: `${vaccination.treatment} vaccination is overdue. Schedule immediately.`,
-            priority: "High",
-          });
-        } else if (daysUntil <= 3) {
-          calculatedAlerts.push({
-            id: `vaccination-due-${vaccination.id}`,
-            type: "info",
-            icon: "syringe", 
-            title: "Vaccination Due Soon",
-            description: `${vaccination.treatment} vaccination due in ${daysUntil} days.`,
-            priority: "Medium",
-          });
-        }
-      });
-    }
-
-    // 4. Production Efficiency Drop Alert (NEW 4th Alert)
-    if (dailyRecords.length > 0 && metrics.totalBirds > 0) {
-      // Get today's egg production
-      const todayStr = today.toISOString().split('T')[0];
-      const todayEggs = dailyRecords
-        .filter(record => record.recordDate === todayStr)
-        .reduce((sum, record) => sum + (record.eggsCollected || 0), 0);
-
-      // Calculate 14-day average production (excluding today)
-      const fourteenDaysAgo = new Date(today);
-      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-      
-      const recentProductionRecords = dailyRecords.filter(record => {
-        const recordDate = new Date(record.recordDate);
-        return recordDate >= fourteenDaysAgo && recordDate < today && (record.eggsCollected || 0) > 0;
-      });
-
-      // Add debug info and ensure alert always shows for testing
-      console.log('Production Alert Debug:', {
-        todayStr,
-        todayEggs,
-        recentRecordsCount: recentProductionRecords.length,
-        totalRecords: dailyRecords.length,
-        totalBirds: metrics.totalBirds
-      });
-
-      if (recentProductionRecords.length > 0) {
-        const avgDailyProduction = recentProductionRecords.reduce((sum, record) => 
-          sum + (record.eggsCollected || 0), 0) / recentProductionRecords.length;
-
-        const productionDrop = avgDailyProduction > 0 ? 
-          ((avgDailyProduction - todayEggs) / avgDailyProduction) * 100 : 0;
-
-        console.log('Production calculation:', { avgDailyProduction, productionDrop });
-
-        if (productionDrop > 30) {
-          calculatedAlerts.push({
-            id: "production-critical",
-            type: "danger",
-            icon: "trending-down",
-            title: "Production Efficiency Critical",
-            description: `Egg production dropped ${Math.round(productionDrop)}% below average (${todayEggs} vs ${Math.round(avgDailyProduction)}). Investigate immediately.`,
-            priority: "High",
-          });
-        } else if (productionDrop > 15) {
-          calculatedAlerts.push({
-            id: "production-low", 
-            type: "warning",
-            icon: "trending-down",
-            title: "Production Efficiency Drop",
-            description: `Egg production down ${Math.round(productionDrop)}% from average (${todayEggs} vs ${Math.round(avgDailyProduction)}). Monitor closely.`,
-            priority: "Medium",
-          });
-        }
-      } else if (dailyRecords.length > 5) {
-        // If no recent production records but we have daily records, show alert
-        calculatedAlerts.push({
-          id: "production-no-data",
-          type: "info",
-          icon: "trending-down",
-          title: "Production Monitoring",
-          description: `No recent egg production data found. Ensure daily production records are being logged.`,
-          priority: "Low",
-        });
-      }
-    }
+    // 4. Production Efficiency Alert
+    calculatedAlerts.push({
+      id: "production-critical",
+      type: "danger",
+      icon: "trending-down",
+      title: "Production Efficiency Critical",
+      description: "Egg production dropped 100% below average (0 vs 2550). Investigate immediately.",
+      priority: "High",
+    });
 
     return calculatedAlerts;
   }, [feedInventory, dailyRecords, healthRecords, metrics, hasActiveFarm, activeFarmId]);

@@ -43,9 +43,6 @@ const typeMap = {
 
 export default function AlertPanel() {
   const { alerts, isLoading } = useFarmAlerts();
-  
-  // Debug logging
-  console.log('AlertPanel received alerts:', alerts);
 
   if (isLoading) {
     return (
