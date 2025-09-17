@@ -18,6 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductSchema, type Product } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import { z } from "zod";
 
 // Product form schema - use the actual database schema for consistency
@@ -50,6 +51,7 @@ export default function MarketplaceProducts() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId } = useFarmContext();
   const queryClient = useQueryClient();
 
   // Redirect to login if not authenticated
@@ -135,7 +137,12 @@ export default function MarketplaceProducts() {
   });
 
   const onSubmitProduct = (data: ProductFormData) => {
-    createProductMutation.mutate(data);
+    // Include farmId from context as required by the API
+    const productData = {
+      ...data,
+      farmId: activeFarmId,
+    };
+    createProductMutation.mutate(productData);
   };
 
   // Edit form
