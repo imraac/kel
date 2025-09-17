@@ -63,6 +63,7 @@ export interface IStorage {
 
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
   getUsersByFarm(farmId: string): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
@@ -116,7 +117,10 @@ export interface IStorage {
   createCustomer(customer: InsertCustomer): Promise<Customer>;
   getCustomers(): Promise<Customer[]>;
   getCustomerById(id: string): Promise<Customer | undefined>;
+  getCustomerByUserId(userId: string): Promise<Customer | undefined>;
   updateCustomer(id: string, updates: Partial<InsertCustomer>): Promise<Customer>;
+  linkCustomerByEmail(email: string, userId: string): Promise<void>;
+  upsertCustomerForUser(userId: string, customerData: Omit<InsertCustomer, 'userId'>): Promise<Customer>;
 
   // Marketplace operations - Products
   createProduct(product: InsertProduct): Promise<Product>;
@@ -298,6 +302,11 @@ export class DatabaseStorage implements IStorage {
   // User operations (mandatory for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
@@ -695,6 +704,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(customers.id, id))
       .returning();
     return updatedCustomer;
+  }
+
+  async getCustomerByUserId(userId: string): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers).where(eq(customers.userId, userId));
+    return customer;
+  }
+
+  async linkCustomerByEmail(email: string, userId: string): Promise<void> {
+    // Find customer with matching email that doesn't have a userId yet
+    await db
+      .update(customers)
+      .set({ userId, updatedAt: new Date() })
+      .where(and(eq(customers.email, email), sql`user_id IS NULL`));
+  }
+
+  async upsertCustomerForUser(userId: string, customerData: Omit<InsertCustomer, 'userId'>): Promise<Customer> {
+    // First try to update if customer exists for this user
+    const existingCustomer = await this.getCustomerByUserId(userId);
+    
+    if (existingCustomer) {
+      return await this.updateCustomer(existingCustomer.id, customerData);
+    }
+    
+    // Create new customer with userId
+    const [newCustomer] = await db
+      .insert(customers)
+      .values({ ...customerData, userId })
+      .returning();
+    return newCustomer;
   }
 
   // Marketplace operations - Products

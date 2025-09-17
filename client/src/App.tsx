@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -26,6 +27,16 @@ import CustomerRegistration from "@/pages/customer-registration";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  // Global fallback: Handle saved customer registration data from any page
+  useEffect(() => {
+    const savedFormData = sessionStorage.getItem('customerRegistrationData');
+    if (savedFormData && isAuthenticated && !isLoading) {
+      // Redirect to customer registration page to complete the flow
+      setLocation('/customer-registration');
+    }
+  }, [isAuthenticated, isLoading, setLocation]);
 
   return (
     <Switch>
