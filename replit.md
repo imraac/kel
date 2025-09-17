@@ -63,3 +63,22 @@ Preferred communication style: Simple, everyday language.
 - **Reporting**: Comprehensive analytics with date range filtering and export capabilities
 - **User Management**: Multi-tenant role-based access control with database-enforced farm relationships
 - **Marketplace**: Customer-facing ordering system with referential integrity across orders, products, and deliveries
+
+## Recent Changes
+
+### Unified Sales Architecture (September 2025)
+- Successfully created and deployed unified SalesForm component with dynamic validation, centralized useSaleMutation hook, and proper type coercion for decimal fields
+- Completed replacement of all 3 duplicate sales forms (simple-sales-form, quick-actions, egg-production) with consistent cache invalidation and farm-scoped data handling
+- Resolved critical type mismatch issues between client number conversion and server decimal field expectations, achieving successful sales submissions (POST /api/sales 201)
+
+### Dynamic Alert System Integration (September 2025)
+- **MAJOR UPGRADE**: Replaced static mock data with dynamic alert system that calculates real-time alerts from actual farm data
+- Implemented comprehensive useFarmAlerts hook that fetches from 4 API endpoints: dashboard metrics, feed inventory, daily records, and health records
+- **4 Alert Types with Smart Business Logic**:
+  1. Feed Stock Low/Critical - Industry-standard 0.11kg/bird consumption calculations
+  2. Mortality Rate Above Normal - 14-day average comparison with 1% threshold
+  3. Vaccination Due/Overdue - Real scheduled date tracking with 7-day advance warning
+  4. **Production Efficiency Drop** - NEW 4th alert detecting 15%+ production declines
+- **Real-time Updates**: Comprehensive cache invalidation ensures alerts update immediately when farm data changes
+- **Farm-scoped Data**: All alert calculations properly filtered to active farm context
+- **Performance**: Leverages existing React Query infrastructure for optimal caching and loading states
