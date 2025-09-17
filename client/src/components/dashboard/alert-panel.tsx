@@ -1,47 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Skull, Syringe, X } from "lucide-react";
+import { AlertTriangle, Skull, Syringe, TrendingDown, X } from "lucide-react";
+import { useFarmAlerts } from "@/hooks/useFarmAlerts";
 
 interface Alert {
   id: string;
   type: "warning" | "danger" | "info";
-  icon: "triangle" | "skull" | "syringe";
+  icon: "triangle" | "skull" | "syringe" | "trending-down";
   title: string;
   description: string;
   priority: "High" | "Medium" | "Low";
 }
 
-const alerts: Alert[] = [
-  {
-    id: "1",
-    type: "warning",
-    icon: "triangle",
-    title: "Feed Stock Running Low",
-    description: "Current stock will last approximately 5 days. Consider ordering soon.",
-    priority: "Medium",
-  },
-  {
-    id: "2",
-    type: "danger",
-    icon: "skull",
-    title: "Mortality Rate Above Normal",
-    description: "8 birds lost yesterday vs average of 2-3. Check for signs of disease.",
-    priority: "High",
-  },
-  {
-    id: "3",
-    type: "info",
-    icon: "syringe",
-    title: "Vaccination Due",
-    description: "Newcastle Disease booster vaccination due in 3 days.",
-    priority: "Medium",
-  },
-];
 
 const iconMap = {
   triangle: AlertTriangle,
   skull: Skull,
   syringe: Syringe,
+  "trending-down": TrendingDown,
 };
 
 const typeMap = {
@@ -66,6 +42,24 @@ const typeMap = {
 };
 
 export default function AlertPanel() {
+  const { alerts, isLoading } = useFarmAlerts();
+
+  if (isLoading) {
+    return (
+      <Card data-testid="card-alerts">
+        <CardHeader>
+          <CardTitle>Farm Alerts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-sm text-muted-foreground">Loading alerts...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card data-testid="card-alerts">
       <CardHeader>
