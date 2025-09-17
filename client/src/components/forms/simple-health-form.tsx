@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useFarmContext } from "@/contexts/FarmContext";
 
 interface SimpleHealthFormProps {
   onSuccess?: () => void;
@@ -15,6 +16,7 @@ interface SimpleHealthFormProps {
 export default function SimpleHealthForm({ onSuccess }: SimpleHealthFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
 
   // Form state
   const [recordDate, setRecordDate] = useState(new Date().toISOString().split('T')[0]);
@@ -75,6 +77,15 @@ export default function SimpleHealthForm({ onSuccess }: SimpleHealthFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!hasActiveFarm) {
+      toast({
+        title: "Farm Required",
+        description: "Please select an active farm before submitting records.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!flockId) {
       toast({
         title: "Error",
@@ -105,6 +116,7 @@ export default function SimpleHealthForm({ onSuccess }: SimpleHealthFormProps) {
       nextDueDate: nextDueDate || undefined,
       cost: cost.trim() || undefined,
       notes: notes.trim(),
+      farmId: activeFarmId,
     };
 
     createHealthMutation.mutate(healthData);
