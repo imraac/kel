@@ -168,10 +168,18 @@ export default function HealthRecords() {
   // Calculate upcoming vaccinations
   const upcomingVaccinations = healthRecords.filter((record: any) => {
     if (!record.nextDueDate) return false;
+    
+    // Normalize dates to remove time component for accurate comparison
     const dueDate = new Date(record.nextDueDate);
-    const nextWeek = new Date();
+    dueDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
-    return dueDate <= nextWeek && dueDate >= new Date();
+    
+    return dueDate >= today && dueDate <= nextWeek;
   });
 
   const monthlyHealthCost = healthRecords.filter((record: any) => {
