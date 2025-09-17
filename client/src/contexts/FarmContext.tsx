@@ -53,13 +53,18 @@ export function FarmProvider({ children }: FarmProviderProps) {
     }
 
     if (user.role === 'admin') {
-      // Admin users: require explicit farm selection
-      // Keep existing activeFarmId if valid, otherwise require selection
+      // Admin users: automatically select first available farm
+      // Keep existing activeFarmId if valid, otherwise auto-select first farm
       if (activeFarmId && farms.some(farm => farm.id === activeFarmId)) {
         setError(null);
       } else if (farms.length > 0) {
-        setError('Please select a farm to manage');
+        // Auto-select the first available farm for admin users
+        setActiveFarmId(farms[0].id);
+        setError(null);
+      } else {
+        // No farms available - this is a different issue
         setActiveFarmId(null);
+        setError(null);
       }
     } else if (user.role === 'customer') {
       // Customer users: no farm needed
