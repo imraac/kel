@@ -70,7 +70,7 @@ export interface IStorage {
 
   // Flock operations
   createFlock(flock: InsertFlock): Promise<Flock>;
-  getFlocks(): Promise<Flock[]>;
+  getFlocks(includeDeactivated?: boolean): Promise<Flock[]>;
   getFlockById(id: string): Promise<Flock | undefined>;
   updateFlock(id: string, updates: Partial<InsertFlock>): Promise<Flock>;
 
@@ -343,8 +343,15 @@ export class DatabaseStorage implements IStorage {
     return newFlock;
   }
 
-  async getFlocks(): Promise<Flock[]> {
-    return await db.select().from(flocks).orderBy(desc(flocks.createdAt));
+  async getFlocks(includeDeactivated: boolean = false): Promise<Flock[]> {
+    if (includeDeactivated) {
+      return await db.select().from(flocks).orderBy(desc(flocks.createdAt));
+    } else {
+      return await db.select()
+        .from(flocks)
+        .where(ne(flocks.status, 'deactivated'))
+        .orderBy(desc(flocks.createdAt));
+    }
   }
 
   async getFlockById(id: string): Promise<Flock | undefined> {
