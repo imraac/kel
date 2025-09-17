@@ -28,6 +28,17 @@ const userFormSchema = z.object({
   role: z.enum(["admin", "farm_owner", "manager", "staff", "customer"], {
     required_error: "Role is required",
   }),
+  farmId: z.string().optional(),
+}).refine((data) => {
+  // Farm ID is required for manager, staff, farm_owner roles
+  const rolesThatNeedFarm = ["manager", "staff", "farm_owner"];
+  if (rolesThatNeedFarm.includes(data.role) && !data.farmId) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Farm selection is required for manager, staff, and farm owner roles",
+  path: ["farmId"],
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -88,6 +99,12 @@ export default function UsersPage() {
     enabled: isAuthenticated && hasManagementRole(currentUser),
   });
 
+  // Fetch farms for farm selection dropdown (admins only)
+  const { data: farms } = useQuery<any[]>({
+    queryKey: ["/api/farms"],
+    enabled: isAuthenticated && currentUser?.role === 'admin',
+  });
+
   // Handle unauthorized errors
   useEffect(() => {
     if ((usersError && isUnauthorizedError(usersError)) || (activityError && isUnauthorizedError(activityError))) {
@@ -109,8 +126,21 @@ export default function UsersPage() {
       lastName: "",
       email: "",
       role: "staff",
+      farmId: "",
     },
   });
+
+  // Watch role changes to conditionally show farm selector
+  const selectedRole = userForm.watch("role");
+  const rolesThatNeedFarm = ["manager", "staff", "farm_owner"];
+  const shouldShowFarmSelector = rolesThatNeedFarm.includes(selectedRole);
+
+  // Clear farmId when role doesn't need it
+  useEffect(() => {
+    if (!shouldShowFarmSelector) {
+      userForm.setValue("farmId", "");
+    }
+  }, [shouldShowFarmSelector, userForm]);
 
   const createUserMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
@@ -354,10 +384,53 @@ export default function UsersPage() {
                       )}
                     />
 
+                    {/* Farm Selector - Only show for roles that need a farm */}
+                    {shouldShowFarmSelector && (
+                      <FormField
+                        control={userForm.control}
+                        name="farmId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Farm <span className="text-red-500">*</span></FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-farm">
+                                  <SelectValue placeholder="Select farm" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {farms && farms.length > 0 ? (
+                                  farms.map((farm) => (
+                                    <SelectItem 
+                                      key={farm.id} 
+                                      value={farm.id}
+                                      data-testid={`option-farm-${farm.id}`}
+                                    >
+                                      {farm.name}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="" disabled>
+                                    No farms available
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            {(!farms || farms.length === 0) && (
+                              <p className="text-sm text-muted-foreground">
+                                Create a farm first to assign {selectedRole} users
+                              </p>
+                            )}
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={createUserMutation.isPending}
+                      disabled={createUserMutation.isPending || (shouldShowFarmSelector && (!farms || farms.length === 0))}
                       data-testid="button-submit-user"
                     >
                       {createUserMutation.isPending ? "Creating..." : "Create User"}
