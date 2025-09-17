@@ -1,9 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sprout, Egg, BarChart3, Shield } from "lucide-react";
+import { Sprout, Egg, BarChart3, Shield, ShoppingCart, Users } from "lucide-react";
 
 export default function Landing() {
-  const handleLogin = () => {
+  const handleLogin = (roleIntent?: string) => {
+    // Store user's role intent for post-login routing
+    if (roleIntent) {
+      sessionStorage.setItem('userRoleIntent', roleIntent);
+    }
     window.location.href = "/api/login";
   };
 
@@ -23,13 +27,37 @@ export default function Landing() {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Comprehensive poultry farm management platform with integrated marketplace for tracking layers production from chicks to eggs, customer interactions, and order management.
           </p>
-          <Button size="lg" onClick={handleLogin} data-testid="button-login" className="text-lg px-8 py-6">
-            Get Started
-          </Button>
+          <div className="space-y-4">
+            <Button size="lg" onClick={() => handleLogin()} data-testid="button-sign-in" className="text-lg px-8 py-6">
+              Sign In
+            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleLogin('farmer')} 
+                data-testid="button-farmer-intent"
+                className="px-6 py-3"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                I'm a Farmer
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleLogin('customer')} 
+                data-testid="button-customer-intent"
+                className="px-6 py-3"
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                I'm a Customer
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           <Card data-testid="card-feature-brooding">
             <CardHeader>
               <div className="w-12 h-12 bg-chart-3/10 rounded-lg flex items-center justify-center mb-4">
@@ -50,6 +78,18 @@ export default function Landing() {
               <CardTitle>Egg Production</CardTitle>
               <CardDescription>
                 Monitor daily egg collection, sales tracking, and production performance with automated alerts.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card data-testid="card-feature-marketplace">
+            <CardHeader>
+              <div className="w-12 h-12 bg-chart-4/10 rounded-lg flex items-center justify-center mb-4">
+                <ShoppingCart className="w-6 h-6 text-chart-4" />
+              </div>
+              <CardTitle>Marketplace</CardTitle>
+              <CardDescription>
+                Connect with customers, manage orders, and sell your farm products through our integrated marketplace.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -129,7 +169,7 @@ export default function Landing() {
         {/* Footer */}
         <div className="text-center mt-16 text-muted-foreground">
           <p>Ready to optimize your poultry farm operations?</p>
-          <Button variant="outline" onClick={handleLogin} className="mt-4" data-testid="button-login-footer">
+          <Button variant="outline" onClick={() => handleLogin()} className="mt-4" data-testid="button-login-footer">
             Sign In to Get Started
           </Button>
         </div>
