@@ -43,7 +43,7 @@ import {
   type Notification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql, ne } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, sql, ne } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -658,15 +658,51 @@ export class DatabaseStorage implements IStorage {
     const activeFlocks = await db.select().from(flocks).where(eq(flocks.status, 'laying'));
     const totalBirds = activeFlocks.reduce((sum, flock) => sum + flock.currentCount, 0);
 
-    // Get today's egg production
+    // Get today's egg production (check today and yesterday to handle timezone issues)
     const today = new Date().toISOString().split('T')[0];
-    const todayRecords = await db
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    // Get records from the past 2 days to handle timezone differences
+    const recentRecords = await db
       .select()
       .from(dailyRecords)
-      .where(eq(dailyRecords.recordDate, today));
+      .where(
+        or(
+          eq(dailyRecords.recordDate, yesterday),
+          eq(dailyRecords.recordDate, today),
+          eq(dailyRecords.recordDate, tomorrow)
+        )
+      );
     
-    const todayEggs = todayRecords.reduce((sum, record) => sum + (record.eggsCollected || 0), 0);
-    const todayCrates = todayRecords.reduce((sum, record) => sum + (record.cratesProduced || 0), 0);
+    // Get the most recent date that has egg collection data
+    const recordsByDate = recentRecords.reduce((acc, record) => {
+      if (!acc[record.recordDate]) acc[record.recordDate] = [];
+      acc[record.recordDate].push(record);
+      return acc;
+    }, {} as Record<string, any[]>);
+    
+    // Find the most recent date with egg collection data
+    const sortedDates = Object.keys(recordsByDate).sort().reverse();
+    let todayEggs = 0;
+    let todayCrates = 0;
+    
+    for (const date of sortedDates) {
+      const dateRecords = recordsByDate[date];
+      const dateEggs = dateRecords.reduce((sum, record) => sum + (record.eggsCollected || 0), 0);
+      if (dateEggs > 0) {
+        todayEggs = dateEggs;
+        todayCrates = dateRecords.reduce((sum, record) => sum + (record.cratesProduced || 0), 0);
+        break;
+      }
+    }
+    
+    // If no eggs found in recent days, just use today's records (might be 0)
+    if (todayEggs === 0 && recordsByDate[today]) {
+      const todayRecords = recordsByDate[today];
+      todayEggs = todayRecords.reduce((sum, record) => sum + (record.eggsCollected || 0), 0);
+      todayCrates = todayRecords.reduce((sum, record) => sum + (record.cratesProduced || 0), 0);
+    }
 
     // Get feed inventory total
     const feedInventoryData = await db.select().from(feedInventory);
