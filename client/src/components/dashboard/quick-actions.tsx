@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useFarmContext } from "@/contexts/FarmContext";
 import { Egg, Skull, Wheat, Coins } from "lucide-react";
 import { z } from "zod";
 
@@ -83,6 +84,7 @@ const saleRecordSchema = z.object({
 export default function QuickActions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [eggDialogOpen, setEggDialogOpen] = useState(false);
   const [mortalityDialogOpen, setMortalityDialogOpen] = useState(false);
   const [feedDialogOpen, setFeedDialogOpen] = useState(false);
@@ -121,6 +123,19 @@ export default function QuickActions() {
     },
   });
 
+  // Farm context guard helper
+  const handleFormSubmit = (callback: () => void) => {
+    if (!hasActiveFarm) {
+      toast({
+        title: "Farm Required",
+        description: "Please select an active farm before submitting records.",
+        variant: "destructive",
+      });
+      return;
+    }
+    callback();
+  };
+
   // Mutations
   const createEggRecord = useMutation({
     mutationFn: async (data: z.infer<typeof eggRecordSchema>) => {
@@ -133,7 +148,9 @@ export default function QuickActions() {
         mortalityCount: 0, mortalityReason: null, feedConsumed: null, feedType: null,
         temperature: null, lightingHours: null, averageWeight: null, sampleSize: 0,
         notes: data.notes || "",
+        farmId: activeFarmId,
       };
+      console.log("Submitting quick egg record:", recordData);
       await apiRequest("POST", "/api/daily-records", recordData);
     },
     onSuccess: () => {
@@ -163,6 +180,7 @@ export default function QuickActions() {
         mortalityReason: data.mortalityReason,
         feedConsumed: null, feedType: null, temperature: null, lightingHours: null,
         averageWeight: null, sampleSize: 0, notes: data.notes || "",
+        farmId: activeFarmId,
       };
       await apiRequest("POST", "/api/daily-records", recordData);
     },
@@ -194,6 +212,7 @@ export default function QuickActions() {
         feedType: data.feedType,
         temperature: null, lightingHours: null, averageWeight: null, sampleSize: 0,
         notes: data.notes || "",
+        farmId: activeFarmId,
       };
       await apiRequest("POST", "/api/daily-records", recordData);
     },
@@ -216,7 +235,8 @@ export default function QuickActions() {
 
   const createSaleRecord = useMutation({
     mutationFn: async (data: z.infer<typeof saleRecordSchema>) => {
-      await apiRequest("POST", "/api/sales", data);
+      const saleData = { ...data, farmId: activeFarmId };
+      await apiRequest("POST", "/api/sales", saleData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
@@ -277,7 +297,7 @@ export default function QuickActions() {
                           <DialogDescription>Record today's egg collection</DialogDescription>
                         </DialogHeader>
                         <Form {...eggForm}>
-                          <form onSubmit={eggForm.handleSubmit((data) => createEggRecord.mutate(data))} className="space-y-4">
+                          <form onSubmit={eggForm.handleSubmit((data) => handleFormSubmit(() => createEggRecord.mutate(data)))} className="space-y-4">
                             <FormField control={eggForm.control} name="flockId" render={({ field }) => (
                               <FormItem><FormLabel>Flock</FormLabel><FormControl>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -332,7 +352,7 @@ export default function QuickActions() {
                           <DialogDescription>Record bird losses and reason</DialogDescription>
                         </DialogHeader>
                         <Form {...mortalityForm}>
-                          <form onSubmit={mortalityForm.handleSubmit((data) => createMortalityRecord.mutate(data))} className="space-y-4">
+                          <form onSubmit={mortalityForm.handleSubmit((data) => handleFormSubmit(() => createMortalityRecord.mutate(data)))} className="space-y-4">
                             <FormField control={mortalityForm.control} name="flockId" render={({ field }) => (
                               <FormItem><FormLabel>Flock</FormLabel><FormControl>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -399,7 +419,7 @@ export default function QuickActions() {
                           <DialogDescription>Log feed consumption for today</DialogDescription>
                         </DialogHeader>
                         <Form {...feedForm}>
-                          <form onSubmit={feedForm.handleSubmit((data) => createFeedRecord.mutate(data))} className="space-y-4">
+                          <form onSubmit={feedForm.handleSubmit((data) => handleFormSubmit(() => createFeedRecord.mutate(data)))} className="space-y-4">
                             <FormField control={feedForm.control} name="flockId" render={({ field }) => (
                               <FormItem><FormLabel>Flock</FormLabel><FormControl>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -467,7 +487,7 @@ export default function QuickActions() {
                           <DialogDescription>Record egg sales with customer details</DialogDescription>
                         </DialogHeader>
                         <Form {...saleForm}>
-                          <form onSubmit={saleForm.handleSubmit((data) => createSaleRecord.mutate(data))} className="space-y-4">
+                          <form onSubmit={saleForm.handleSubmit((data) => handleFormSubmit(() => createSaleRecord.mutate(data)))} className="space-y-4">
                             <FormField control={saleForm.control} name="saleDate" render={({ field }) => (
                               <FormItem><FormLabel>Sale Date</FormLabel><FormControl><Input type="date" {...field} data-testid="input-sale-date" /></FormControl><FormMessage /></FormItem>
                             )} />
