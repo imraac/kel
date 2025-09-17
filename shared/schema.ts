@@ -238,6 +238,7 @@ export const expenses = pgTable("expenses", {
 // Customers table
 export const customers = pgTable("customers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique().references(() => users.id, { onDelete: "cascade" }), // Link to authenticated user
   name: varchar("name").notNull(),
   email: varchar("email"),
   phone: varchar("phone").notNull(),
@@ -248,7 +249,9 @@ export const customers = pgTable("customers", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_customers_user_id").on(table.userId),
+]);
 
 // Products table
 export const products = pgTable("products", {
@@ -444,7 +447,11 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
 }));
 
 // Marketplace relations
-export const customersRelations = relations(customers, ({ many }) => ({
+export const customersRelations = relations(customers, ({ one, many }) => ({
+  user: one(users, {
+    fields: [customers.userId],
+    references: [users.id],
+  }),
   orders: many(orders),
 }));
 
