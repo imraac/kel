@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Sprout, BarChart3, Baby, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FarmSelector } from "@/components/FarmSelector";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     >
       <div className="flex flex-col h-full">
         {/* Logo & Farm Info */}
-        <div className="p-6 border-b border-border">
+        <div className="p-6 border-b border-border space-y-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <Sprout className="text-primary-foreground text-lg" />
@@ -59,6 +60,9 @@ export default function Sidebar({ isOpen }: SidebarProps) {
               <p className="text-sm text-muted-foreground">Track & Grow</p>
             </div>
           </div>
+          
+          {/* Farm Selector for Admin Users */}
+          <FarmSelector />
         </div>
         
         {/* Navigation Menu */}

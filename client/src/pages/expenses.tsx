@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ type ExpenseFormData = z.infer<typeof expenseFormSchema>;
 export default function Expenses() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId, hasActiveFarm, error: farmError } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -64,8 +66,8 @@ export default function Expenses() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: expenses = [], error: expensesError } = useQuery<any[]>({
-    queryKey: ["/api/expenses"],
-    enabled: isAuthenticated,
+    queryKey: [`/api/expenses${activeFarmId ? `?farmId=${activeFarmId}` : ''}`, activeFarmId],
+    enabled: isAuthenticated && hasActiveFarm,
   });
 
   // Handle unauthorized errors
@@ -97,12 +99,13 @@ export default function Expenses() {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
-      // Send data as-is - server will handle type coercion
-      await apiRequest("POST", "/api/expenses", data);
+      // Include farmId for admin users, server will handle type coercion
+      const payload = { ...data, farmId: activeFarmId };
+      await apiRequest("POST", "/api/expenses", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/expenses${activeFarmId ? `?farmId=${activeFarmId}` : ''}`, activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
       toast({
         title: "Success",
         description: "Expense recorded successfully",
@@ -169,6 +172,15 @@ export default function Expenses() {
     .slice(0, 4);
 
   const onSubmitExpense = (data: ExpenseFormData) => {
+    // Early guard: Prevent submission without active farm
+    if (!hasActiveFarm) {
+      toast({
+        title: "Farm Required",
+        description: "Please select a farm before adding expenses",
+        variant: "destructive",
+      });
+      return;
+    }
     createExpenseMutation.mutate(data);
   };
 
@@ -227,7 +239,11 @@ export default function Expenses() {
             
             <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
               <DialogTrigger asChild>
-                <Button data-testid="button-add-expense">
+                <Button 
+                  data-testid="button-add-expense"
+                  disabled={!hasActiveFarm}
+                  title={!hasActiveFarm ? "Please select a farm first" : ""}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Expense
                 </Button>
