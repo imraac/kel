@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import { apiRequest } from "@/lib/queryClient";
 import { insertDailyRecordSchema } from "@shared/schema";
 import { z } from "zod";
@@ -25,6 +26,7 @@ interface DailyRecordFormProps {
 export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -46,17 +48,20 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
   });
 
   const { data: flocks = [] } = useQuery<any[]>({
-    queryKey: ["/api/flocks"],
+    queryKey: [`/api/flocks${activeFarmId ? `?farmId=${activeFarmId}` : ''}`, activeFarmId],
+    enabled: hasActiveFarm,
   });
 
   const createRecordMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      await apiRequest("POST", "/api/daily-records", data);
+      // Include farmId for admin users, server will handle type coercion
+      const payload = { ...data, farmId: activeFarmId };
+      await apiRequest("POST", "/api/daily-records", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/daily-records"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/daily-records${activeFarmId ? `?farmId=${activeFarmId}` : ''}`, activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity", activeFarmId] });
       toast({
         title: "Success",
         description: "Daily record created successfully",
@@ -74,6 +79,16 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
   });
 
   const onSubmit = (data: FormData) => {
+    // Early guard: Prevent submission without active farm
+    if (!hasActiveFarm) {
+      toast({
+        title: "Farm Required",
+        description: "Please select a farm before submitting daily records",
+        variant: "destructive",
+      });
+      return;
+    }
+    console.log('Submitting comprehensive daily record:', data);
     createRecordMutation.mutate(data);
   };
 
@@ -302,7 +317,8 @@ export default function DailyRecordForm({ onSuccess }: DailyRecordFormProps) {
 
             <Button 
               type="submit" 
-              disabled={createRecordMutation.isPending}
+              disabled={createRecordMutation.isPending || !hasActiveFarm}
+              title={!hasActiveFarm ? "Please select a farm first" : ""}
               data-testid="button-submit-daily-record"
             >
               {createRecordMutation.isPending ? "Saving..." : "Save Record"}
