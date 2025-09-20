@@ -844,8 +844,8 @@ export default function ChickBrooding() {
                           </TableRow>
                           <TableRow className="bg-purple-50/50 dark:bg-purple-950/20">
                             <TableCell className="font-medium">
-                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Week 9-12</Badge>
-                              <div className="text-xs text-muted-foreground mt-1">57-84 days</div>
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Week 9</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">57-63 days</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
@@ -862,28 +862,28 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">52-75g/day</span>
+                                <span className="font-medium">52g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
                               <div>Growers Mash</div>
-                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
+                              <Badge variant="secondary" className="text-xs mt-1">Full grower feed</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">740-1050g</span>
+                                <span className="font-medium">740-780g</span>
                               </div>
-                              <div className="text-xs text-muted-foreground">Grower phase</div>
+                              <div className="text-xs text-muted-foreground">Full grower feed</div>
                             </TableCell>
                           </TableRow>
-                          <TableRow className="bg-indigo-50/50 dark:bg-indigo-950/20">
+                          <TableRow className="bg-purple-50/50 dark:bg-purple-950/20">
                             <TableCell className="font-medium">
-                              <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">Week 13-16</Badge>
-                              <div className="text-xs text-muted-foreground mt-1">85-112 days</div>
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Week 10</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">64-70 days</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <Thermometer className="h-4 w-4 mr-1 text-indigo-600" />
+                                <Thermometer className="h-4 w-4 mr-1 text-purple-600" />
                                 <span className="font-medium">21°C</span>
                               </div>
                             </TableCell>
@@ -896,24 +896,228 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">80-100g/day</span>
+                                <span className="font-medium">60g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div>Growers to Layers transition</div>
-                              <Badge variant="secondary" className="text-xs mt-1">Pre-layer feed</Badge>
+                              <div>Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">1100-1410g</span>
+                                <span className="font-medium">830-870g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Rapid growth phase</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-purple-50/50 dark:bg-purple-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Week 11</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">71-77 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-purple-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">70g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">920-980g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Peak growth period</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-purple-50/50 dark:bg-purple-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Week 12</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">78-84 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-purple-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">75g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1010-1050g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Consistent growth</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-cyan-50/50 dark:bg-cyan-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200">Week 13</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">85-91 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-cyan-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">80g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1100-1140g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Continued development</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-cyan-50/50 dark:bg-cyan-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200">Week 14</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">92-98 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-cyan-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">85g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1185-1230g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Pre-layer development</div>
                             </TableCell>
                           </TableRow>
+                          <TableRow className="bg-cyan-50/50 dark:bg-cyan-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200">Week 15</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">99-105 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-cyan-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">92g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Growers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Growth feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1270-1320g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Final grower phase</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-cyan-50/50 dark:bg-cyan-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200">Week 16</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">106-112 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-cyan-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">100g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Gradual change to Layers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Feed transition</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1355-1410g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Begin layer feed transition</div>
+                            </TableCell>
+                          </TableRow>
                           <TableRow className="bg-pink-50/50 dark:bg-pink-950/20">
                             <TableCell className="font-medium">
-                              <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">Week 17-20</Badge>
-                              <div className="text-xs text-muted-foreground mt-1">113-140 days</div>
+                              <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">Week 17</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">113-119 days</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
@@ -930,7 +1134,7 @@ export default function ChickBrooding() {
                             <TableCell>
                               <div className="flex items-center">
                                 <Utensils className="h-4 w-4 mr-1 text-green-500" />
-                                <span className="font-medium">107-120g/day</span>
+                                <span className="font-medium">107g/day</span>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -939,7 +1143,109 @@ export default function ChickBrooding() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className="font-medium">1440-1750g</span>
+                                <span className="font-medium">1440-1500g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Layer feed establishment</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-pink-50/50 dark:bg-pink-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">Week 18</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">120-126 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-pink-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">114g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Layers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Layer feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1530-1600g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Pre-laying preparation</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-pink-50/50 dark:bg-pink-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">Week 19</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">127-133 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-pink-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">118g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Layers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Layer feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1580-1680g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Approaching laying</div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-pink-50/50 dark:bg-pink-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">Week 20</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">134-140 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-pink-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">120g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Layers Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">Layer feed</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">1645-1750g</span>
                               </div>
                               <div className="text-xs text-muted-foreground">Ready for egg production</div>
                             </TableCell>
