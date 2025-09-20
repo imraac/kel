@@ -774,6 +774,40 @@ export default function ChickBrooding() {
                               <div className="text-xs text-muted-foreground">Grower preparation</div>
                             </TableCell>
                           </TableRow>
+                          <TableRow className="bg-indigo-50/50 dark:bg-indigo-950/20">
+                            <TableCell className="font-medium">
+                              <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">Week 7</Badge>
+                              <div className="text-xs text-muted-foreground mt-1">43-49 days</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Thermometer className="h-4 w-4 mr-1 text-indigo-600" />
+                                <span className="font-medium">21°C</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                <span>14 hours</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Utensils className="h-4 w-4 mr-1 text-green-500" />
+                                <span className="font-medium">45g/day</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>Chick and Duck Mash</div>
+                              <Badge variant="secondary" className="text-xs mt-1">High protein starter</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="font-medium">560-600g</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">Transition preparation</div>
+                            </TableCell>
+                          </TableRow>
                           <TableRow className="bg-blue-50/50 dark:bg-blue-950/20">
                             <TableCell className="font-medium">
                               <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Week 8</Badge>
