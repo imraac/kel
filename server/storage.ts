@@ -776,6 +776,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async linkCustomerByEmail(email: string, userId: string): Promise<void> {
+    // Only link if this user doesn't already have a customer record
+    const existingCustomer = await this.getCustomerByUserId(userId);
+    if (existingCustomer) {
+      return; // User already has a customer record, skip linking
+    }
+    
     // Find customer with matching email that doesn't have a userId yet
     await db
       .update(customers)
