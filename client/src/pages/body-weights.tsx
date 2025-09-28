@@ -914,7 +914,7 @@ export default function BodyWeights() {
                               </h4>
                               <div className="h-60 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={createWeeklyGainData()}>
+                                  <RechartsLineChart data={createWeeklyGainData()}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis 
                                       dataKey="week" 
@@ -947,7 +947,7 @@ export default function BodyWeights() {
                                       dot={{ r: 4 }}
                                       name="standardGain"
                                     />
-                                  </LineChart>
+                                  </RechartsLineChart>
                                 </ResponsiveContainer>
                               </div>
                               <div className="mt-2 text-sm text-muted-foreground">
