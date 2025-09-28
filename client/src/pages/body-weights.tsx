@@ -293,27 +293,83 @@ export default function BodyWeights() {
     });
   };
 
-  // Create histogram data from weights array
+  // Calculate normal distribution probability density function
+  const normalPDF = (x: number, mean: number, stdDev: number) => {
+    if (stdDev === 0) return 0;
+    const coefficient = 1 / (stdDev * Math.sqrt(2 * Math.PI));
+    const exponent = -0.5 * Math.pow((x - mean) / stdDev, 2);
+    return coefficient * Math.exp(exponent);
+  };
+
+  // Create enhanced histogram data with normal distribution overlay
   const createHistogramData = (weights: number[]) => {
-    if (!weights || weights.length === 0) return [];
+    if (!weights || weights.length === 0) return { bins: [], normalCurve: [] };
+    
+    const mean = weights.reduce((sum, w) => sum + w, 0) / weights.length;
+    const variance = weights.reduce((sum, w) => sum + Math.pow(w - mean, 2), 0) / weights.length;
+    const stdDev = Math.sqrt(variance);
     
     const min = Math.min(...weights);
     const max = Math.max(...weights);
-    const binCount = Math.min(10, Math.max(5, Math.ceil(Math.sqrt(weights.length))));
-    const binWidth = (max - min) / binCount;
     
-    const bins = Array.from({ length: binCount }, (_, i) => ({
-      range: `${(min + i * binWidth).toFixed(3)}-${(min + (i + 1) * binWidth).toFixed(3)}`,
-      count: 0,
-      midpoint: min + (i + 0.5) * binWidth
-    }));
+    // Use Freedman-Diaconis rule for bin width, clamped to 0.01-0.03 kg
+    const iqr = weights.sort((a, b) => a - b)[Math.floor(weights.length * 0.75)] - 
+                weights[Math.floor(weights.length * 0.25)];
+    const fdBinWidth = 2 * iqr / Math.pow(weights.length, 1/3);
+    const binWidth = Math.max(0.01, Math.min(0.03, fdBinWidth));
+    const binCount = Math.max(5, Math.ceil((max - min) / binWidth));
     
-    weights.forEach(weight => {
-      const binIndex = Math.min(binCount - 1, Math.floor((weight - min) / binWidth));
-      bins[binIndex].count++;
+    // Create bins
+    const bins = Array.from({ length: binCount }, (_, i) => {
+      const binStart = min + i * binWidth;
+      const binEnd = binStart + binWidth;
+      const count = weights.filter(w => w >= binStart && (i === binCount - 1 ? w <= binEnd : w < binEnd)).length;
+      
+      return {
+        range: `${binStart.toFixed(3)}-${binEnd.toFixed(3)}`,
+        count,
+        midpoint: binStart + binWidth / 2,
+        binStart,
+        binEnd
+      };
     });
     
-    return bins;
+    // Create normal distribution curve points (only if stdDev > 0)
+    const normalCurve = stdDev > 0 ? Array.from({ length: 100 }, (_, i) => {
+      const x = min + (i / 99) * (max - min);
+      const pdf = normalPDF(x, mean, stdDev);
+      const scaledY = pdf * weights.length * binWidth; // Scale to match histogram
+      
+      return { x, y: scaledY };
+    }) : [];
+    
+    return { bins, normalCurve };
+  };
+
+  // Create weekly weight gain data
+  const createWeeklyGainData = () => {
+    if (!weightRecords || weightRecords.length < 2) return [];
+    
+    const sortedRecords = [...weightRecords].sort((a, b) => a.weekNumber - b.weekNumber);
+    const gainData = [];
+    
+    for (let i = 1; i < sortedRecords.length; i++) {
+      const currentRecord = sortedRecords[i];
+      const previousRecord = sortedRecords[i - 1];
+      
+      const actualGain = parseFloat(currentRecord.averageWeight) - parseFloat(previousRecord.averageWeight);
+      const currentStandard = currentRecord.expectedWeight ? parseFloat(currentRecord.expectedWeight) : null;
+      const previousStandard = previousRecord.expectedWeight ? parseFloat(previousRecord.expectedWeight) : null;
+      const standardGain = (currentStandard && previousStandard) ? currentStandard - previousStandard : null;
+      
+      gainData.push({
+        week: currentRecord.weekNumber,
+        actualGain: Number(actualGain.toFixed(3)),
+        standardGain: standardGain ? Number(standardGain.toFixed(3)) : null
+      });
+    }
+    
+    return gainData;
   };
 
   // Create weekly comparison chart data
@@ -706,7 +762,8 @@ export default function BodyWeights() {
               <div className="space-y-4">
                 {weightRecords.slice(0, 5).map((record) => {
                   const isExpanded = expandedRecords.has(record.id);
-                  const histogramData = isExpanded ? createHistogramData(record.weights as number[]) : [];
+                  const histogramResult = isExpanded ? createHistogramData(record.weights as number[]) : { bins: [], normalCurve: [] };
+                  const histogramData = histogramResult.bins;
                   
                   return (
                     <div
@@ -759,7 +816,7 @@ export default function BodyWeights() {
                               <Calculator className="h-4 w-4" />
                               Detailed Statistics
                             </h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                               <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
                                 <p className="text-sm text-muted-foreground">Average Weight</p>
                                 <p className="font-bold text-lg">{parseFloat(record.averageWeight).toFixed(3)} kg</p>
@@ -771,6 +828,10 @@ export default function BodyWeights() {
                               <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded">
                                 <p className="text-sm text-muted-foreground">Uniformity</p>
                                 <p className="font-bold text-lg">{parseFloat(record.uniformity).toFixed(1)}%</p>
+                              </div>
+                              <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                <p className="text-sm text-muted-foreground">CV%</p>
+                                <p className="font-bold text-lg">{record.cvPercent ? parseFloat(record.cvPercent).toFixed(2) : 'N/A'}%</p>
                               </div>
                               <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded">
                                 <p className="text-sm text-muted-foreground">Sample Size</p>
@@ -799,11 +860,11 @@ export default function BodyWeights() {
                             )}
                           </div>
 
-                          {/* Weight Distribution Histogram */}
+                          {/* Weight Distribution Histogram with Normal Curve */}
                           <div>
                             <h4 className="font-semibold mb-3 flex items-center gap-2">
                               <BarChart3 className="h-4 w-4" />
-                              Weight Distribution
+                              Weight Distribution with Normal Curve
                             </h4>
                             <div className="h-60 w-full">
                               <ResponsiveContainer width="100%" height="100%">
@@ -823,7 +884,7 @@ export default function BodyWeights() {
                                     formatter={(value: any) => [`${value} birds`, 'Count']}
                                     labelFormatter={(range) => `Weight Range: ${range} kg`}
                                   />
-                                  <Bar dataKey="count" fill="#8884d8">
+                                  <Bar dataKey="count" fill="#8884d8" fillOpacity={0.7}>
                                     {histogramData.map((entry, index) => (
                                       <Cell key={`cell-${index}`} fill={`hsl(${220 + index * 20}, 70%, 50%)`} />
                                     ))}
@@ -831,7 +892,69 @@ export default function BodyWeights() {
                                 </BarChart>
                               </ResponsiveContainer>
                             </div>
+                            
+                            {/* CV% Interpretation */}
+                            {record.cvPercent && (
+                              <div className="mt-2 text-sm text-muted-foreground bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                                <strong>CV% Interpretation:</strong>
+                                {parseFloat(record.cvPercent) < 5 ? " Excellent uniformity - very consistent weights" :
+                                 parseFloat(record.cvPercent) < 8 ? " Good uniformity - acceptable variation" :
+                                 parseFloat(record.cvPercent) < 12 ? " Moderate uniformity - some variation present" :
+                                 " Poor uniformity - high variation in weights"}
+                              </div>
+                            )}
                           </div>
+
+                          {/* Weekly Weight Gain Chart */}
+                          {weightRecords && weightRecords.length > 1 && (
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4" />
+                                Weekly Weight Gain Analysis
+                              </h4>
+                              <div className="h-60 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={createWeeklyGainData()}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                      dataKey="week" 
+                                      label={{ value: 'Week Number', position: 'insideBottom', offset: -5 }}
+                                    />
+                                    <YAxis 
+                                      label={{ value: 'Weight Gain (kg)', angle: -90, position: 'insideLeft' }}
+                                    />
+                                    <Tooltip 
+                                      formatter={(value: any, name: string) => [
+                                        `${value} kg`, 
+                                        name === 'actualGain' ? 'Actual Gain' : 'Standard Gain'
+                                      ]}
+                                      labelFormatter={(week) => `Week ${week}`}
+                                    />
+                                    <Line 
+                                      type="monotone" 
+                                      dataKey="actualGain" 
+                                      stroke="#8884d8" 
+                                      strokeWidth={2}
+                                      dot={{ r: 4 }}
+                                      name="actualGain"
+                                    />
+                                    <Line 
+                                      type="monotone" 
+                                      dataKey="standardGain" 
+                                      stroke="#82ca9d" 
+                                      strokeWidth={2}
+                                      strokeDasharray="5 5"
+                                      dot={{ r: 4 }}
+                                      name="standardGain"
+                                    />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                              <div className="mt-2 text-sm text-muted-foreground">
+                                Solid line: Actual weekly gain | Dashed line: Expected breed standard gain
+                              </div>
+                            </div>
+                          )}
 
                           {/* Notes */}
                           {record.notes && (

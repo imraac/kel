@@ -597,6 +597,7 @@ export const weightRecords = pgTable("weight_records", {
   averageWeight: decimal("average_weight", { precision: 6, scale: 2 }).notNull(),
   stdDev: decimal("std_dev", { precision: 6, scale: 2 }).notNull(),
   uniformity: decimal("uniformity", { precision: 5, scale: 2 }).notNull(), // Percentage
+  cvPercent: decimal("cv_percent", { precision: 5, scale: 2 }), // Coefficient of Variation percentage
   
   // Breed standard comparison
   comparisonResult: varchar("comparison_result"), // "below_standard", "within_standard", "above_standard"
@@ -650,6 +651,7 @@ export const insertWeightRecordSchema = createInsertSchema(weightRecords, {
   averageWeight: z.coerce.number().positive(),
   stdDev: z.coerce.number().min(0),
   uniformity: z.coerce.number().min(0).max(100),
+  cvPercent: z.coerce.number().min(0).max(999.99).optional(), // CV% can be 0 in edge cases
   weekNumber: z.number().int().positive().max(100),
 }).omit({
   id: true,
