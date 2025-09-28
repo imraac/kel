@@ -22,9 +22,9 @@ import type { Flock, WeightRecord, InsertWeightRecord } from "@shared/schema";
 // Validation schema for weight entry form
 const weightEntrySchema = z.object({
   flockId: z.string().min(1, "Please select a flock"),
-  weekNumber: z.number().int().positive().max(100),
+  weekNumber: z.coerce.number().int().positive().max(100),
   recordDate: z.string(),
-  weights: z.array(z.number().positive()).min(1, "At least one weight measurement is required").max(1000),
+  weights: z.array(z.coerce.number().positive()).min(1, "At least one weight measurement is required").max(1000),
   notes: z.string().optional(),
 });
 
@@ -226,10 +226,13 @@ export default function BodyWeights() {
       return;
     }
 
-    createWeightRecord.mutate({
+    // Sync current weights into form data before validation
+    const submissionData = {
       ...data,
       weights,
-    });
+    };
+
+    createWeightRecord.mutate(submissionData);
   };
 
   if (!activeFarmId) {
