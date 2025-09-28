@@ -1444,12 +1444,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         userId,
         sampleSize: weights.length,
-        averageWeight: statistics.average.toString(),
-        stdDev: statistics.stdDev.toString(),
-        uniformity: statistics.uniformity.toString(),
+        averageWeight: statistics.average,
+        stdDev: statistics.stdDev,
+        uniformity: statistics.uniformity,
         comparisonResult: breedComparison.comparisonResult,
-        expectedWeight: breedComparison.expectedWeight?.toString() || null,
-        weightDeviation: breedComparison.weightDeviation?.toString() || null,
+        expectedWeight: breedComparison.expectedWeight || null,
+        weightDeviation: breedComparison.weightDeviation || null,
       };
 
       const validatedData = insertWeightRecordSchema.parse(input);
@@ -1478,9 +1478,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const statistics = storage.calculateWeightStatistics(weights);
         
         req.body.sampleSize = weights.length;
-        req.body.averageWeight = statistics.average.toString();
-        req.body.stdDev = statistics.stdDev.toString();
-        req.body.uniformity = statistics.uniformity.toString();
+        req.body.averageWeight = statistics.average;
+        req.body.stdDev = statistics.stdDev;
+        req.body.uniformity = statistics.uniformity;
 
         // Recalculate breed comparison if week number changed
         if (req.body.weekNumber) {
@@ -1490,8 +1490,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             statistics.average
           );
           req.body.comparisonResult = breedComparison.comparisonResult;
-          req.body.expectedWeight = breedComparison.expectedWeight?.toString() || null;
-          req.body.weightDeviation = breedComparison.weightDeviation?.toString() || null;
+          req.body.expectedWeight = breedComparison.expectedWeight || null;
+          req.body.weightDeviation = breedComparison.weightDeviation || null;
         }
       }
 
