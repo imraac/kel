@@ -1452,11 +1452,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weightDeviation: breedComparison.weightDeviation || null,
       };
 
-      console.log("=== DEBUG: Before validation ===");
-      console.log("Input averageWeight type:", typeof input.averageWeight, "value:", input.averageWeight);
-      console.log("Input stdDev type:", typeof input.stdDev, "value:", input.stdDev);
-      console.log("Input uniformity type:", typeof input.uniformity, "value:", input.uniformity);
-      
       const validatedData = insertWeightRecordSchema.parse(input);
       const record = await storage.createWeightRecord(validatedData);
       res.status(201).json(record);
