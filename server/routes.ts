@@ -1465,6 +1465,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Raw request body:", JSON.stringify(req.body, null, 2));
         console.error("Zod errors:", JSON.stringify(error.errors, null, 2));
         res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else if ((error as any).code === '23505' && (error as any).constraint === 'uniq_weight_records_flock_week') {
+        // Handle duplicate flock/week constraint violation
+        console.error("Duplicate weight record attempted:", error);
+        res.status(409).json({ 
+          message: "A weight record for this flock and week already exists. Please use a different week number or update the existing record." 
+        });
       } else {
         console.error("Error creating weight record:", error);
         res.status(500).json({ message: "Failed to create weight record" });

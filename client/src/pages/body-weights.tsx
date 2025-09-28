@@ -252,9 +252,17 @@ export default function BodyWeights() {
       setNextId(2);
     },
     onError: (error: any) => {
+      const errorMessage = error.message || "Failed to create weight record";
+      let description = errorMessage;
+      
+      // Handle specific duplicate record error
+      if (error.status === 409 || errorMessage.includes("already exists")) {
+        description = "A weight record for this flock and week already exists. Please choose a different week number or edit the existing record.";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to create weight record",
+        description,
         variant: "destructive",
       });
     },
