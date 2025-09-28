@@ -1439,6 +1439,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statistics.average
       );
 
+      // Calculate Coefficient of Variation (CV%)
+      const cvPercent = statistics.average > 0 ? (statistics.stdDev / statistics.average) * 100 : 0;
+
       // Auto-inject calculated data and user info
       const input = {
         ...req.body,
@@ -1447,6 +1450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         averageWeight: statistics.average,
         stdDev: statistics.stdDev,
         uniformity: statistics.uniformity,
+        cvPercent: Number(cvPercent.toFixed(2)),
         comparisonResult: breedComparison.comparisonResult,
         expectedWeight: breedComparison.expectedWeight || null,
         weightDeviation: breedComparison.weightDeviation || null,
@@ -1481,6 +1485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.body.averageWeight = statistics.average;
         req.body.stdDev = statistics.stdDev;
         req.body.uniformity = statistics.uniformity;
+        req.body.cvPercent = statistics.average > 0 ? Number(((statistics.stdDev / statistics.average) * 100).toFixed(2)) : 0;
 
         // Recalculate breed comparison if week number changed
         if (req.body.weekNumber) {
