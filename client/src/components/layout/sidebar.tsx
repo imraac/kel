@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Sprout, BarChart3, Baby, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck, Building2 } from "lucide-react";
+import { Sprout, BarChart3, Baby, Scale, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FarmSelector } from "@/components/FarmSelector";
 
@@ -21,6 +21,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
   const navigationItems = [
     { path: "/", icon: BarChart3, label: "Dashboard", id: "dashboard" },
     { path: "/chick-brooding", icon: Baby, label: "Chick Brooding", id: "chick-brooding" },
+    { path: "/body-weights", icon: Scale, label: "Body Weights", id: "body-weights" },
     { path: "/egg-production", icon: Egg, label: "Egg Production", id: "egg-production" },
     { path: "/feed-management", icon: Wheat, label: "Feed Management", id: "feed-management" },
     { path: "/health-records", icon: Heart, label: "Health Records", id: "health-records" },

@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import ChickBrooding from "@/pages/chick-brooding";
+import BodyWeights from "@/pages/body-weights";
 import EggProduction from "@/pages/egg-production";
 import FeedManagement from "@/pages/feed-management";
 import HealthRecords from "@/pages/health-records";
@@ -69,6 +70,7 @@ function Router() {
         <>
           <Route path="/" component={Home} />
           <Route path="/chick-brooding" component={ChickBrooding} />
+          <Route path="/body-weights" component={BodyWeights} />
           <Route path="/egg-production" component={EggProduction} />
           <Route path="/feed-management" component={FeedManagement} />
           <Route path="/health-records" component={HealthRecords} />
