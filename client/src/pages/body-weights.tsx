@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Plus, Trash2, Calculator, TrendingUp, Scale } from "lucide-react";
+import { AlertCircle, Plus, Trash2, Calculator, TrendingUp, Scale, BarChart3, LineChart, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useFarmContext } from "@/contexts/FarmContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Flock, WeightRecord, InsertWeightRecord } from "@shared/schema";
 import { useCallback } from "react";
+import { BarChart, Bar, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Validation schema for weight entry form
 const weightEntrySchema = z.object({
@@ -122,6 +123,7 @@ export default function BodyWeights() {
     { id: 1, weight: "" }
   ]);
   const [nextId, setNextId] = useState(2);
+  const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
 
   // Fetch flocks for the dropdown
   const { data: flocks = [], isLoading: flocksLoading } = useQuery<Flock[]>({
@@ -276,6 +278,56 @@ export default function BodyWeights() {
     };
 
     createWeightRecord.mutate(submissionData);
+  };
+
+  // Toggle record expansion
+  const toggleRecordExpansion = (recordId: string) => {
+    setExpandedRecords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(recordId)) {
+        newSet.delete(recordId);
+      } else {
+        newSet.add(recordId);
+      }
+      return newSet;
+    });
+  };
+
+  // Create histogram data from weights array
+  const createHistogramData = (weights: number[]) => {
+    if (!weights || weights.length === 0) return [];
+    
+    const min = Math.min(...weights);
+    const max = Math.max(...weights);
+    const binCount = Math.min(10, Math.max(5, Math.ceil(Math.sqrt(weights.length))));
+    const binWidth = (max - min) / binCount;
+    
+    const bins = Array.from({ length: binCount }, (_, i) => ({
+      range: `${(min + i * binWidth).toFixed(3)}-${(min + (i + 1) * binWidth).toFixed(3)}`,
+      count: 0,
+      midpoint: min + (i + 0.5) * binWidth
+    }));
+    
+    weights.forEach(weight => {
+      const binIndex = Math.min(binCount - 1, Math.floor((weight - min) / binWidth));
+      bins[binIndex].count++;
+    });
+    
+    return bins;
+  };
+
+  // Create weekly comparison chart data
+  const createWeeklyChartData = () => {
+    if (!weightRecords || weightRecords.length === 0) return [];
+    
+    return weightRecords
+      .sort((a, b) => a.weekNumber - b.weekNumber)
+      .map(record => ({
+        week: record.weekNumber,
+        actual: parseFloat(record.averageWeight),
+        standard: record.expectedWeight ? parseFloat(record.expectedWeight) : null,
+        uniformity: parseFloat(record.uniformity)
+      }));
   };
 
   if (!activeFarmId) {
@@ -588,53 +640,222 @@ export default function BodyWeights() {
         </Card>
       </div>
 
-      {/* Recent Records */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Weight Records</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recordsLoading ? (
-            <p>Loading records...</p>
-          ) : weightRecords.length > 0 ? (
-            <div className="space-y-3">
-              {weightRecords.slice(0, 5).map((record) => (
-                <div
-                  key={record.id}
-                  className="flex items-center justify-between p-3 border rounded"
-                  data-testid={`weight-record-${record.id}`}
-                >
-                  <div>
-                    <p className="font-semibold">Week {record.weekNumber}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(record.recordDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{record.averageWeight} kg avg</p>
-                    <p className="text-sm text-muted-foreground">
-                      {record.sampleSize} birds
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      record.comparisonResult === 'within_standard' ? 'default' :
-                      record.comparisonResult === 'above_standard' ? 'secondary' :
-                      'destructive'
-                    }
-                  >
-                    {record.comparisonResult?.replace('_', ' ') || 'Unknown'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">
-              No weight records found. Create your first weight record above.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Enhanced Weight Records with Visualizations */}
+      <div className="space-y-6">
+        {/* Weekly Comparison Chart */}
+        {weightRecords.length > 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LineChart className="h-5 w-5" />
+                Weekly Progress - Actual vs Standard
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsLineChart data={createWeeklyChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="week" 
+                      label={{ value: 'Week Number', position: 'insideBottom', offset: -5 }}
+                    />
+                    <YAxis 
+                      label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip 
+                      formatter={(value: any, name: string) => [
+                        `${parseFloat(value).toFixed(3)} kg`, 
+                        name === 'actual' ? 'Actual Weight' : 'Standard Weight'
+                      ]}
+                      labelFormatter={(week) => `Week ${week}`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="actual" 
+                      stroke="#8884d8" 
+                      strokeWidth={2}
+                      name="actual"
+                      connectNulls={false}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="standard" 
+                      stroke="#82ca9d" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="standard"
+                      connectNulls={false}
+                    />
+                  </RechartsLineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Records with Detailed View */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Weight Records</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recordsLoading ? (
+              <p>Loading records...</p>
+            ) : weightRecords.length > 0 ? (
+              <div className="space-y-4">
+                {weightRecords.slice(0, 5).map((record) => {
+                  const isExpanded = expandedRecords.has(record.id);
+                  const histogramData = isExpanded ? createHistogramData(record.weights as number[]) : [];
+                  
+                  return (
+                    <div
+                      key={record.id}
+                      className="border rounded-lg overflow-hidden"
+                      data-testid={`weight-record-${record.id}`}
+                    >
+                      {/* Record Summary */}
+                      <div 
+                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        onClick={() => toggleRecordExpansion(record.id)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-semibold">Week {record.weekNumber}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(record.recordDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="font-semibold">{parseFloat(record.averageWeight).toFixed(3)} kg avg</p>
+                            <p className="text-sm text-muted-foreground">
+                              {record.sampleSize} birds
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              record.comparisonResult === 'within_standard' ? 'default' :
+                              record.comparisonResult === 'above_standard' ? 'secondary' :
+                              'destructive'
+                            }
+                          >
+                            {record.comparisonResult?.replace('_', ' ') || 'Unknown'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm">
+                            {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {isExpanded ? 'Hide Details' : 'Show Details'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Details */}
+                      {isExpanded && (
+                        <div className="p-4 space-y-6">
+                          {/* Detailed Statistics */}
+                          <div>
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                              <Calculator className="h-4 w-4" />
+                              Detailed Statistics
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                <p className="text-sm text-muted-foreground">Average Weight</p>
+                                <p className="font-bold text-lg">{parseFloat(record.averageWeight).toFixed(3)} kg</p>
+                              </div>
+                              <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                                <p className="text-sm text-muted-foreground">Std Deviation</p>
+                                <p className="font-bold text-lg">{parseFloat(record.stdDev).toFixed(3)} kg</p>
+                              </div>
+                              <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded">
+                                <p className="text-sm text-muted-foreground">Uniformity</p>
+                                <p className="font-bold text-lg">{parseFloat(record.uniformity).toFixed(1)}%</p>
+                              </div>
+                              <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded">
+                                <p className="text-sm text-muted-foreground">Sample Size</p>
+                                <p className="font-bold text-lg">{record.sampleSize}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Breed Comparison */}
+                            {record.expectedWeight && (
+                              <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                <p className="text-sm text-muted-foreground">Breed Standard Comparison</p>
+                                <div className="flex justify-between items-center mt-1">
+                                  <span>Expected: {parseFloat(record.expectedWeight).toFixed(3)} kg</span>
+                                  <span className={`font-semibold ${
+                                    record.weightDeviation && parseFloat(record.weightDeviation) > 0 ? 'text-green-600' : 
+                                    record.weightDeviation && parseFloat(record.weightDeviation) < 0 ? 'text-red-600' : 
+                                    'text-gray-600'
+                                  }`}>
+                                    {record.weightDeviation ? 
+                                      `${parseFloat(record.weightDeviation) > 0 ? '+' : ''}${parseFloat(record.weightDeviation).toFixed(3)} kg` : 
+                                      'N/A'
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Weight Distribution Histogram */}
+                          <div>
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                              <BarChart3 className="h-4 w-4" />
+                              Weight Distribution
+                            </h4>
+                            <div className="h-60 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={histogramData}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis 
+                                    dataKey="range" 
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={80}
+                                    label={{ value: 'Weight Range (kg)', position: 'insideBottom', offset: -5 }}
+                                  />
+                                  <YAxis 
+                                    label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+                                  />
+                                  <Tooltip 
+                                    formatter={(value: any) => [`${value} birds`, 'Count']}
+                                    labelFormatter={(range) => `Weight Range: ${range} kg`}
+                                  />
+                                  <Bar dataKey="count" fill="#8884d8">
+                                    {histogramData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={`hsl(${220 + index * 20}, 70%, 50%)`} />
+                                    ))}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+
+                          {/* Notes */}
+                          {record.notes && (
+                            <div>
+                              <h4 className="font-semibold mb-2">Notes</h4>
+                              <p className="text-sm text-muted-foreground bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                                {record.notes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">
+                No weight records found. Create your first weight record above.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
