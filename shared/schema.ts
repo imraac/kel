@@ -647,9 +647,9 @@ export const breedStandards = pgTable("breed_standards", {
 export const insertWeightRecordSchema = createInsertSchema(weightRecords, {
   weights: z.array(z.number().positive()).min(1).max(1000), // Array of positive numbers, max 1000 birds
   sampleSize: z.number().int().positive().max(1000),
-  averageWeight: z.number().positive(),
-  stdDev: z.number().min(0),
-  uniformity: z.number().min(0).max(100),
+  averageWeight: z.coerce.number().positive(),
+  stdDev: z.coerce.number().min(0),
+  uniformity: z.coerce.number().min(0).max(100),
   weekNumber: z.number().int().positive().max(100),
 }).omit({
   id: true,
