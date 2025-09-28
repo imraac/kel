@@ -18,19 +18,29 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useFarmContext } from "@/contexts/FarmContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Flock, WeightRecord, InsertWeightRecord } from "@shared/schema";
+import { useCallback } from "react";
 
 // Validation schema for weight entry form
 const weightEntrySchema = z.object({
   flockId: z.string().min(1, "Please select a flock"),
   weekNumber: z.coerce.number().int().positive().max(100),
   recordDate: z.string(),
-  weights: z.array(z.coerce.number().positive()).min(1, "At least one weight measurement is required").max(1000),
+  weights: z.array(z.coerce.number().positive()).min(1, "At least one weight measurement is required").max(1000).refine(
+    (weights) => weights.every(w => Number(w.toFixed(4)) === w),
+    "Weights must have at most 4 decimal places"
+  ),
   notes: z.string().optional(),
 });
 
+// Helper function to validate decimal input with up to 4 decimal places
+const validateDecimalInput = (value: string): boolean => {
+  const decimalRegex = /^\d*(?:[.]\d{0,4})?$/;
+  return decimalRegex.test(value);
+};
+
 type WeightEntryFormData = z.infer<typeof weightEntrySchema>;
 
-// Statistics calculation hook
+// Statistics calculation hook with debouncing
 function useWeightStatistics(weights: number[], weekNumber: number) {
   const [statistics, setStatistics] = useState<{
     average: number;
@@ -42,31 +52,44 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
     weightDeviation?: number;
   } | null>(null);
 
+  const [debouncedWeights, setDebouncedWeights] = useState<number[]>([]);
+  const [debouncedWeekNumber, setDebouncedWeekNumber] = useState(0);
+
+  // Debounce weights changes to prevent excessive API calls
   useEffect(() => {
-    if (weights.length === 0) {
+    const timer = setTimeout(() => {
+      setDebouncedWeights(weights);
+      setDebouncedWeekNumber(weekNumber);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [weights, weekNumber]);
+
+  useEffect(() => {
+    if (debouncedWeights.length === 0) {
       setStatistics(null);
       return;
     }
 
     // Calculate basic statistics locally
-    const average = weights.reduce((sum, weight) => sum + weight, 0) / weights.length;
-    const variance = weights.reduce((sum, weight) => sum + Math.pow(weight - average, 2), 0) / weights.length;
+    const average = debouncedWeights.reduce((sum, weight) => sum + weight, 0) / debouncedWeights.length;
+    const variance = debouncedWeights.reduce((sum, weight) => sum + Math.pow(weight - average, 2), 0) / debouncedWeights.length;
     const stdDev = Math.sqrt(variance);
     
     // Calculate uniformity (percentage within 10% of average)
     const tolerance = average * 0.1;
-    const uniformCount = weights.filter(weight => Math.abs(weight - average) <= tolerance).length;
-    const uniformity = (uniformCount / weights.length) * 100;
+    const uniformCount = debouncedWeights.filter(weight => Math.abs(weight - average) <= tolerance).length;
+    const uniformity = (uniformCount / debouncedWeights.length) * 100;
 
-    // Call API for breed standard comparison
-    if (weekNumber > 0) {
-      apiRequest('/api/weight-records/calculate', 'POST', { weights, weekNumber })
+    // Call API for breed standard comparison (debounced)
+    if (debouncedWeekNumber > 0) {
+      apiRequest('/api/weight-records/calculate', 'POST', { weights: debouncedWeights, weekNumber: debouncedWeekNumber })
         .then((response: any) => {
           setStatistics({
             average: Number(average.toFixed(2)),
             stdDev: Number(stdDev.toFixed(2)),
             uniformity: Number(uniformity.toFixed(2)),
-            sampleSize: weights.length,
+            sampleSize: debouncedWeights.length,
             comparisonResult: response.comparisonResult,
             expectedWeight: response.expectedWeight,
             weightDeviation: response.weightDeviation,
@@ -78,7 +101,7 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
             average: Number(average.toFixed(2)),
             stdDev: Number(stdDev.toFixed(2)),
             uniformity: Number(uniformity.toFixed(2)),
-            sampleSize: weights.length,
+            sampleSize: debouncedWeights.length,
           });
         });
     } else {
@@ -86,10 +109,10 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
         average: Number(average.toFixed(2)),
         stdDev: Number(stdDev.toFixed(2)),
         uniformity: Number(uniformity.toFixed(2)),
-        sampleSize: weights.length,
+        sampleSize: debouncedWeights.length,
       });
     }
-  }, [weights, weekNumber]);
+  }, [debouncedWeights, debouncedWeekNumber]);
 
   return statistics;
 }
@@ -165,12 +188,18 @@ export default function BodyWeights() {
     }
   };
 
-  // Update weight input value
-  const updateWeightInput = (id: number, value: string) => {
-    setWeightInputs(prev => prev.map(input => 
-      input.id === id ? { ...input, weight: value } : input
-    ));
-  };
+  // Update weight input value with validation
+  const updateWeightInput = useCallback((id: number, value: string) => {
+    // Normalize comma to dot and validate format
+    const normalizedValue = value.replace(',', '.');
+    
+    // Only update if the value matches our decimal pattern
+    if (normalizedValue === '' || validateDecimalInput(normalizedValue)) {
+      setWeightInputs(prev => prev.map(input => 
+        input.id === id ? { ...input, weight: normalizedValue } : input
+      ));
+    }
+  }, []);
 
   // Add multiple weight inputs at once
   const addMultipleInputs = (count: number) => {
@@ -382,13 +411,19 @@ export default function BodyWeights() {
                     {weightInputs.map((input) => (
                       <div key={input.id} className="flex gap-1">
                         <Input
-                          type="number"
-                          step="0.0001"
+                          type="text"
                           inputMode="decimal"
-                          min="0"
                           placeholder="0.0000"
                           value={input.weight}
-                          onChange={(e) => updateWeightInput(input.id, e.target.value.replace(',', '.'))}
+                          onChange={(e) => updateWeightInput(input.id, e.target.value)}
+                          onBlur={(e) => {
+                            // Format to 4 decimal places on blur if it's a valid number
+                            const num = parseFloat(e.target.value);
+                            if (!isNaN(num) && num > 0) {
+                              const formatted = num.toFixed(4);
+                              updateWeightInput(input.id, formatted);
+                            }
+                          }}
                           data-testid={`input-weight-${input.id}`}
                           className="text-sm"
                         />
