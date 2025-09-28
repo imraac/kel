@@ -25,10 +25,6 @@ const weightEntrySchema = z.object({
   flockId: z.string().min(1, "Please select a flock"),
   weekNumber: z.coerce.number().int().positive().max(100),
   recordDate: z.string(),
-  weights: z.array(z.coerce.number().positive()).min(1, "At least one weight measurement is required").max(1000).refine(
-    (weights) => weights.every(w => Number(w.toFixed(4)) === w),
-    "Weights must have at most 4 decimal places"
-  ),
   notes: z.string().optional(),
 });
 
@@ -38,7 +34,9 @@ const validateDecimalInput = (value: string): boolean => {
   return decimalRegex.test(value);
 };
 
-type WeightEntryFormData = z.infer<typeof weightEntrySchema>;
+type WeightEntryFormData = z.infer<typeof weightEntrySchema> & {
+  weights: number[];
+};
 
 // Statistics calculation hook with debouncing
 function useWeightStatistics(weights: number[], weekNumber: number) {
