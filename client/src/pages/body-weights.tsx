@@ -83,7 +83,7 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
 
     // Call API for breed standard comparison (debounced)
     if (debouncedWeekNumber > 0) {
-      apiRequest('/api/weight-records/calculate', 'POST', { weights: debouncedWeights, weekNumber: debouncedWeekNumber })
+      apiRequest('POST', '/api/weight-records/calculate', { weights: debouncedWeights, weekNumber: debouncedWeekNumber })
         .then((response: any) => {
           setStatistics({
             average: Number(average.toFixed(2)),
@@ -222,7 +222,7 @@ export default function BodyWeights() {
         notes: data.notes || null,
       };
       
-      return apiRequest('/api/weight-records', 'POST', payload);
+      return apiRequest('POST', '/api/weight-records', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/weight-records'] });
