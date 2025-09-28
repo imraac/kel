@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Plus, Trash2, Calculator, TrendingUp, Scale, BarChart3, LineChart, Eye, EyeOff } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Plus, Trash2, Calculator, TrendingUp, Scale, BarChart3, LineChart, Eye, EyeOff, AlertTriangle, CheckCircle, Download } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useFarmContext } from "@/contexts/FarmContext";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +46,7 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
     stdDev: number;
     uniformity: number;
     sampleSize: number;
+    cvPercent: number;
     comparisonResult?: string;
     expectedWeight?: number;
     weightDeviation?: number;
@@ -75,6 +76,9 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
     const variance = debouncedWeights.reduce((sum, weight) => sum + Math.pow(weight - average, 2), 0) / debouncedWeights.length;
     const stdDev = Math.sqrt(variance);
     
+    // Calculate CV% (coefficient of variation)
+    const cvPercent = average > 0 ? Number(((stdDev / average) * 100).toFixed(2)) : 0;
+    
     // Calculate uniformity (percentage within 10% of average)
     const tolerance = average * 0.1;
     const uniformCount = debouncedWeights.filter(weight => Math.abs(weight - average) <= tolerance).length;
@@ -89,6 +93,7 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
             stdDev: Number(stdDev.toFixed(2)),
             uniformity: Number(uniformity.toFixed(2)),
             sampleSize: debouncedWeights.length,
+            cvPercent,
             comparisonResult: response.comparisonResult,
             expectedWeight: response.expectedWeight,
             weightDeviation: response.weightDeviation,
@@ -101,6 +106,7 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
             stdDev: Number(stdDev.toFixed(2)),
             uniformity: Number(uniformity.toFixed(2)),
             sampleSize: debouncedWeights.length,
+            cvPercent,
           });
         });
     } else {
@@ -109,12 +115,243 @@ function useWeightStatistics(weights: number[], weekNumber: number) {
         stdDev: Number(stdDev.toFixed(2)),
         uniformity: Number(uniformity.toFixed(2)),
         sampleSize: debouncedWeights.length,
+        cvPercent,
       });
     }
   }, [debouncedWeights, debouncedWeekNumber]);
 
   return statistics;
 }
+
+// Enhanced alerting system functions
+const generateCVAlert = (cvPercent: number | null) => {
+  if (!cvPercent) return null;
+  
+  if (cvPercent > 10) {
+    return {
+      type: 'error' as const,
+      title: 'Poor Weight Uniformity',
+      message: `CV% too high (${cvPercent.toFixed(2)}%) — flock uniformity is poor, check feeding or health.`,
+      icon: AlertTriangle,
+    };
+  }
+  
+  return null;
+};
+
+const generateWeightGainAlert = (currentWeight: number, expectedWeight: number | null, weekNumber: number) => {
+  if (!expectedWeight) return null;
+  
+  const actualPercentOfStandard = (currentWeight / expectedWeight) * 100;
+  
+  if (actualPercentOfStandard < 90) {
+    return {
+      type: 'error' as const,
+      title: 'Below Standard Weight Gain',
+      message: `Week ${weekNumber}: Actual weight is ${actualPercentOfStandard.toFixed(1)}% of standard (${currentWeight.toFixed(3)}kg vs ${expectedWeight.toFixed(3)}kg expected)`,
+      icon: AlertTriangle,
+    };
+  } else if (actualPercentOfStandard > 110) {
+    return {
+      type: 'warning' as const,
+      title: 'Above Standard Weight Gain',
+      message: `Week ${weekNumber}: Actual weight is ${actualPercentOfStandard.toFixed(1)}% of standard (${currentWeight.toFixed(3)}kg vs ${expectedWeight.toFixed(3)}kg expected)`,
+      icon: AlertCircle,
+    };
+  } else {
+    return {
+      type: 'success' as const,
+      title: 'Weight Gain Within Range',
+      message: `Week ${weekNumber}: Weight gain is ${actualPercentOfStandard.toFixed(1)}% of standard - within acceptable range`,
+      icon: CheckCircle,
+    };
+  }
+};
+
+const classifyBirdWeight = (weight: number, mean: number) => {
+  const tolerance = mean * 0.1; // 10% tolerance
+  
+  if (weight < (mean - tolerance)) {
+    return { classification: 'Low', color: 'text-red-600' };
+  } else if (weight > (mean + tolerance)) {
+    return { classification: 'High', color: 'text-orange-600' };
+  } else {
+    return { classification: 'Normal', color: 'text-green-600' };
+  }
+};
+
+// CSV/PDF download helper functions
+const generateCSVReport = (weightRecord: WeightRecord) => {
+  const weights = weightRecord.weights as number[];
+  const mean = parseFloat(weightRecord.averageWeight);
+  
+  const csvData = [
+    ['Weight Record Summary'],
+    ['Week Number', weightRecord.weekNumber.toString()],
+    ['Date', new Date(weightRecord.recordDate).toLocaleDateString()],
+    ['Sample Size', weightRecord.sampleSize.toString()],
+    ['Average Weight (kg)', weightRecord.averageWeight],
+    ['Standard Deviation (kg)', weightRecord.stdDev],
+    ['CV%', weightRecord.cvPercent || 'N/A'],
+    ['Uniformity (%)', weightRecord.uniformity],
+    [''],
+    ['Individual Bird Weights'],
+    ['Bird #', 'Weight (kg)', 'Classification'],
+    ...weights.map((weight, index) => {
+      const classification = classifyBirdWeight(weight, mean);
+      return [
+        (index + 1).toString(),
+        weight.toFixed(4),
+        classification.classification
+      ];
+    }),
+    [''],
+    ['Range Summary'],
+    ['Low Count', weights.filter(w => classifyBirdWeight(w, mean).classification === 'Low').length.toString()],
+    ['Normal Count', weights.filter(w => classifyBirdWeight(w, mean).classification === 'Normal').length.toString()],
+    ['High Count', weights.filter(w => classifyBirdWeight(w, mean).classification === 'High').length.toString()],
+  ];
+  
+  return csvData.map(row => row.join(',')).join('\n');
+};
+
+const downloadCSVReport = (weightRecord: WeightRecord) => {
+  const csvContent = generateCSVReport(weightRecord);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `weight-record-week-${weightRecord.weekNumber}-${new Date(weightRecord.recordDate).toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// PDF download functionality
+const generatePDFContent = (weightRecord: WeightRecord) => {
+  const weights = weightRecord.weights as number[];
+  const mean = parseFloat(weightRecord.averageWeight);
+  const lowCount = weights.filter(w => classifyBirdWeight(w, mean).classification === 'Low').length;
+  const normalCount = weights.filter(w => classifyBirdWeight(w, mean).classification === 'Normal').length;
+  const highCount = weights.filter(w => classifyBirdWeight(w, mean).classification === 'High').length;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Weight Record Report - Week ${weightRecord.weekNumber}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0; }
+        .stat-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+        .stat-label { font-size: 12px; color: #666; }
+        .stat-value { font-size: 18px; font-weight: bold; }
+        .range-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+        .range-card { border: 1px solid #ddd; padding: 10px; text-align: center; border-radius: 5px; }
+        .low { border-color: #ef4444; background: #fef2f2; }
+        .normal { border-color: #22c55e; background: #f0fdf4; }
+        .high { border-color: #f97316; background: #fff7ed; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f5f5f5; }
+        .classification-low { color: #ef4444; font-weight: bold; }
+        .classification-normal { color: #22c55e; font-weight: bold; }
+        .classification-high { color: #f97316; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Weight Record Report</h1>
+        <h2>Week ${weightRecord.weekNumber} - ${new Date(weightRecord.recordDate).toLocaleDateString()}</h2>
+      </div>
+      
+      <div class="summary">
+        <div class="stat-card">
+          <div class="stat-label">Sample Size</div>
+          <div class="stat-value">${weightRecord.sampleSize} birds</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Average Weight</div>
+          <div class="stat-value">${weightRecord.averageWeight} kg</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Standard Deviation</div>
+          <div class="stat-value">${weightRecord.stdDev} kg</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">CV%</div>
+          <div class="stat-value">${weightRecord.cvPercent || 'N/A'}%</div>
+        </div>
+      </div>
+      
+      <h3>Range Distribution</h3>
+      <div class="range-summary">
+        <div class="range-card low">
+          <div>Low (&lt; -10%)</div>
+          <div style="font-size: 24px; font-weight: bold;">${lowCount}</div>
+          <div>${((lowCount / weights.length) * 100).toFixed(1)}%</div>
+        </div>
+        <div class="range-card normal">
+          <div>Normal (±10%)</div>
+          <div style="font-size: 24px; font-weight: bold;">${normalCount}</div>
+          <div>${((normalCount / weights.length) * 100).toFixed(1)}%</div>
+        </div>
+        <div class="range-card high">
+          <div>High (&gt; +10%)</div>
+          <div style="font-size: 24px; font-weight: bold;">${highCount}</div>
+          <div>${((highCount / weights.length) * 100).toFixed(1)}%</div>
+        </div>
+      </div>
+      
+      <h3>Individual Bird Weights</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Bird #</th>
+            <th>Weight (kg)</th>
+            <th>Classification</th>
+            <th>Deviation</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${weights.map((weight, index) => {
+            const classification = classifyBirdWeight(weight, mean);
+            const deviation = ((weight - mean) / mean) * 100;
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${weight.toFixed(4)}</td>
+                <td class="classification-${classification.classification.toLowerCase()}">${classification.classification}</td>
+                <td>${deviation > 0 ? '+' : ''}${deviation.toFixed(1)}%</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+      
+      ${weightRecord.notes ? `
+        <h3>Notes</h3>
+        <p style="background: #f5f5f5; padding: 15px; border-radius: 5px;">${weightRecord.notes}</p>
+      ` : ''}
+    </body>
+    </html>
+  `;
+};
+
+const downloadPDFReport = (weightRecord: WeightRecord) => {
+  const htmlContent = generatePDFContent(weightRecord);
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  }
+};
 
 export default function BodyWeights() {
   const { activeFarmId } = useFarmContext();
@@ -641,9 +878,13 @@ export default function BodyWeights() {
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-sm text-muted-foreground">Uniformity</Label>
-                    <p className="text-lg font-semibold" data-testid="stat-uniformity">
-                      {statistics.uniformity}%
+                    <Label className="text-sm text-muted-foreground">CV%</Label>
+                    <p className={`text-lg font-semibold ${
+                      statistics.cvPercent > 10 ? 'text-red-600' : 
+                      statistics.cvPercent > 8 ? 'text-orange-600' : 
+                      'text-green-600'
+                    }`} data-testid="stat-cv-percent">
+                      {statistics.cvPercent.toFixed(2)}%
                     </p>
                   </div>
                 </div>
@@ -703,6 +944,57 @@ export default function BodyWeights() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Alert Panel for CV% and Weight Gain Alerts */}
+      {statistics && currentWeights.length > 0 && (
+        <div className="space-y-4">
+          {(() => {
+            const alerts = [];
+            
+            // CV% alert using calculated cvPercent
+            const cvAlert = generateCVAlert(statistics.cvPercent);
+            if (cvAlert) alerts.push(cvAlert);
+            
+            // Check weight gain alert if we have breed standard data
+            if (statistics.expectedWeight) {
+              const weightGainAlert = generateWeightGainAlert(
+                statistics.average, 
+                statistics.expectedWeight, 
+                watchedWeekNumber
+              );
+              if (weightGainAlert) alerts.push(weightGainAlert);
+            }
+            
+            return alerts.length > 0 ? (
+              <div className="space-y-3" data-testid="alert-panel">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Performance Alerts
+                </h3>
+                {alerts.map((alert, index) => {
+                  const Icon = alert.icon;
+                  return (
+                    <Alert 
+                      key={index}
+                      variant={alert.type === 'error' ? 'destructive' : alert.type === 'warning' ? 'default' : 'default'}
+                      className={
+                        alert.type === 'error' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                        alert.type === 'warning' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' :
+                        'border-green-500 bg-green-50 dark:bg-green-900/20'
+                      }
+                      data-testid={`alert-${alert.type}-${index}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <AlertTitle>{alert.title}</AlertTitle>
+                      <AlertDescription>{alert.message}</AlertDescription>
+                    </Alert>
+                  );
+                })}
+              </div>
+            ) : null;
+          })()}
+        </div>
+      )}
 
       {/* Enhanced Weight Records with Visualizations */}
       <div className="space-y-6">
@@ -911,6 +1203,109 @@ export default function BodyWeights() {
                                  " Poor uniformity - high variation in weights"}
                               </div>
                             )}
+                          </div>
+
+                          {/* Individual Bird Weight Classification */}
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold flex items-center gap-2">
+                                <Scale className="h-4 w-4" />
+                                Individual Bird Weight Classification
+                              </h4>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => downloadCSVReport(record)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex items-center gap-2"
+                                  data-testid={`button-download-csv-${record.id}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                  CSV
+                                </Button>
+                                <Button
+                                  onClick={() => downloadPDFReport(record)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex items-center gap-2"
+                                  data-testid={`button-download-pdf-${record.id}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                  PDF
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            {/* Range Summary Cards */}
+                            {(() => {
+                              const weights = record.weights as number[];
+                              const mean = parseFloat(record.averageWeight);
+                              const lowCount = weights.filter(w => classifyBirdWeight(w, mean).classification === 'Low').length;
+                              const normalCount = weights.filter(w => classifyBirdWeight(w, mean).classification === 'Normal').length;
+                              const highCount = weights.filter(w => classifyBirdWeight(w, mean).classification === 'High').length;
+                              
+                              return (
+                                <div className="grid grid-cols-3 gap-4 mb-4">
+                                  <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
+                                    <p className="text-sm text-red-600 dark:text-red-400">Low (&lt; -10%)</p>
+                                    <p className="font-bold text-lg text-red-700 dark:text-red-300">{lowCount} birds</p>
+                                    <p className="text-xs text-red-500">
+                                      {((lowCount / weights.length) * 100).toFixed(1)}%
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                                    <p className="text-sm text-green-600 dark:text-green-400">Normal (±10%)</p>
+                                    <p className="font-bold text-lg text-green-700 dark:text-green-300">{normalCount} birds</p>
+                                    <p className="text-xs text-green-500">
+                                      {((normalCount / weights.length) * 100).toFixed(1)}%
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-800">
+                                    <p className="text-sm text-orange-600 dark:text-orange-400">High (&gt; +10%)</p>
+                                    <p className="font-bold text-lg text-orange-700 dark:text-orange-300">{highCount} birds</p>
+                                    <p className="text-xs text-orange-500">
+                                      {((highCount / weights.length) * 100).toFixed(1)}%
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            
+                            {/* Individual Bird Weights Table */}
+                            <div className="max-h-40 overflow-y-auto border rounded">
+                              <div className="grid grid-cols-4 gap-2 p-2 bg-gray-100 dark:bg-gray-800 sticky top-0">
+                                <div className="font-semibold text-sm">Bird #</div>
+                                <div className="font-semibold text-sm">Weight (kg)</div>
+                                <div className="font-semibold text-sm">Classification</div>
+                                <div className="font-semibold text-sm">Deviation</div>
+                              </div>
+                              {(record.weights as number[]).map((weight, index) => {
+                                const mean = parseFloat(record.averageWeight);
+                                const classification = classifyBirdWeight(weight, mean);
+                                const deviation = ((weight - mean) / mean) * 100;
+                                
+                                return (
+                                  <div key={index} className="grid grid-cols-4 gap-2 p-2 border-b border-gray-200 dark:border-gray-700 text-sm">
+                                    <div>{index + 1}</div>
+                                    <div className="font-mono">{weight.toFixed(4)}</div>
+                                    <div className={`font-semibold ${classification.color}`}>
+                                      {classification.classification}
+                                    </div>
+                                    <div className={`font-mono text-xs ${
+                                      deviation > 10 ? 'text-orange-600' :
+                                      deviation < -10 ? 'text-red-600' :
+                                      'text-green-600'
+                                    }`}>
+                                      {deviation > 0 ? '+' : ''}{deviation.toFixed(1)}%
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              Classification based on ±10% of mean weight ({parseFloat(record.averageWeight).toFixed(3)} kg)
+                            </div>
                           </div>
 
                           {/* Weekly Weight Gain Chart */}
