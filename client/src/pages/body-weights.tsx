@@ -212,11 +212,27 @@ export default function BodyWeights() {
   // Create weight record mutation
   const createWeightRecord = useMutation({
     mutationFn: async (data: WeightEntryFormData) => {
+      // Calculate statistics from weights
+      const weights = data.weights;
+      const sampleSize = weights.length;
+      const averageWeight = weights.reduce((sum, weight) => sum + weight, 0) / weights.length;
+      const variance = weights.reduce((sum, weight) => sum + Math.pow(weight - averageWeight, 2), 0) / weights.length;
+      const stdDev = Math.sqrt(variance);
+      
+      // Calculate uniformity (percentage within 10% of average)
+      const tolerance = averageWeight * 0.1;
+      const uniformCount = weights.filter(weight => Math.abs(weight - averageWeight) <= tolerance).length;
+      const uniformity = (uniformCount / weights.length) * 100;
+
       const payload = {
         flockId: data.flockId,
         weekNumber: data.weekNumber,
         recordDate: data.recordDate,
         weights: data.weights,
+        sampleSize,
+        averageWeight: Number(averageWeight.toFixed(4)),
+        stdDev: Number(stdDev.toFixed(4)),
+        uniformity: Number(uniformity.toFixed(2)),
         notes: data.notes || null,
       };
       
