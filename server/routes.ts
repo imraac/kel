@@ -16,7 +16,9 @@ import {
   insertOrderItemSchema,
   insertDeliverySchema,
   insertUserSchema,
-  insertManagerUserSchema
+  insertManagerUserSchema,
+  insertWeightRecordSchema,
+  insertBreedStandardSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { normalizeNumericFields } from "./utils/numbers";
@@ -1378,6 +1380,219 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error registering customer:", error);
         res.status(500).json({ message: "Registration failed. Please try again." });
       }
+    }
+  });
+
+  // Weight Records routes
+  app.get('/api/weight-records', isAuthenticated, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const records = await storage.getWeightRecords(limit);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching weight records:", error);
+      res.status(500).json({ message: "Failed to fetch weight records" });
+    }
+  });
+
+  app.get('/api/weight-records/flock/:flockId', isAuthenticated, async (req, res) => {
+    try {
+      const { flockId } = req.params;
+      const records = await storage.getWeightRecordsByFlock(flockId);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching weight records by flock:", error);
+      res.status(500).json({ message: "Failed to fetch weight records" });
+    }
+  });
+
+  app.post('/api/weight-records', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      let farmId;
+      try {
+        farmId = await requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+      }
+
+      // Calculate statistics from weights array
+      const weights = req.body.weights;
+      if (!Array.isArray(weights) || weights.length === 0) {
+        return res.status(400).json({ message: "Weights array is required and must not be empty" });
+      }
+
+      const statistics = storage.calculateWeightStatistics(weights);
+      
+      // Get flock to determine breed for comparison
+      const flock = await storage.getFlockById(req.body.flockId);
+      if (!flock) {
+        return res.status(404).json({ message: "Flock not found" });
+      }
+
+      // Compare with breed standards (assuming Hy-Line Brown for now)
+      const breedComparison = await storage.compareWithBreedStandard(
+        'Hy-Line Brown', 
+        req.body.weekNumber, 
+        statistics.average
+      );
+
+      // Auto-inject calculated data and user info
+      const input = {
+        ...req.body,
+        userId,
+        sampleSize: weights.length,
+        averageWeight: statistics.average.toString(),
+        stdDev: statistics.stdDev.toString(),
+        uniformity: statistics.uniformity.toString(),
+        comparisonResult: breedComparison.comparisonResult,
+        expectedWeight: breedComparison.expectedWeight?.toString() || null,
+        weightDeviation: breedComparison.weightDeviation?.toString() || null,
+      };
+
+      const validatedData = insertWeightRecordSchema.parse(input);
+      const record = await storage.createWeightRecord(validatedData);
+      res.status(201).json(record);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error("=== WEIGHT RECORD ZOD VALIDATION ERRORS ===");
+        console.error("Raw request body:", JSON.stringify(req.body, null, 2));
+        console.error("Zod errors:", JSON.stringify(error.errors, null, 2));
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating weight record:", error);
+        res.status(500).json({ message: "Failed to create weight record" });
+      }
+    }
+  });
+
+  app.put('/api/weight-records/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // If weights are being updated, recalculate statistics
+      if (req.body.weights) {
+        const weights = req.body.weights;
+        const statistics = storage.calculateWeightStatistics(weights);
+        
+        req.body.sampleSize = weights.length;
+        req.body.averageWeight = statistics.average.toString();
+        req.body.stdDev = statistics.stdDev.toString();
+        req.body.uniformity = statistics.uniformity.toString();
+
+        // Recalculate breed comparison if week number changed
+        if (req.body.weekNumber) {
+          const breedComparison = await storage.compareWithBreedStandard(
+            'Hy-Line Brown', 
+            req.body.weekNumber, 
+            statistics.average
+          );
+          req.body.comparisonResult = breedComparison.comparisonResult;
+          req.body.expectedWeight = breedComparison.expectedWeight?.toString() || null;
+          req.body.weightDeviation = breedComparison.weightDeviation?.toString() || null;
+        }
+      }
+
+      const validatedData = insertWeightRecordSchema.partial().parse(req.body);
+      const record = await storage.updateWeightRecord(id, validatedData);
+      res.json(record);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error updating weight record:", error);
+        res.status(500).json({ message: "Failed to update weight record" });
+      }
+    }
+  });
+
+  app.delete('/api/weight-records/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteWeightRecord(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting weight record:", error);
+      res.status(500).json({ message: "Failed to delete weight record" });
+    }
+  });
+
+  // Breed Standards routes
+  app.get('/api/breed-standards', isAuthenticated, async (req, res) => {
+    try {
+      const standards = await storage.getBreedStandards();
+      res.json(standards);
+    } catch (error) {
+      console.error("Error fetching breed standards:", error);
+      res.status(500).json({ message: "Failed to fetch breed standards" });
+    }
+  });
+
+  app.get('/api/breed-standards/:breedName', isAuthenticated, async (req, res) => {
+    try {
+      const { breedName } = req.params;
+      const standards = await storage.getBreedStandardsByBreed(breedName);
+      res.json(standards);
+    } catch (error) {
+      console.error("Error fetching breed standards by breed:", error);
+      res.status(500).json({ message: "Failed to fetch breed standards" });
+    }
+  });
+
+  app.post('/api/breed-standards', isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertBreedStandardSchema.parse(req.body);
+      const standard = await storage.createBreedStandard(validatedData);
+      res.status(201).json(standard);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error creating breed standard:", error);
+        res.status(500).json({ message: "Failed to create breed standard" });
+      }
+    }
+  });
+
+  // Seed breed standards endpoint (one-time setup)
+  app.post('/api/breed-standards/seed', isAuthenticated, async (req, res) => {
+    try {
+      await storage.seedHyLineBrownStandards();
+      res.json({ message: "Hy-Line Brown breed standards seeded successfully" });
+    } catch (error) {
+      console.error("Error seeding breed standards:", error);
+      res.status(500).json({ message: "Failed to seed breed standards" });
+    }
+  });
+
+  // Weight statistics calculation endpoint (for real-time calculations)
+  app.post('/api/weight-records/calculate', isAuthenticated, async (req, res) => {
+    try {
+      const { weights, weekNumber } = req.body;
+      
+      if (!Array.isArray(weights) || weights.length === 0) {
+        return res.status(400).json({ message: "Weights array is required and must not be empty" });
+      }
+
+      const statistics = storage.calculateWeightStatistics(weights);
+      
+      // Compare with breed standards
+      const breedComparison = await storage.compareWithBreedStandard(
+        'Hy-Line Brown', 
+        weekNumber, 
+        statistics.average
+      );
+
+      res.json({
+        ...statistics,
+        ...breedComparison,
+        sampleSize: weights.length
+      });
+    } catch (error) {
+      console.error("Error calculating weight statistics:", error);
+      res.status(500).json({ message: "Failed to calculate statistics" });
     }
   });
 
