@@ -53,6 +53,7 @@ function Router() {
       <Route path="/customer-registration" component={CustomerRegistration} />
       <Route path="/farm-registration" component={FarmRegistrationPage} />
       <Route path="/farm-setup" component={FarmSetupPage} />
+      <Route path="/body-weights" component={BodyWeights} />
       
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
@@ -70,7 +71,6 @@ function Router() {
         <>
           <Route path="/" component={Home} />
           <Route path="/chick-brooding" component={ChickBrooding} />
-          <Route path="/body-weights" component={BodyWeights} />
           <Route path="/egg-production" component={EggProduction} />
           <Route path="/feed-management" component={FeedManagement} />
           <Route path="/health-records" component={HealthRecords} />
