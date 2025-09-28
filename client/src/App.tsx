@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FarmProvider } from "@/contexts/FarmContext";
+import { ROUTES, FARM_MANAGEMENT_ROUTES } from "@/lib/routes";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -31,16 +32,19 @@ import CustomerDashboard from "@/pages/customer-dashboard";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
-  // Global fallback: Handle saved customer registration data from any page
+  // Handle saved customer registration data - but NEVER redirect from farm management routes
   useEffect(() => {
     const savedFormData = sessionStorage.getItem('customerRegistrationData');
     if (savedFormData && isAuthenticated && !isLoading) {
-      // Redirect to customer registration page to complete the flow
-      setLocation('/customer-registration');
+      // Only redirect if NOT on a farm management route to prevent test routing conflicts
+      const isFarmManagementRoute = FARM_MANAGEMENT_ROUTES.includes(location as any);
+      if (!isFarmManagementRoute && location !== ROUTES.CUSTOMER_REGISTRATION) {
+        setLocation(ROUTES.CUSTOMER_REGISTRATION);
+      }
     }
-  }, [isAuthenticated, isLoading, setLocation]);
+  }, [isAuthenticated, isLoading, location, setLocation]);
 
   // Determine if user is a customer
   const isCustomer = user?.role === 'customer';
@@ -48,12 +52,12 @@ function Router() {
   return (
     <Switch>
       {/* Public routes - always accessible */}
-      <Route path="/marketplace" component={PublicMarketplace} />
+      <Route path={ROUTES.MARKETPLACE} component={PublicMarketplace} />
       <Route path="/farm/:farmId" component={FarmStorefront} />
-      <Route path="/customer-registration" component={CustomerRegistration} />
-      <Route path="/farm-registration" component={FarmRegistrationPage} />
-      <Route path="/farm-setup" component={FarmSetupPage} />
-      <Route path="/body-weights" component={BodyWeights} />
+      <Route path={ROUTES.CUSTOMER_REGISTRATION} component={CustomerRegistration} />
+      <Route path={ROUTES.FARM_REGISTRATION} component={FarmRegistrationPage} />
+      <Route path={ROUTES.FARM_SETUP} component={FarmSetupPage} />
+      <Route path={ROUTES.BODY_WEIGHTS} component={BodyWeights} />
       
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
