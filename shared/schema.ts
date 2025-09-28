@@ -581,6 +581,94 @@ export type Expense = typeof expenses.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
+// Weight Records table - for detailed bird weight tracking
+export const weightRecords = pgTable("weight_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  flockId: varchar("flock_id").notNull().references(() => flocks.id, { onDelete: "cascade" }),
+  weekNumber: integer("week_number").notNull(),
+  recordDate: date("record_date").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  
+  // Raw weight data
+  weights: jsonb("weights").notNull(), // Array of individual bird weights as numbers
+  sampleSize: integer("sample_size").notNull(),
+  
+  // Calculated statistics
+  averageWeight: decimal("average_weight", { precision: 6, scale: 2 }).notNull(),
+  stdDev: decimal("std_dev", { precision: 6, scale: 2 }).notNull(),
+  uniformity: decimal("uniformity", { precision: 5, scale: 2 }).notNull(), // Percentage
+  
+  // Breed standard comparison
+  comparisonResult: varchar("comparison_result"), // "below_standard", "within_standard", "above_standard"
+  expectedWeight: decimal("expected_weight", { precision: 6, scale: 2 }), // From breed standards
+  weightDeviation: decimal("weight_deviation", { precision: 6, scale: 2 }), // Difference from standard
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_weight_records_flock_id").on(table.flockId),
+  index("idx_weight_records_user_id").on(table.userId),
+  index("idx_weight_records_week").on(table.weekNumber),
+  uniqueIndex("uniq_weight_records_flock_week").on(table.flockId, table.weekNumber),
+  check("chk_weight_records_positive", sql`
+    week_number > 0 and 
+    sample_size > 0 and 
+    average_weight > 0 and 
+    std_dev >= 0 and 
+    uniformity >= 0 and uniformity <= 100
+  `),
+]);
+
+// Breed Standards table - reference data for weight comparisons
+export const breedStandards = pgTable("breed_standards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  breedName: varchar("breed_name").notNull(),
+  weekNumber: integer("week_number").notNull(),
+  standardWeight: decimal("standard_weight", { precision: 6, scale: 2 }).notNull(), // kg
+  toleranceLower: decimal("tolerance_lower", { precision: 6, scale: 2 }).notNull(), // kg below standard
+  toleranceUpper: decimal("tolerance_upper", { precision: 6, scale: 2 }).notNull(), // kg above standard
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_breed_standards_breed").on(table.breedName),
+  index("idx_breed_standards_week").on(table.weekNumber),
+  uniqueIndex("uniq_breed_standards_breed_week").on(table.breedName, table.weekNumber),
+  check("chk_breed_standards_positive", sql`
+    week_number > 0 and 
+    standard_weight > 0 and 
+    tolerance_lower >= 0 and 
+    tolerance_upper >= 0
+  `),
+]);
+
+// Weight Records insert schema
+export const insertWeightRecordSchema = createInsertSchema(weightRecords, {
+  weights: z.array(z.number().positive()).min(1).max(1000), // Array of positive numbers, max 1000 birds
+  sampleSize: z.number().int().positive().max(1000),
+  averageWeight: z.number().positive(),
+  stdDev: z.number().min(0),
+  uniformity: z.number().min(0).max(100),
+  weekNumber: z.number().int().positive().max(100),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Breed Standards insert schema  
+export const insertBreedStandardSchema = createInsertSchema(breedStandards, {
+  standardWeight: z.number().positive(),
+  toleranceLower: z.number().min(0),
+  toleranceUpper: z.number().min(0),
+  weekNumber: z.number().int().positive().max(100),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Marketplace types
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
@@ -592,3 +680,9 @@ export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertDelivery = z.infer<typeof insertDeliverySchema>;
 export type Delivery = typeof deliveries.$inferSelect;
+
+// Weight tracking types
+export type InsertWeightRecord = z.infer<typeof insertWeightRecordSchema>;
+export type WeightRecord = typeof weightRecords.$inferSelect;
+export type InsertBreedStandard = z.infer<typeof insertBreedStandardSchema>;
+export type BreedStandard = typeof breedStandards.$inferSelect;
