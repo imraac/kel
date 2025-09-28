@@ -13,6 +13,8 @@ import {
   orders,
   orderItems,
   deliveries,
+  weightRecords,
+  breedStandards,
   type User,
   type UpsertUser,
   type InsertFarm,
@@ -41,6 +43,10 @@ import {
   type Delivery,
   type InsertNotification,
   type Notification,
+  type InsertWeightRecord,
+  type WeightRecord,
+  type InsertBreedStandard,
+  type BreedStandard,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, gte, lte, sql, ne } from "drizzle-orm";
@@ -1145,6 +1151,211 @@ export class DatabaseStorage implements IStorage {
       .where(eq(deliveries.id, id))
       .returning();
     return updatedDelivery;
+  }
+
+  // Weight Records operations
+  async createWeightRecord(weightRecord: InsertWeightRecord): Promise<WeightRecord> {
+    const [newRecord] = await db.insert(weightRecords).values(weightRecord).returning();
+    return newRecord;
+  }
+
+  async getWeightRecords(limit = 50): Promise<WeightRecord[]> {
+    return await db
+      .select()
+      .from(weightRecords)
+      .orderBy(desc(weightRecords.recordDate))
+      .limit(limit);
+  }
+
+  async getWeightRecordsByFlock(flockId: string): Promise<WeightRecord[]> {
+    return await db
+      .select()
+      .from(weightRecords)
+      .where(eq(weightRecords.flockId, flockId))
+      .orderBy(desc(weightRecords.weekNumber));
+  }
+
+  async getWeightRecordsByFlockAndWeek(flockId: string, weekNumber: number): Promise<WeightRecord | undefined> {
+    const [record] = await db
+      .select()
+      .from(weightRecords)
+      .where(and(eq(weightRecords.flockId, flockId), eq(weightRecords.weekNumber, weekNumber)));
+    return record;
+  }
+
+  async updateWeightRecord(id: string, updates: Partial<InsertWeightRecord>): Promise<WeightRecord> {
+    const [updatedRecord] = await db
+      .update(weightRecords)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(weightRecords.id, id))
+      .returning();
+    return updatedRecord;
+  }
+
+  async deleteWeightRecord(id: string): Promise<void> {
+    await db.delete(weightRecords).where(eq(weightRecords.id, id));
+  }
+
+  // Helper method to calculate statistics from weights array
+  calculateWeightStatistics(weights: number[]): {
+    average: number;
+    stdDev: number;
+    uniformity: number;
+  } {
+    if (weights.length === 0) {
+      return { average: 0, stdDev: 0, uniformity: 0 };
+    }
+
+    // Calculate average
+    const average = weights.reduce((sum, weight) => sum + weight, 0) / weights.length;
+
+    // Calculate standard deviation
+    const variance = weights.reduce((sum, weight) => sum + Math.pow(weight - average, 2), 0) / weights.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Calculate uniformity (percentage of birds within 10% of average weight)
+    const tolerance = average * 0.1; // 10% tolerance
+    const uniformCount = weights.filter(weight => 
+      Math.abs(weight - average) <= tolerance
+    ).length;
+    const uniformity = (uniformCount / weights.length) * 100;
+
+    return {
+      average: Number(average.toFixed(2)),
+      stdDev: Number(stdDev.toFixed(2)),
+      uniformity: Number(uniformity.toFixed(2))
+    };
+  }
+
+  // Helper method to calculate current week number from hatch date
+  calculateWeekNumber(hatchDate: string): number {
+    const hatch = new Date(hatchDate);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - hatch.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.ceil(diffDays / 7);
+  }
+
+  // Breed Standards operations
+  async createBreedStandard(breedStandard: InsertBreedStandard): Promise<BreedStandard> {
+    const [newStandard] = await db.insert(breedStandards).values(breedStandard).returning();
+    return newStandard;
+  }
+
+  async getBreedStandards(): Promise<BreedStandard[]> {
+    return await db
+      .select()
+      .from(breedStandards)
+      .orderBy(breedStandards.breedName, breedStandards.weekNumber);
+  }
+
+  async getBreedStandardsByBreed(breedName: string): Promise<BreedStandard[]> {
+    return await db
+      .select()
+      .from(breedStandards)
+      .where(eq(breedStandards.breedName, breedName))
+      .orderBy(breedStandards.weekNumber);
+  }
+
+  async getBreedStandardByBreedAndWeek(breedName: string, weekNumber: number): Promise<BreedStandard | undefined> {
+    const [standard] = await db
+      .select()
+      .from(breedStandards)
+      .where(and(eq(breedStandards.breedName, breedName), eq(breedStandards.weekNumber, weekNumber)));
+    return standard;
+  }
+
+  async updateBreedStandard(id: string, updates: Partial<InsertBreedStandard>): Promise<BreedStandard> {
+    const [updatedStandard] = await db
+      .update(breedStandards)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(breedStandards.id, id))
+      .returning();
+    return updatedStandard;
+  }
+
+  async deleteBreedStandard(id: string): Promise<void> {
+    await db.delete(breedStandards).where(eq(breedStandards.id, id));
+  }
+
+  // Helper method to compare weight against breed standard
+  async compareWithBreedStandard(
+    breedName: string,
+    weekNumber: number,
+    averageWeight: number
+  ): Promise<{
+    comparisonResult: 'below_standard' | 'within_standard' | 'above_standard';
+    expectedWeight: number | null;
+    weightDeviation: number | null;
+  }> {
+    const standard = await this.getBreedStandardByBreedAndWeek(breedName, weekNumber);
+    
+    if (!standard) {
+      return {
+        comparisonResult: 'within_standard',
+        expectedWeight: null,
+        weightDeviation: null
+      };
+    }
+
+    const expectedWeight = Number(standard.standardWeight);
+    const toleranceLower = Number(standard.toleranceLower);
+    const toleranceUpper = Number(standard.toleranceUpper);
+    const weightDeviation = averageWeight - expectedWeight;
+
+    let comparisonResult: 'below_standard' | 'within_standard' | 'above_standard';
+
+    if (averageWeight < (expectedWeight - toleranceLower)) {
+      comparisonResult = 'below_standard';
+    } else if (averageWeight > (expectedWeight + toleranceUpper)) {
+      comparisonResult = 'above_standard';
+    } else {
+      comparisonResult = 'within_standard';
+    }
+
+    return {
+      comparisonResult,
+      expectedWeight,
+      weightDeviation: Number(weightDeviation.toFixed(2))
+    };
+  }
+
+  // Seed Hy-Line Brown breed standards (call this once to populate the database)
+  async seedHyLineBrownStandards(): Promise<void> {
+    const hyLineStandards = [
+      { weekNumber: 1, standardWeight: 0.060, toleranceLower: 0.010, toleranceUpper: 0.010 },
+      { weekNumber: 2, standardWeight: 0.120, toleranceLower: 0.020, toleranceUpper: 0.020 },
+      { weekNumber: 3, standardWeight: 0.200, toleranceLower: 0.030, toleranceUpper: 0.030 },
+      { weekNumber: 4, standardWeight: 0.300, toleranceLower: 0.040, toleranceUpper: 0.040 },
+      { weekNumber: 5, standardWeight: 0.400, toleranceLower: 0.050, toleranceUpper: 0.050 },
+      { weekNumber: 6, standardWeight: 0.500, toleranceLower: 0.060, toleranceUpper: 0.060 },
+      { weekNumber: 7, standardWeight: 0.600, toleranceLower: 0.070, toleranceUpper: 0.070 },
+      { weekNumber: 8, standardWeight: 0.650, toleranceLower: 0.075, toleranceUpper: 0.075 },
+      { weekNumber: 9, standardWeight: 0.780, toleranceLower: 0.080, toleranceUpper: 0.080 },
+      { weekNumber: 10, standardWeight: 0.870, toleranceLower: 0.090, toleranceUpper: 0.090 },
+      { weekNumber: 11, standardWeight: 0.980, toleranceLower: 0.100, toleranceUpper: 0.100 },
+      { weekNumber: 12, standardWeight: 1.050, toleranceLower: 0.110, toleranceUpper: 0.110 },
+      { weekNumber: 13, standardWeight: 1.140, toleranceLower: 0.120, toleranceUpper: 0.120 },
+      { weekNumber: 14, standardWeight: 1.230, toleranceLower: 0.130, toleranceUpper: 0.130 },
+      { weekNumber: 15, standardWeight: 1.320, toleranceLower: 0.140, toleranceUpper: 0.140 },
+      { weekNumber: 16, standardWeight: 1.410, toleranceLower: 0.150, toleranceUpper: 0.150 },
+      { weekNumber: 17, standardWeight: 1.500, toleranceLower: 0.160, toleranceUpper: 0.160 },
+      { weekNumber: 18, standardWeight: 1.600, toleranceLower: 0.170, toleranceUpper: 0.170 },
+      { weekNumber: 19, standardWeight: 1.680, toleranceLower: 0.180, toleranceUpper: 0.180 },
+      { weekNumber: 20, standardWeight: 1.750, toleranceLower: 0.190, toleranceUpper: 0.190 },
+    ];
+
+    for (const standard of hyLineStandards) {
+      // Check if standard already exists
+      const existing = await this.getBreedStandardByBreedAndWeek('Hy-Line Brown', standard.weekNumber);
+      if (!existing) {
+        await this.createBreedStandard({
+          breedName: 'Hy-Line Brown',
+          ...standard,
+          notes: `Standard weight for Hy-Line Brown at week ${standard.weekNumber}`
+        });
+      }
+    }
   }
 }
 
