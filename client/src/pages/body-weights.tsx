@@ -384,10 +384,11 @@ export default function BodyWeights() {
                         <Input
                           type="number"
                           step="0.01"
+                          inputMode="decimal"
                           min="0"
                           placeholder="0.00"
                           value={input.weight}
-                          onChange={(e) => updateWeightInput(input.id, e.target.value)}
+                          onChange={(e) => updateWeightInput(input.id, e.target.value.replace(',', '.'))}
                           data-testid={`input-weight-${input.id}`}
                           className="text-sm"
                         />
