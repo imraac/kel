@@ -82,3 +82,11 @@ Preferred communication style: Simple, everyday language.
 - **Real-time Updates**: Comprehensive cache invalidation ensures alerts update immediately when farm data changes
 - **Farm-scoped Data**: All alert calculations properly filtered to active farm context
 - **Performance**: Leverages existing React Query infrastructure for optimal caching and loading states
+
+### Enhanced Body Weight Tracking with Advanced Alerting (September 2025)
+- **CRITICAL ANALYTICS IMPLEMENTED**: Distribution histogram with normal curve overlay using ComposedChart (bars for actual distribution + red line for expected normal curve)
+- **COMPREHENSIVE THRESHOLD ALERTING**: CV% alerts >10% with color-coding, weight gain alerts vs breed standards, individual bird classification (Low/High/Normal ±10% of mean)
+- **PROFESSIONAL REPORTING**: Enhanced CSV/PDF downloads including mean, StdDev, CV%, uniformity, range alert counts, percentages, and individual bird deviations
+- **REAL-TIME CALCULATIONS**: Debounced statistics with breed standard comparisons via /api/weight-records/calculate endpoint
+- **VISUAL PERFORMANCE MONITORING**: Color-coded alert panels (red/orange/green) with highlighted warnings above charts
+- **PRODUCTION-READY EXPORTS**: CSV with detailed summaries and PDF via browser print dialog for comprehensive record keeping
