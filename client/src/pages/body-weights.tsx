@@ -645,9 +645,9 @@ export default function BodyWeights() {
 
   // Create weekly weight gain data
   const createWeeklyGainData = () => {
-    if (!weightRecords || weightRecords.length < 2) return [];
+    if (!filteredWeightRecords || filteredWeightRecords.length < 2) return [];
     
-    const sortedRecords = [...weightRecords].sort((a, b) => a.weekNumber - b.weekNumber);
+    const sortedRecords = [...filteredWeightRecords].sort((a, b) => a.weekNumber - b.weekNumber);
     const gainData = [];
     
     for (let i = 1; i < sortedRecords.length; i++) {
@@ -671,9 +671,9 @@ export default function BodyWeights() {
 
   // Create weekly comparison chart data
   const createWeeklyChartData = () => {
-    if (!weightRecords || weightRecords.length === 0) return [];
+    if (!filteredWeightRecords || filteredWeightRecords.length === 0) return [];
     
-    return weightRecords
+    return filteredWeightRecords
       .sort((a, b) => a.weekNumber - b.weekNumber)
       .map(record => ({
         week: record.weekNumber,
@@ -1107,7 +1107,7 @@ export default function BodyWeights() {
       {/* Enhanced Weight Records with Visualizations */}
       <div className="space-y-6">
         {/* Weekly Comparison Chart */}
-        {weightRecords.length > 1 && (
+        {filteredWeightRecords.length > 1 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
