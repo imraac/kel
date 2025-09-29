@@ -407,6 +407,7 @@ export default function BodyWeights() {
   ]);
   const [nextId, setNextId] = useState(2);
   const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
+  const [selectedFlockFilter, setSelectedFlockFilter] = useState<string>("all"); // "all" means "All Flocks"
 
   // Fetch flocks for the dropdown
   const { data: flocks = [], isLoading: flocksLoading } = useQuery<Flock[]>({
@@ -419,6 +420,11 @@ export default function BodyWeights() {
     queryKey: ['/api/weight-records'],
     enabled: !!activeFarmId,
   });
+
+  // Filter weight records by selected flock
+  const filteredWeightRecords = selectedFlockFilter === "all" 
+    ? weightRecords
+    : weightRecords.filter(record => record.flockId === selectedFlockFilter);
 
   // Form setup
   const form = useForm<WeightEntryFormData>({
@@ -1155,14 +1161,36 @@ export default function BodyWeights() {
         {/* Recent Records with Detailed View */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Weight Records</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recent Weight Records</CardTitle>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="flock-filter" className="text-sm">Filter by Flock:</Label>
+                <Select 
+                  value={selectedFlockFilter} 
+                  onValueChange={setSelectedFlockFilter}
+                  data-testid="select-flock-filter"
+                >
+                  <SelectTrigger className="w-[200px]" id="flock-filter">
+                    <SelectValue placeholder="All Flocks" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" data-testid="flock-filter-all">All Flocks</SelectItem>
+                    {flocks.map((flock) => (
+                      <SelectItem key={flock.id} value={flock.id} data-testid={`flock-filter-${flock.id}`}>
+                        {flock.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {recordsLoading ? (
               <p>Loading records...</p>
-            ) : weightRecords.length > 0 ? (
+            ) : filteredWeightRecords.length > 0 ? (
               <div className="space-y-4">
-                {weightRecords.slice(0, 5).map((record) => {
+                {filteredWeightRecords.slice(0, 5).map((record) => {
                   const isExpanded = expandedRecords.has(record.id);
                   const histogramResult = isExpanded ? createHistogramData(record.weights as number[]) : { bins: [], normalCurve: [] };
                   const histogramData = histogramResult.bins;
@@ -1478,7 +1506,10 @@ export default function BodyWeights() {
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">
-                No weight records found. Create your first weight record above.
+                {selectedFlockFilter !== "all" 
+                  ? `No weight records found for the selected flock. ${weightRecords.length > 0 ? 'Try selecting a different flock or clear the filter to see all records.' : 'Create your first weight record above.'}`
+                  : 'No weight records found. Create your first weight record above.'
+                }
               </p>
             )}
           </CardContent>
