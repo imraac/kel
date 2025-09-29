@@ -19,7 +19,7 @@ import { useFarmContext } from "@/contexts/FarmContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Flock, WeightRecord, InsertWeightRecord } from "@shared/schema";
 import { useCallback } from "react";
-import { BarChart, Bar, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ComposedChart } from 'recharts';
 
 // Validation schema for weight entry form
 const weightEntrySchema = z.object({
@@ -180,6 +180,43 @@ const classifyBirdWeight = (weight: number, mean: number) => {
   }
 };
 
+// Helper functions for distribution histogram and normal curve
+const generateHistogramData = (weights: number[], mean: number, stdDev: number) => {
+  if (weights.length === 0) return [];
+  
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const range = max - min;
+  const binCount = Math.min(10, Math.ceil(Math.sqrt(weights.length))); // Optimal bin count
+  const binWidth = range / binCount;
+  
+  // Create bins
+  const bins = Array.from({ length: binCount }, (_, i) => ({
+    x: min + (i + 0.5) * binWidth, // Center of bin
+    frequency: 0,
+    normalDensity: 0,
+    binStart: min + i * binWidth,
+    binEnd: min + (i + 1) * binWidth,
+  }));
+  
+  // Count frequencies
+  weights.forEach(weight => {
+    const binIndex = Math.min(Math.floor((weight - min) / binWidth), binCount - 1);
+    bins[binIndex].frequency++;
+  });
+  
+  // Calculate normal distribution density for each bin
+  bins.forEach(bin => {
+    // Normal distribution probability density function
+    const exponent = -0.5 * Math.pow((bin.x - mean) / stdDev, 2);
+    const density = (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+    // Scale density to match frequency scale
+    bin.normalDensity = density * weights.length * binWidth;
+  });
+  
+  return bins;
+};
+
 // CSV/PDF download helper functions
 const generateCSVReport = (weightRecord: WeightRecord) => {
   const weights = weightRecord.weights as number[];
@@ -196,20 +233,25 @@ const generateCSVReport = (weightRecord: WeightRecord) => {
     ['Uniformity (%)', weightRecord.uniformity],
     [''],
     ['Individual Bird Weights'],
-    ['Bird #', 'Weight (kg)', 'Classification'],
+    ['Bird #', 'Weight (kg)', 'Classification', 'Deviation (%)'],
     ...weights.map((weight, index) => {
       const classification = classifyBirdWeight(weight, mean);
+      const deviation = ((weight - mean) / mean) * 100;
       return [
         (index + 1).toString(),
         weight.toFixed(4),
-        classification.classification
+        classification.classification,
+        `${deviation > 0 ? '+' : ''}${deviation.toFixed(1)}%`
       ];
     }),
     [''],
-    ['Range Summary'],
-    ['Low Count', weights.filter(w => classifyBirdWeight(w, mean).classification === 'Low').length.toString()],
-    ['Normal Count', weights.filter(w => classifyBirdWeight(w, mean).classification === 'Normal').length.toString()],
-    ['High Count', weights.filter(w => classifyBirdWeight(w, mean).classification === 'High').length.toString()],
+    ['Range Alert Summary'],
+    ['Low Count (< -10%)', weights.filter(w => classifyBirdWeight(w, mean).classification === 'Low').length.toString()],
+    ['Normal Count (±10%)', weights.filter(w => classifyBirdWeight(w, mean).classification === 'Normal').length.toString()],
+    ['High Count (> +10%)', weights.filter(w => classifyBirdWeight(w, mean).classification === 'High').length.toString()],
+    ['Low Percentage', `${((weights.filter(w => classifyBirdWeight(w, mean).classification === 'Low').length / weights.length) * 100).toFixed(1)}%`],
+    ['Normal Percentage', `${((weights.filter(w => classifyBirdWeight(w, mean).classification === 'Normal').length / weights.length) * 100).toFixed(1)}%`],
+    ['High Percentage', `${((weights.filter(w => classifyBirdWeight(w, mean).classification === 'High').length / weights.length) * 100).toFixed(1)}%`],
   ];
   
   return csvData.map(row => row.join(',')).join('\n');
@@ -283,6 +325,10 @@ const generatePDFContent = (weightRecord: WeightRecord) => {
         <div class="stat-card">
           <div class="stat-label">CV%</div>
           <div class="stat-value">${weightRecord.cvPercent || 'N/A'}%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Uniformity</div>
+          <div class="stat-value">${weightRecord.uniformity}%</div>
         </div>
       </div>
       
@@ -943,6 +989,62 @@ export default function BodyWeights() {
             )}
           </CardContent>
         </Card>
+
+        {/* Distribution Histogram with Normal Curve Overlay */}
+        {statistics && currentWeights.length > 0 && (
+          <Card data-testid="distribution-histogram-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Weight Distribution Histogram
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 mb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={generateHistogramData(currentWeights, statistics.average, statistics.stdDev)}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="x" 
+                      domain={['dataMin', 'dataMax']}
+                      scale="linear"
+                      type="number"
+                      tickFormatter={(value) => `${value.toFixed(2)} kg`}
+                    />
+                    <YAxis yAxisId="left" orientation="left" label={{ value: 'Frequency', angle: -90, position: 'insideLeft' }} />
+                    <YAxis yAxisId="right" orientation="right" label={{ value: 'Normal Density', angle: 90, position: 'insideRight' }} />
+                    <Tooltip 
+                      formatter={(value: any, name: string) => [
+                        name === 'frequency' ? value : value.toFixed(3),
+                        name === 'frequency' ? 'Frequency' : 'Normal Density'
+                      ]}
+                      labelFormatter={(value) => `Weight: ${value.toFixed(2)} kg`}
+                    />
+                    <Bar 
+                      yAxisId="left"
+                      dataKey="frequency" 
+                      fill="#3b82f6" 
+                      opacity={0.7}
+                      name="frequency"
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="normalDensity" 
+                      stroke="#ef4444" 
+                      strokeWidth={2}
+                      dot={false}
+                      name="normalDensity"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Blue bars show actual weight distribution. Red line shows expected normal distribution curve based on calculated mean and standard deviation.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Alert Panel for CV% and Weight Gain Alerts */}
