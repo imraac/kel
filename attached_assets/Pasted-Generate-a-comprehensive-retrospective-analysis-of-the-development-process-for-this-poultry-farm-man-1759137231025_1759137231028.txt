@@ -1,0 +1,76 @@
+Generate a comprehensive retrospective analysis of the development process for this poultry farm management app. The output must include three sections:
+
+Section 1: Detailed Retrospective Report
+For each module or feature, provide:
+
+Module/Feature Name
+
+Challenge Description (what went wrong)
+
+Root Cause (why it happened)
+
+Solution/Applied Fix (how it was resolved)
+
+Recommendation (to prevent recurrence)
+
+Scope:
+
+Authentication & Login (redirect loops, farmId null handling).
+
+Farm registration & role-based access.
+
+Intake forms (Feed Inventory, Daily Records, Sales, Health Records, Expenses, Flocks, Products).
+
+Form submissions (decimal type mismatches, schema validation errors, farmId enforcement).
+
+Dashboard integration (React Query invalidations, stale data).
+
+Reporting & Charts (body weight, uniformity %, CV%, weight gain tracking).
+
+Any other troubleshooting/debugging steps encountered during setup.
+
+Deliver this as a structured narrative, grouped by module.
+
+Section 2: Summary Dashboard Table
+Create a summary table with the following columns:
+| Module/Feature | Status (✅ working / ❌ issue) | Key Challenge | Applied Fix | Remaining Risks |
+
+Include rows for:
+
+Authentication/Login
+
+Farm Registration & Role Management
+
+Feed Inventory Form
+
+Daily Records Form
+
+Sales Records Form
+
+Health Records Form
+
+Expenses Module
+
+Products Module
+
+Flocks Module
+
+Dashboard (alerts, charts, quick actions)
+
+Reports (weight charts, uniformity, CV%)
+
+Keep the table concise for scanning, but aligned with the detailed report.
+
+Section 3: Cross-Module Lessons Learned
+Summarize the Top 5 recurring root causes of problems during development.
+For each root cause, include:
+
+A short description of the pattern (e.g., “Data type mismatches between form input and schema expectations”).
+
+Modules where it appeared.
+
+The general fix that solved it.
+
+A preventive recommendation for future modules.
+
+Final deliverable = Detailed Retrospective Report + Summary Dashboard Table + Top 5 Root Causes in one structured output.
