@@ -1106,6 +1106,30 @@ export default function BodyWeights() {
 
       {/* Enhanced Weight Records with Visualizations */}
       <div className="space-y-6">
+        {/* Flock Filter Control */}
+        <div className="flex items-center justify-end">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="flock-filter" className="text-sm">Filter by Flock:</Label>
+            <Select 
+              value={selectedFlockFilter} 
+              onValueChange={setSelectedFlockFilter}
+              data-testid="select-flock-filter"
+            >
+              <SelectTrigger className="w-[200px]" id="flock-filter">
+                <SelectValue placeholder="All Flocks" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" data-testid="flock-filter-all">All Flocks</SelectItem>
+                {flocks.map((flock) => (
+                  <SelectItem key={flock.id} value={flock.id} data-testid={`flock-filter-${flock.id}`}>
+                    {flock.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {/* Weekly Comparison Chart */}
         {filteredWeightRecords.length > 1 && (
           <Card>
@@ -1161,29 +1185,7 @@ export default function BodyWeights() {
         {/* Recent Records with Detailed View */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Recent Weight Records</CardTitle>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="flock-filter" className="text-sm">Filter by Flock:</Label>
-                <Select 
-                  value={selectedFlockFilter} 
-                  onValueChange={setSelectedFlockFilter}
-                  data-testid="select-flock-filter"
-                >
-                  <SelectTrigger className="w-[200px]" id="flock-filter">
-                    <SelectValue placeholder="All Flocks" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" data-testid="flock-filter-all">All Flocks</SelectItem>
-                    {flocks.map((flock) => (
-                      <SelectItem key={flock.id} value={flock.id} data-testid={`flock-filter-${flock.id}`}>
-                        {flock.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <CardTitle>Recent Weight Records</CardTitle>
           </CardHeader>
           <CardContent>
             {recordsLoading ? (
