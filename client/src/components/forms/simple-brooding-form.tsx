@@ -61,7 +61,28 @@ export default function SimpleBroodingForm({ onSuccess }: SimpleBroodingFormProp
   };
 
   const getFeedSuggestion = (age: number, currentCount: number = 0) => {
-    const gPerBirdPerDay = age <= 7 ? 12 : age <= 14 ? 18 : age <= 21 ? 25 : age <= 28 ? 31 : age <= 35 ? 38 : age <= 42 ? 41 : age <= 49 ? 45 : age <= 56 ? 49 : age <= 84 ? 65 : age <= 105 ? 86 : 110;
+    let gPerBirdPerDay;
+    if (age <= 7) gPerBirdPerDay = 12;
+    else if (age <= 14) gPerBirdPerDay = 18;
+    else if (age <= 21) gPerBirdPerDay = 25;
+    else if (age <= 28) gPerBirdPerDay = 31;
+    else if (age <= 35) gPerBirdPerDay = 38;
+    else if (age <= 42) gPerBirdPerDay = 41;
+    else if (age <= 49) gPerBirdPerDay = 45;
+    else if (age <= 56) gPerBirdPerDay = 49;
+    else if (age <= 63) gPerBirdPerDay = 52;  // Week 9
+    else if (age <= 70) gPerBirdPerDay = 60;  // Week 10
+    else if (age <= 77) gPerBirdPerDay = 70;  // Week 11
+    else if (age <= 84) gPerBirdPerDay = 75;  // Week 12
+    else if (age <= 91) gPerBirdPerDay = 80;  // Week 13
+    else if (age <= 98) gPerBirdPerDay = 85;  // Week 14
+    else if (age <= 105) gPerBirdPerDay = 92;  // Week 15
+    else if (age <= 112) gPerBirdPerDay = 100; // Week 16
+    else if (age <= 119) gPerBirdPerDay = 107; // Week 17
+    else if (age <= 126) gPerBirdPerDay = 114; // Week 18
+    else if (age <= 133) gPerBirdPerDay = 118; // Week 19
+    else gPerBirdPerDay = 120; // Week 20+
+    
     const totalKg = (gPerBirdPerDay * currentCount) / 1000;
     return `~${totalKg.toFixed(1)}kg (${gPerBirdPerDay}g per bird/day)`;
   };
@@ -75,9 +96,18 @@ export default function SimpleBroodingForm({ onSuccess }: SimpleBroodingFormProp
     if (age <= 42) return "470-500g (Week 6)";
     if (age <= 49) return "560-600g (Week 7)";
     if (age <= 56) return "650g (Week 8)";
-    if (age <= 84) return "740-1050g (Weeks 9-12)";
-    if (age <= 105) return "1100-1320g (Weeks 13-15)";
-    return "1355-1750g+ (Week 16+)";
+    if (age <= 63) return "740-780g (Week 9)";
+    if (age <= 70) return "830-870g (Week 10)";
+    if (age <= 77) return "920-980g (Week 11)";
+    if (age <= 84) return "1010-1050g (Week 12)";
+    if (age <= 91) return "1100-1140g (Week 13)";
+    if (age <= 98) return "1185-1230g (Week 14)";
+    if (age <= 105) return "1270-1320g (Week 15)";
+    if (age <= 112) return "1355-1410g (Week 16)";
+    if (age <= 119) return "1440-1500g (Week 17)";
+    if (age <= 126) return "1530-1600g (Week 18)";
+    if (age <= 133) return "1580-1680g (Week 19)";
+    return "1645-1750g (Week 20+)";
   };
 
   const createRecordMutation = useMutation({
