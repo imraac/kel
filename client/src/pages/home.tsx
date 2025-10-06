@@ -20,7 +20,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Bell, Menu, Plus, ClipboardList, AlertCircle, RefreshCw } from "lucide-react";
+import { Bell, Menu, Plus, ClipboardList, AlertCircle, RefreshCw, Thermometer, Sun, Utensils, Scale } from "lucide-react";
 import { z } from "zod";
 import SimpleQuickEggForm from "@/components/forms/simple-quick-egg-form";
 
@@ -165,6 +165,96 @@ export default function Home() {
     day: 'numeric',
   });
 
+  // Calculate week number (ISO week)
+  const getWeekNumber = (date: Date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
+  const weekNumber = getWeekNumber(new Date());
+
+  // Get primary flock (oldest active flock) for age calculation
+  const primaryFlock = flocks.length > 0 
+    ? flocks.sort((a, b) => new Date(a.hatchDate).getTime() - new Date(b.hatchDate).getTime())[0]
+    : null;
+
+  const getFlockAge = (hatchDate: string) => {
+    const today = new Date();
+    const hatch = new Date(hatchDate);
+    const diffTime = today.getTime() - hatch.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const flockAge = primaryFlock ? getFlockAge(primaryFlock.hatchDate) : null;
+  const flockWeekAge = flockAge ? Math.floor(flockAge / 7) + 1 : null;
+
+  // Get weekly targets based on flock age
+  const getWeeklyTargets = (age: number | null) => {
+    if (!age) return null;
+    
+    if (age <= 7) return {
+      temperature: "35-32°C",
+      lighting: "24 hours",
+      feedType: "Chick Starter (24% protein)",
+      feedAmount: "15-20g per chick",
+      expectedWeight: "40-60g",
+      weekLabel: "Week 1: Critical Care"
+    };
+    if (age <= 14) return {
+      temperature: "32-29°C",
+      lighting: "20-22 hours",
+      feedType: "Chick Starter (24% protein)",
+      feedAmount: "25-35g per chick",
+      expectedWeight: "85-120g",
+      weekLabel: "Week 2: Stabilization"
+    };
+    if (age <= 21) return {
+      temperature: "29-26°C",
+      lighting: "18-20 hours",
+      feedType: "Chick Starter (20-22% protein)",
+      feedAmount: "40-50g per chick",
+      expectedWeight: "150-200g",
+      weekLabel: "Week 3: Development"
+    };
+    if (age <= 28) return {
+      temperature: "26-23°C",
+      lighting: "16-18 hours",
+      feedType: "Grower Feed (18-20% protein)",
+      feedAmount: "55-65g per chick",
+      expectedWeight: "220-300g",
+      weekLabel: "Week 4: Growth"
+    };
+    if (age <= 42) return {
+      temperature: "21-24°C",
+      lighting: "14-16 hours",
+      feedType: "Grower/Developer (16-18% protein)",
+      feedAmount: "70-85g per bird",
+      expectedWeight: "1000-1200g",
+      weekLabel: "Weeks 5-6: Pre-laying"
+    };
+    if (age <= 56) return {
+      temperature: "21°C",
+      lighting: "14-16 hours",
+      feedType: "Growers Mash",
+      feedAmount: "80-100g per bird",
+      expectedWeight: "1100-1500g",
+      weekLabel: "Weeks 7-8: Layer Prep"
+    };
+    return {
+      temperature: "18-24°C",
+      lighting: "14-16 hours",
+      feedType: "Layer Feed (16-18% protein)",
+      feedAmount: "110-130g per bird",
+      expectedWeight: "1500-1800g",
+      weekLabel: "Laying Phase"
+    };
+  };
+
+  const weeklyTargets = getWeeklyTargets(flockAge);
+
   return (
     <div className="min-h-screen flex bg-background">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
@@ -194,6 +284,19 @@ export default function Home() {
               <div>
                 <h2 className="text-xl font-semibold text-foreground">Farm Dashboard</h2>
                 <p className="text-sm text-muted-foreground">{currentDate}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-xs text-muted-foreground" data-testid="text-week-number">
+                    Week {weekNumber} of {new Date().getFullYear()}
+                  </p>
+                  {flockAge !== null && (
+                    <>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <p className="text-xs text-muted-foreground" data-testid="text-flock-age">
+                        Flock Age: {flockAge} days (Week {flockWeekAge})
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -317,6 +420,74 @@ export default function Home() {
                 icon="coins"
                 color="green"
               />
+            </div>
+          )}
+
+          {/* Weekly Targets & Requirements */}
+          {weeklyTargets && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground">This Week's Targets</h3>
+                <p className="text-sm text-muted-foreground">{weeklyTargets.weekLabel}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card data-testid="card-target-temperature">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                        <Thermometer className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Temperature</p>
+                        <p className="text-sm font-semibold text-foreground mt-1">{weeklyTargets.temperature}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-target-lighting">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                        <Sun className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Lighting</p>
+                        <p className="text-sm font-semibold text-foreground mt-1">{weeklyTargets.lighting}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-target-feed">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                        <Utensils className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Feed Amount</p>
+                        <p className="text-sm font-semibold text-foreground mt-1">{weeklyTargets.feedAmount}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{weeklyTargets.feedType}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-target-weight">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                        <Scale className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Expected Weight</p>
+                        <p className="text-sm font-semibold text-foreground mt-1">{weeklyTargets.expectedWeight}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
 
