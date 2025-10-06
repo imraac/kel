@@ -176,9 +176,9 @@ export default function Home() {
 
   const weekNumber = getWeekNumber(new Date());
 
-  // Get primary flock (oldest active flock) for age calculation
+  // Get primary flock (oldest active flock) for age calculation - non-mutating
   const primaryFlock = flocks.length > 0 
-    ? flocks.sort((a, b) => new Date(a.hatchDate).getTime() - new Date(b.hatchDate).getTime())[0]
+    ? [...flocks].sort((a, b) => new Date(a.hatchDate).getTime() - new Date(b.hatchDate).getTime())[0]
     : null;
 
   const getFlockAge = (hatchDate: string) => {
@@ -189,11 +189,11 @@ export default function Home() {
   };
 
   const flockAge = primaryFlock ? getFlockAge(primaryFlock.hatchDate) : null;
-  const flockWeekAge = flockAge ? Math.floor(flockAge / 7) + 1 : null;
+  const flockWeekAge = flockAge !== null ? Math.floor(flockAge / 7) + 1 : null;
 
   // Get weekly targets based on flock age
   const getWeeklyTargets = (age: number | null) => {
-    if (!age) return null;
+    if (age === null || age === undefined) return null;
     
     if (age <= 7) return {
       temperature: "35-32°C",
