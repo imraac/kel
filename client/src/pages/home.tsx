@@ -191,65 +191,108 @@ export default function Home() {
   const flockAge = primaryFlock ? getFlockAge(primaryFlock.hatchDate) : null;
   const flockWeekAge = flockAge !== null ? Math.floor(flockAge / 7) + 1 : null;
 
-  // Get weekly targets based on flock age
+  // Get weekly targets based on flock age (matches brooding schedule)
   const getWeeklyTargets = (age: number | null) => {
     if (age === null || age === undefined) return null;
     
+    // Week 1 (0-7 days)
     if (age <= 7) return {
       temperature: "35-32°C",
       lighting: "24 hours",
-      feedType: "Chick Starter (24% protein)",
-      feedAmount: "15-20g per chick",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "12g per bird",
       expectedWeight: "40-60g",
       weekLabel: "Week 1: Critical Care"
     };
+    // Week 2 (8-14 days)
     if (age <= 14) return {
       temperature: "32-29°C",
-      lighting: "20-22 hours",
-      feedType: "Chick Starter (24% protein)",
-      feedAmount: "25-35g per chick",
+      lighting: "20 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "18g per bird",
       expectedWeight: "85-120g",
-      weekLabel: "Week 2: Stabilization"
+      weekLabel: "Week 2: Rapid Growth"
     };
+    // Week 3 (15-21 days)
     if (age <= 21) return {
       temperature: "29-26°C",
-      lighting: "18-20 hours",
-      feedType: "Chick Starter (20-22% protein)",
-      feedAmount: "40-50g per chick",
+      lighting: "16 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "25g per bird",
       expectedWeight: "150-200g",
       weekLabel: "Week 3: Development"
     };
+    // Week 4 (22-28 days)
     if (age <= 28) return {
       temperature: "26-23°C",
-      lighting: "16-18 hours",
-      feedType: "Grower Feed (18-20% protein)",
-      feedAmount: "55-65g per chick",
+      lighting: "14 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "31g per bird",
       expectedWeight: "220-300g",
-      weekLabel: "Week 4: Growth"
+      weekLabel: "Week 4: Feather Development"
     };
+    // Week 5 (29-35 days)
+    if (age <= 35) return {
+      temperature: "23-21°C",
+      lighting: "14 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "38g per bird",
+      expectedWeight: "380-400g",
+      weekLabel: "Week 5: Steady Growth"
+    };
+    // Week 6 (36-42 days)
     if (age <= 42) return {
-      temperature: "21-24°C",
-      lighting: "14-16 hours",
-      feedType: "Grower/Developer (16-18% protein)",
-      feedAmount: "70-85g per bird",
-      expectedWeight: "1000-1200g",
-      weekLabel: "Weeks 5-6: Pre-laying"
+      temperature: "21°C",
+      lighting: "14 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "41g per bird",
+      expectedWeight: "470-500g",
+      weekLabel: "Week 6: Grower Prep"
     };
+    // Week 7 (43-49 days)
+    if (age <= 49) return {
+      temperature: "21°C",
+      lighting: "14 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "45g per bird",
+      expectedWeight: "560-600g",
+      weekLabel: "Week 7: Transition Prep"
+    };
+    // Week 8 (50-56 days)
     if (age <= 56) return {
       temperature: "21°C",
-      lighting: "14-16 hours",
-      feedType: "Growers Mash",
-      feedAmount: "80-100g per bird",
-      expectedWeight: "1100-1500g",
-      weekLabel: "Weeks 7-8: Layer Prep"
+      lighting: "14 hours",
+      feedType: "Gradual change to Growers Mash",
+      feedAmount: "49g per bird",
+      expectedWeight: "650g",
+      weekLabel: "Week 8: Feed Transition"
     };
+    // Week 9-12 (57-84 days)
+    if (age <= 84) return {
+      temperature: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "52-75g per bird",
+      expectedWeight: "740-1050g",
+      weekLabel: "Weeks 9-12: Growth Phase"
+    };
+    // Week 13-15 (85-105 days)
+    if (age <= 105) return {
+      temperature: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "80-92g per bird",
+      expectedWeight: "1100-1320g",
+      weekLabel: "Weeks 13-15: Pre-Layer Development"
+    };
+    // Week 16+ (106+ days)
     return {
-      temperature: "18-24°C",
-      lighting: "14-16 hours",
-      feedType: "Layer Feed (16-18% protein)",
-      feedAmount: "110-130g per bird",
-      expectedWeight: "1500-1800g",
-      weekLabel: "Laying Phase"
+      temperature: "21°C",
+      lighting: "14 hours",
+      feedType: "Layers Mash",
+      feedAmount: "100-120g per bird",
+      expectedWeight: "1355-1750g",
+      weekLabel: "Weeks 16+: Layer Phase"
     };
   };
 
