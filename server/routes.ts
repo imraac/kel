@@ -576,8 +576,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Update flock count if mortalities were recorded
         if (validatedData.mortalityCount && validatedData.mortalityCount > 0) {
+          console.log(`📉 Mortality detected: ${validatedData.mortalityCount} birds from flock ${flock.name}`);
+          console.log(`   Current count: ${flock.currentCount}, New count will be: ${flock.currentCount - validatedData.mortalityCount}`);
           const newCount = Math.max(0, flock.currentCount - validatedData.mortalityCount);
           await storage.updateFlock(validatedData.flockId, { currentCount: newCount });
+          console.log(`   ✅ Flock count updated to ${newCount}`);
         }
         
         res.status(201).json(record);
