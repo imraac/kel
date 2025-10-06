@@ -69,35 +69,49 @@ export default function AlertPanel() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {alerts.map((alert) => {
-            const Icon = iconMap[alert.icon];
-            const styles = typeMap[alert.type];
-
-            return (
-              <div
-                key={alert.id}
-                className={`flex items-start space-x-3 p-3 rounded-lg border ${styles.bg} ${styles.border}`}
-                data-testid={`alert-${alert.id}`}
-              >
-                <Icon className={`h-4 w-4 mt-0.5 ${styles.icon}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{alert.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{alert.description}</p>
-                  <p className={`text-xs mt-1 ${styles.text}`}>Priority: {alert.priority}</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`p-1 ${styles.text} hover:${styles.text}`}
-                  data-testid={`button-dismiss-alert-${alert.id}`}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+        {alerts.length === 0 ? (
+          <div className="text-center py-8" data-testid="no-alerts-message">
+            <div className="flex items-center justify-center mb-3">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-            );
-          })}
-        </div>
+            </div>
+            <p className="text-sm font-medium text-foreground">All Clear!</p>
+            <p className="text-xs text-muted-foreground mt-1">No alerts at this time. Your farm operations are running smoothly.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((alert) => {
+              const Icon = iconMap[alert.icon];
+              const styles = typeMap[alert.type];
+
+              return (
+                <div
+                  key={alert.id}
+                  className={`flex items-start space-x-3 p-3 rounded-lg border ${styles.bg} ${styles.border}`}
+                  data-testid={`alert-${alert.id}`}
+                >
+                  <Icon className={`h-4 w-4 mt-0.5 ${styles.icon}`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">{alert.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{alert.description}</p>
+                    <p className={`text-xs mt-1 ${styles.text}`}>Priority: {alert.priority}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`p-1 ${styles.text} hover:${styles.text}`}
+                    data-testid={`button-dismiss-alert-${alert.id}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
