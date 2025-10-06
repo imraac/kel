@@ -46,61 +46,106 @@ export default function SimpleChickBroodingForm({ onSuccess }: SimpleChickBroodi
   const selectedFlock = flocks.find(f => f.id === flockId);
   const chickAge = selectedFlock ? getChickAge(recordDate, selectedFlock.hatchDate) : 0;
 
-  // Get age-based guidance
+  // Get age-based guidance (matches brooding schedule)
   const getAgeGuidance = (age: number) => {
     if (age <= 7) return {
       category: "Week 1: Critical Care",
-      tempRange: "32-35°C",
+      tempRange: "35-32°C",
       lighting: "24 hours",
-      feedType: "Chick Starter (24% protein)",
-      feedAmount: "15-20g per chick",
-      expectedWeight: "120-150g",
-      tips: "Watch for pasty bottom, ensure access to water, check temperature frequently"
+      feedType: "Chick and Duck Mash",
+      feedAmount: "12g per bird",
+      expectedWeight: "40-60g",
+      tips: "Critical growth period - monitor closely. Watch for pasty bottom, ensure access to water, check temperature frequently"
     };
     if (age <= 14) return {
-      category: "Week 2: Stabilization", 
-      tempRange: "29-32°C",
-      lighting: "20-22 hours",
-      feedType: "Chick Starter (24% protein)",
-      feedAmount: "25-35g per chick", 
-      expectedWeight: "200-250g",
-      tips: "Reduce temperature gradually, monitor feed intake, watch for pecking"
+      category: "Week 2: Rapid Growth", 
+      tempRange: "32-29°C",
+      lighting: "20 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "18g per bird", 
+      expectedWeight: "85-120g",
+      tips: "Rapid growth phase begins. Reduce temperature gradually, monitor feed intake, watch for pecking"
     };
     if (age <= 21) return {
       category: "Week 3: Development",
-      tempRange: "26-29°C", 
-      lighting: "18-20 hours",
-      feedType: "Chick Starter (20-22% protein)",
-      feedAmount: "40-50g per chick",
-      expectedWeight: "300-350g",
-      tips: "Increase space allowance, start feather development monitoring"
+      tempRange: "29-26°C", 
+      lighting: "16 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "25g per bird",
+      expectedWeight: "150-200g",
+      tips: "Feed transition period. Increase space allowance, start feather development monitoring"
     };
     if (age <= 28) return {
-      category: "Week 4: Growth",
-      tempRange: "23-26°C",
-      lighting: "16-18 hours", 
-      feedType: "Grower Feed (18-20% protein)",
-      feedAmount: "55-65g per chick",
-      expectedWeight: "400-450g",
-      tips: "Monitor for uniform growth, adjust feeding schedule"
+      category: "Week 4: Feather Development",
+      tempRange: "26-23°C",
+      lighting: "14 hours", 
+      feedType: "Chick and Duck Mash",
+      feedAmount: "31g per bird",
+      expectedWeight: "220-300g",
+      tips: "Feather development peak. Monitor for uniform growth, adjust feeding schedule"
+    };
+    if (age <= 35) return {
+      category: "Week 5: Steady Growth",
+      tempRange: "23-21°C",
+      lighting: "14 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "38g per bird",
+      expectedWeight: "380-400g",
+      tips: "Steady growth continues. Maintain consistent environment and feeding routine"
     };
     if (age <= 42) return {
-      category: "Weeks 5-6: Pre-laying",
-      tempRange: "21-24°C",
-      lighting: "14-16 hours",
-      feedType: "Grower/Developer Feed (16-18% protein)",
-      feedAmount: "70-85g per bird",
-      expectedWeight: "1000-1200g",
-      tips: "Prepare for laying phase, monitor body condition"
+      category: "Week 6: Grower Preparation",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "41g per bird",
+      expectedWeight: "470-500g",
+      tips: "Prepare for grower phase. Monitor body condition and weight gain"
+    };
+    if (age <= 49) return {
+      category: "Week 7: Transition Prep",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Chick and Duck Mash",
+      feedAmount: "45g per bird",
+      expectedWeight: "560-600g",
+      tips: "Transition preparation. Prepare for feed type change"
+    };
+    if (age <= 56) return {
+      category: "Week 8: Feed Transition",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Gradual change to Growers Mash",
+      feedAmount: "49g per bird",
+      expectedWeight: "650g",
+      tips: "Begin grower feed transition. Introduce new feed gradually over 7 days"
+    };
+    if (age <= 84) return {
+      category: "Weeks 9-12: Growth Phase",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "52-75g per bird",
+      expectedWeight: "740-1050g",
+      tips: "Rapid growth phase. Monitor feed consumption and weight gain"
+    };
+    if (age <= 105) return {
+      category: "Weeks 13-15: Pre-Layer Development",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "80-92g per bird",
+      expectedWeight: "1100-1320g",
+      tips: "Pre-layer development. Prepare for laying phase transition"
     };
     return {
-      category: "Laying Phase",
-      tempRange: "18-24°C", 
-      lighting: "14-16 hours",
-      feedType: "Layer Feed (16-18% protein)",
-      feedAmount: "110-130g per bird",
-      expectedWeight: "1500-1800g",
-      tips: "Monitor egg production, maintain consistent environment"
+      category: "Weeks 16+: Layer Phase",
+      tempRange: "21°C", 
+      lighting: "14 hours",
+      feedType: "Layers Mash",
+      feedAmount: "100-120g per bird",
+      expectedWeight: "1355-1750g",
+      tips: "Layer feed establishment. Monitor egg production, maintain consistent environment"
     };
   };
 

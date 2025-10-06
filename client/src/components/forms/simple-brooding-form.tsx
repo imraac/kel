@@ -42,39 +42,42 @@ export default function SimpleBroodingForm({ onSuccess }: SimpleBroodingFormProp
   const chickAge = selectedFlock ? Math.max(0, Math.floor((baseDate.getTime() - new Date(selectedFlock.hatchDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
   const weekAge = Math.floor(chickAge / 7);
 
-  // Age-based guidance
+  // Age-based guidance (matches brooding schedule)
   const getTemperatureSuggestion = (age: number) => {
-    if (age <= 7) return "35-32°C (Week 0-1)";
-    if (age <= 21) return "32-29°C (Week 2-3)";
-    if (age <= 35) return "29-26°C (Week 4-5)";
-    if (age <= 56) return "26-21°C (Week 6-8)";
-    return "21°C (Week 8+)";
+    if (age <= 7) return "35-32°C (Week 1)";
+    if (age <= 14) return "32-29°C (Week 2)";
+    if (age <= 21) return "29-26°C (Week 3)";
+    if (age <= 28) return "26-23°C (Week 4)";
+    if (age <= 35) return "23-21°C (Week 5)";
+    if (age <= 56) return "21°C (Weeks 6-8)";
+    return "21°C (Week 9+)";
   };
 
   const getLightingSuggestion = (age: number) => {
-    if (age <= 7) return "24 hours (Week 0-1)";
-    if (age <= 21) return "20 hours (Week 2-3)";
-    if (age <= 35) return "16 hours (Week 4-5)";
-    if (age <= 56) return "14 hours (Week 6-8)";
-    return "12 hours (Week 8+)";
+    if (age <= 7) return "24 hours (Week 1)";
+    if (age <= 14) return "20 hours (Week 2)";
+    if (age <= 21) return "16 hours (Week 3)";
+    return "14 hours (Week 4+)";
   };
 
   const getFeedSuggestion = (age: number, currentCount: number = 0) => {
-    const gPerBirdPerDay = age <= 7 ? 15 : age <= 14 ? 25 : age <= 21 ? 35 : age <= 28 ? 45 : age <= 35 ? 55 : 65;
+    const gPerBirdPerDay = age <= 7 ? 12 : age <= 14 ? 18 : age <= 21 ? 25 : age <= 28 ? 31 : age <= 35 ? 38 : age <= 42 ? 41 : age <= 49 ? 45 : age <= 56 ? 49 : age <= 84 ? 65 : age <= 105 ? 86 : 110;
     const totalKg = (gPerBirdPerDay * currentCount) / 1000;
     return `~${totalKg.toFixed(1)}kg (${gPerBirdPerDay}g per bird/day)`;
   };
 
   const getWeightSuggestion = (age: number) => {
-    if (age <= 7) return "35-45g (Week 0-1)";
-    if (age <= 14) return "65-85g (Week 2)";
-    if (age <= 21) return "120-150g (Week 3)";
-    if (age <= 28) return "190-230g (Week 4)";
-    if (age <= 35) return "270-320g (Week 5)";
-    if (age <= 42) return "360-420g (Week 6)";
-    if (age <= 49) return "450-520g (Week 7)";
-    if (age <= 56) return "540-620g (Week 8)";
-    return "620g+ (Week 8+)";
+    if (age <= 7) return "40-60g (Week 1)";
+    if (age <= 14) return "85-120g (Week 2)";
+    if (age <= 21) return "150-200g (Week 3)";
+    if (age <= 28) return "220-300g (Week 4)";
+    if (age <= 35) return "380-400g (Week 5)";
+    if (age <= 42) return "470-500g (Week 6)";
+    if (age <= 49) return "560-600g (Week 7)";
+    if (age <= 56) return "650g (Week 8)";
+    if (age <= 84) return "740-1050g (Weeks 9-12)";
+    if (age <= 105) return "1100-1320g (Weeks 13-15)";
+    return "1355-1750g+ (Week 16+)";
   };
 
   const createRecordMutation = useMutation({
