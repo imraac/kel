@@ -573,6 +573,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         record = await storage.createDailyRecordWithReview(recordWithReview);
+        
+        // Update flock count if mortalities were recorded
+        if (validatedData.mortalityCount && validatedData.mortalityCount > 0) {
+          const newCount = Math.max(0, flock.currentCount - validatedData.mortalityCount);
+          await storage.updateFlock(validatedData.flockId, { currentCount: newCount });
+        }
+        
         res.status(201).json(record);
       }
     } catch (error) {
