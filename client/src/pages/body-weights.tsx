@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Plus, Trash2, Calculator, TrendingUp, Scale, BarChart3, LineChart, Eye, EyeOff, AlertTriangle, CheckCircle, Download } from "lucide-react";
+import { AlertCircle, Plus, Trash2, Calculator, TrendingUp, Scale, BarChart3, LineChart, Eye, EyeOff, AlertTriangle, CheckCircle, Download, Menu } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useFarmContext } from "@/contexts/FarmContext";
@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Flock, WeightRecord, InsertWeightRecord } from "@shared/schema";
 import { useCallback } from "react";
 import { BarChart, Bar, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ComposedChart } from 'recharts';
+import Sidebar from "@/components/layout/sidebar";
 
 // Validation schema for weight entry form
 const weightEntrySchema = z.object({
@@ -402,6 +403,7 @@ const downloadPDFReport = (weightRecord: WeightRecord) => {
 export default function BodyWeights() {
   const { activeFarmId } = useFarmContext();
   const { toast } = useToast();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [weightInputs, setWeightInputs] = useState<{ id: number; weight: string }[]>([
     { id: 1, weight: "" }
   ]);
@@ -685,27 +687,75 @@ export default function BodyWeights() {
 
   if (!activeFarmId) {
     return (
-      <div className="p-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Please select a farm to continue with body weight tracking.
-          </AlertDescription>
-        </Alert>
+      <div className="min-h-screen flex bg-background">
+        <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+        
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <div className="flex-1 flex flex-col min-h-screen">
+          <header className="border-b border-border bg-card sticky top-0 z-30">
+            <div className="px-6 py-4">
+              <div className="flex items-center space-x-4">
+                <button 
+                  className="md:hidden text-muted-foreground hover:text-foreground"
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 p-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Please select a farm to continue with body weight tracking.
+              </AlertDescription>
+            </Alert>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Body Weight Tracking</h1>
-          <p className="text-muted-foreground">
-            Record and analyze weekly body weights for flock performance monitoring
-          </p>
-        </div>
-      </div>
+    <div className="min-h-screen flex bg-background">
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className="flex-1 flex flex-col min-h-screen">
+        <header className="border-b border-border bg-card sticky top-0 z-30">
+          <div className="px-6 py-4">
+            <div className="flex items-center space-x-4">
+              <button 
+                className="md:hidden text-muted-foreground hover:text-foreground"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold">Body Weight Tracking</h1>
+                <p className="text-sm text-muted-foreground">
+                  Record and analyze weekly body weights for flock performance monitoring
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 space-y-6 p-6">
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Weight Entry Form */}
@@ -1516,6 +1566,8 @@ export default function BodyWeights() {
             )}
           </CardContent>
         </Card>
+      </div>
+        </main>
       </div>
     </div>
   );
