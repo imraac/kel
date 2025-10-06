@@ -744,11 +744,22 @@ export class DatabaseStorage implements IStorage {
       ? Math.floor(totalFeedStock / averageDailyConsumption)
       : 0;
 
-    // Get monthly revenue
+    // Get current month revenue
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
     const monthlySales = await this.getSalesByDateRange(monthStart, monthEnd);
     const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || '0'), 0);
+
+    // Get last month revenue for comparison
+    const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0];
+    const lastMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().split('T')[0];
+    const lastMonthSales = await this.getSalesByDateRange(lastMonthStart, lastMonthEnd);
+    const lastMonthRevenue = lastMonthSales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || '0'), 0);
+
+    // Calculate percentage change
+    const revenueChange = lastMonthRevenue > 0 
+      ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
+      : monthlyRevenue > 0 ? '+100' : '0';
 
     return {
       totalBirds,
@@ -758,6 +769,7 @@ export class DatabaseStorage implements IStorage {
       feedDaysRemaining,
       averageDailyConsumption: Number(averageDailyConsumption.toFixed(2)),
       monthlyRevenue,
+      revenueChange,
       layingRate: totalBirds > 0 ? (todayEggs / totalBirds * 100).toFixed(1) : '0'
     };
   }
