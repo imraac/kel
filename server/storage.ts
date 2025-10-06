@@ -49,7 +49,7 @@ import {
   type BreedStandard,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, sql, ne } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, sql, ne, isNotNull } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -714,6 +714,36 @@ export class DatabaseStorage implements IStorage {
     const feedInventoryData = await db.select().from(feedInventory);
     const totalFeedStock = feedInventoryData.reduce((sum, feed) => sum + parseFloat(feed.quantityKg || '0'), 0);
 
+    // Calculate feed days remaining based on recent consumption
+    // Get last 14 days of daily records to calculate average consumption
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const recentFeedRecords = await db
+      .select()
+      .from(dailyRecords)
+      .where(
+        and(
+          gte(dailyRecords.recordDate, fourteenDaysAgo),
+          isNotNull(dailyRecords.feedConsumed)
+        )
+      );
+
+    // Calculate average daily feed consumption (industry standard: 0.11kg per bird)
+    let averageDailyConsumption = 0;
+    if (recentFeedRecords.length > 0) {
+      const totalConsumed = recentFeedRecords.reduce((sum, record) => 
+        sum + parseFloat(record.feedConsumed || '0'), 0
+      );
+      averageDailyConsumption = totalConsumed / recentFeedRecords.length;
+    } else if (totalBirds > 0) {
+      // Fallback to industry standard if no recent records
+      averageDailyConsumption = totalBirds * 0.11; // 0.11kg per bird per day
+    }
+
+    // Calculate days remaining (defensive against division by zero)
+    const feedDaysRemaining = averageDailyConsumption > 0 
+      ? Math.floor(totalFeedStock / averageDailyConsumption)
+      : 0;
+
     // Get monthly revenue
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
@@ -725,6 +755,8 @@ export class DatabaseStorage implements IStorage {
       todayEggs,
       todayCrates,
       totalFeedStock,
+      feedDaysRemaining,
+      averageDailyConsumption: Number(averageDailyConsumption.toFixed(2)),
       monthlyRevenue,
       layingRate: totalBirds > 0 ? (todayEggs / totalBirds * 100).toFixed(1) : '0'
     };

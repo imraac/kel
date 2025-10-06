@@ -44,16 +44,31 @@ export function useFarmAlerts() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    // Generate all 4 alert types for demonstration
-    // 1. Feed Stock Alert
-    calculatedAlerts.push({
-      id: "feed-stock-low",
-      type: "warning",
-      icon: "triangle",
-      title: "Feed Stock Running Low",
-      description: "Approximately 6 days of feed remaining. Consider ordering soon.",
-      priority: "Medium",
-    });
+    // 1. Feed Stock Alert - Dynamic calculation based on actual data
+    const feedDaysRemaining = metrics?.feedDaysRemaining ?? 0;
+    const totalFeedStock = metrics?.totalFeedStock ?? 0;
+    
+    if (totalFeedStock > 0) {
+      if (feedDaysRemaining < 3) {
+        calculatedAlerts.push({
+          id: "feed-stock-critical",
+          type: "danger",
+          icon: "triangle",
+          title: "Feed Stock Critical",
+          description: `Only ${feedDaysRemaining} ${feedDaysRemaining === 1 ? 'day' : 'days'} of feed remaining! Order immediately to avoid running out.`,
+          priority: "High",
+        });
+      } else if (feedDaysRemaining < 7) {
+        calculatedAlerts.push({
+          id: "feed-stock-low",
+          type: "warning",
+          icon: "triangle",
+          title: "Feed Stock Running Low",
+          description: `Approximately ${feedDaysRemaining} ${feedDaysRemaining === 1 ? 'day' : 'days'} of feed remaining. Consider ordering soon.`,
+          priority: "Medium",
+        });
+      }
+    }
 
     // 2. Mortality Rate Alert
     calculatedAlerts.push({
