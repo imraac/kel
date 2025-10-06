@@ -590,7 +590,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: "Validation error", errors: error.errors });
       } else {
         console.error("Error creating daily record:", error);
-        res.status(500).json({ message: "Failed to create daily record" });
+        // Check for duplicate key constraint violation
+        if ((error as any).code === '23505' && (error as any).constraint === 'uniq_daily_records_flock_date_active') {
+          res.status(409).json({ 
+            message: "A daily record already exists for this flock on this date. Please select a different date or edit the existing record." 
+          });
+        } else {
+          res.status(500).json({ message: "Failed to create daily record" });
+        }
       }
     }
   });
