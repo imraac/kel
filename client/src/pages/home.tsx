@@ -73,6 +73,29 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
+  const { data: dailyRecords = [] } = useQuery<any[]>({
+    queryKey: ["/api/daily-records"],
+    enabled: isAuthenticated,
+  });
+
+  // Calculate weekly mortality (last 7 days)
+  const calculateWeeklyMortality = () => {
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const weeklyMortality = dailyRecords
+      .filter(record => {
+        const recordDate = new Date(record.recordDate);
+        return recordDate >= sevenDaysAgo && recordDate <= today;
+      })
+      .reduce((sum, record) => sum + (record.mortalityCount || 0), 0);
+    
+    return weeklyMortality;
+  };
+
+  const weeklyMortality = calculateWeeklyMortality();
+
   // Handle unauthorized errors
   useEffect(() => {
     if (metricsError && isUnauthorizedError(metricsError)) {
@@ -438,7 +461,7 @@ export default function Home() {
               <MetricCard
                 title="Total Birds"
                 value={metrics?.totalBirds || 0}
-                subtitle="16 mortality this week"
+                subtitle={`${weeklyMortality} mortality this week`}
                 icon="dove"
                 color="primary"
               />
