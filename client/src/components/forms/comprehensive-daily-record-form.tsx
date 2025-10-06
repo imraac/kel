@@ -61,43 +61,67 @@ export default function ComprehensiveDailyRecordForm({ onSuccess }: Comprehensiv
   const selectedFlock = flocks.find(f => f.id === flockId);
   const chickAge = selectedFlock ? getChickAge(recordDate, selectedFlock.hatchDate) : 0;
 
-  // Age-based feed guidance
+  // Age-based feed guidance (matches brooding schedule)
   const getFeedGuidance = (age: number) => {
     if (age <= 7) return {
       feedType: "chick-starter",
-      dailyAmount: "15-20g per chick",
-      protein: "24% protein",
-      tips: "Critical growth period - ensure continuous access to feed"
+      dailyAmount: "12g per bird",
+      protein: "High protein starter",
+      tips: "Week 1: Critical Care - monitor closely, ensure access to water"
     };
     if (age <= 14) return {
       feedType: "chick-starter", 
-      dailyAmount: "25-35g per chick",
-      protein: "24% protein",
-      tips: "Monitor feed intake closely, increase as birds grow"
+      dailyAmount: "18g per bird",
+      protein: "High protein starter",
+      tips: "Week 2: Rapid Growth - monitor feed intake closely"
     };
     if (age <= 21) return {
       feedType: "chick-starter",
-      dailyAmount: "40-50g per chick", 
-      protein: "20-22% protein",
-      tips: "Transitioning period - can start mixing with grower feed"
+      dailyAmount: "25g per bird", 
+      protein: "High protein starter",
+      tips: "Week 3: Development - feed transition period"
     };
     if (age <= 28) return {
-      feedType: "grower-feed",
-      dailyAmount: "55-65g per chick",
-      protein: "18-20% protein", 
-      tips: "Key development phase - maintain consistent feeding schedule"
+      feedType: "chick-starter",
+      dailyAmount: "31g per bird",
+      protein: "High protein starter", 
+      tips: "Week 4: Feather Development - maintain consistent feeding"
+    };
+    if (age <= 35) return {
+      feedType: "chick-starter",
+      dailyAmount: "38g per bird",
+      protein: "High protein starter",
+      tips: "Week 5: Steady Growth - consistent environment"
     };
     if (age <= 42) return {
+      feedType: "chick-starter",
+      dailyAmount: "41g per bird",
+      protein: "High protein starter",
+      tips: "Week 6: Grower Prep - monitor body condition"
+    };
+    if (age <= 49) return {
+      feedType: "chick-starter",
+      dailyAmount: "45g per bird",
+      protein: "High protein starter",
+      tips: "Week 7: Transition Prep - prepare for feed change"
+    };
+    if (age <= 56) return {
       feedType: "grower-feed",
-      dailyAmount: "70-85g per bird",
-      protein: "16-18% protein",
-      tips: "Pre-laying preparation - monitor body condition"
+      dailyAmount: "49g per bird",
+      protein: "Grower feed",
+      tips: "Week 8: Feed Transition - introduce growers mash gradually"
+    };
+    if (age <= 133) return {
+      feedType: "grower-feed",
+      dailyAmount: "52-92g per bird",
+      protein: "Grower feed",
+      tips: "Weeks 9-19: Growth Phase - monitor feed consumption and weight gain"
     };
     return {
       feedType: "layer-feed",
-      dailyAmount: "110-130g per bird", 
+      dailyAmount: "100-120g per bird", 
       protein: "16-18% protein",
-      tips: "Peak production - consistent high-quality nutrition required"
+      tips: "Week 20+: Layer Phase - consistent high-quality nutrition required"
     };
   };
 
