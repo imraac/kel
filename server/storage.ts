@@ -660,8 +660,8 @@ export class DatabaseStorage implements IStorage {
 
   // Dashboard analytics
   async getDashboardMetrics(): Promise<any> {
-    // Get total birds from all active flocks
-    const activeFlocks = await db.select().from(flocks).where(eq(flocks.status, 'laying'));
+    // Get total birds from all active flocks (excluding deactivated)
+    const activeFlocks = await db.select().from(flocks).where(ne(flocks.status, 'deactivated'));
     const totalBirds = activeFlocks.reduce((sum, flock) => sum + flock.currentCount, 0);
 
     // Get today's egg production (check today and yesterday to handle timezone issues)
