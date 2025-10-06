@@ -409,7 +409,13 @@ export default function Home() {
               <MetricCard
                 title="Feed Stock"
                 value={`${((metrics?.totalFeedStock || 0) / 1000).toFixed(1)} tons`}
-                subtitle="⚠ 5 days remaining"
+                subtitle={
+                  metrics?.feedDaysRemaining !== undefined
+                    ? metrics.feedDaysRemaining < 7
+                      ? `⚠ ${metrics.feedDaysRemaining} ${metrics.feedDaysRemaining === 1 ? 'day' : 'days'} remaining`
+                      : `${metrics.feedDaysRemaining} ${metrics.feedDaysRemaining === 1 ? 'day' : 'days'} remaining`
+                    : "No data"
+                }
                 icon="wheat"
                 color="orange"
               />
