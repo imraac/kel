@@ -120,32 +120,113 @@ export default function SimpleChickBroodingForm({ onSuccess }: SimpleChickBroodi
       expectedWeight: "650g",
       tips: "Begin grower feed transition. Introduce new feed gradually over 7 days"
     };
-    if (age <= 84) return {
-      category: "Weeks 9-12: Growth Phase",
+    if (age <= 63) return {
+      category: "Week 9: Growth Phase",
       tempRange: "21°C",
       lighting: "14 hours",
       feedType: "Growers Mash",
-      feedAmount: "52-75g per bird",
-      expectedWeight: "740-1050g",
-      tips: "Rapid growth phase. Monitor feed consumption and weight gain"
+      feedAmount: "52g per bird",
+      expectedWeight: "740-780g",
+      tips: "Full grower feed. Monitor feed consumption and weight gain"
+    };
+    if (age <= 70) return {
+      category: "Week 10: Rapid Growth",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "60g per bird",
+      expectedWeight: "830-870g",
+      tips: "Rapid growth phase. Maintain consistent feeding schedule"
+    };
+    if (age <= 77) return {
+      category: "Week 11: Peak Growth",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "70g per bird",
+      expectedWeight: "920-980g",
+      tips: "Peak growth period. Monitor body condition"
+    };
+    if (age <= 84) return {
+      category: "Week 12: Consistent Growth",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "75g per bird",
+      expectedWeight: "1010-1050g",
+      tips: "Consistent growth. Maintain optimal conditions"
+    };
+    if (age <= 91) return {
+      category: "Week 13: Continued Development",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "80g per bird",
+      expectedWeight: "1100-1140g",
+      tips: "Continued development. Monitor overall health"
+    };
+    if (age <= 98) return {
+      category: "Week 14: Pre-Layer Development",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Growers Mash",
+      feedAmount: "85g per bird",
+      expectedWeight: "1185-1230g",
+      tips: "Pre-layer development. Prepare for transition"
     };
     if (age <= 105) return {
-      category: "Weeks 13-15: Pre-Layer Development",
+      category: "Week 15: Final Grower Phase",
       tempRange: "21°C",
       lighting: "14 hours",
       feedType: "Growers Mash",
-      feedAmount: "80-92g per bird",
-      expectedWeight: "1100-1320g",
-      tips: "Pre-layer development. Prepare for laying phase transition"
+      feedAmount: "92g per bird",
+      expectedWeight: "1270-1320g",
+      tips: "Final grower phase. Prepare for layer feed"
+    };
+    if (age <= 112) return {
+      category: "Week 16: Layer Feed Transition",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Gradual change to Layers Mash",
+      feedAmount: "100g per bird",
+      expectedWeight: "1355-1410g",
+      tips: "Begin layer feed transition. Introduce gradually"
+    };
+    if (age <= 119) return {
+      category: "Week 17: Layer Feed Establishment",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Layers Mash",
+      feedAmount: "107g per bird",
+      expectedWeight: "1440-1500g",
+      tips: "Layer feed establishment. Monitor feed acceptance"
+    };
+    if (age <= 126) return {
+      category: "Week 18: Pre-Laying Preparation",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Layers Mash",
+      feedAmount: "114g per bird",
+      expectedWeight: "1530-1600g",
+      tips: "Pre-laying preparation. Ensure optimal nutrition"
+    };
+    if (age <= 133) return {
+      category: "Week 19: Approaching Laying",
+      tempRange: "21°C",
+      lighting: "14 hours",
+      feedType: "Layers Mash",
+      feedAmount: "118g per bird",
+      expectedWeight: "1580-1680g",
+      tips: "Approaching laying. Monitor for early eggs"
     };
     return {
-      category: "Weeks 16+: Layer Phase",
+      category: "Week 20+: Layer Phase",
       tempRange: "21°C", 
       lighting: "14 hours",
       feedType: "Layers Mash",
-      feedAmount: "100-120g per bird",
-      expectedWeight: "1355-1750g",
-      tips: "Layer feed establishment. Monitor egg production, maintain consistent environment"
+      feedAmount: "120g per bird",
+      expectedWeight: "1645-1750g",
+      tips: "Ready for egg production. Monitor egg production, maintain consistent environment"
     };
   };
 
