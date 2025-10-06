@@ -90,3 +90,11 @@ Preferred communication style: Simple, everyday language.
 - **REAL-TIME CALCULATIONS**: Debounced statistics with breed standard comparisons via /api/weight-records/calculate endpoint
 - **VISUAL PERFORMANCE MONITORING**: Color-coded alert panels (red/orange/green) with highlighted warnings above charts
 - **PRODUCTION-READY EXPORTS**: CSV with detailed summaries and PDF via browser print dialog for comprehensive record keeping
+
+### Dashboard Enhancement with Weekly Targets (October 2025)
+- **CONTEXTUAL INFORMATION**: Added week number (ISO week) and flock age display below the current date in dashboard header
+- **AGE-BASED TARGETS**: Dynamic weekly target widgets that adapt to the oldest flock's age, showing critical requirements for the current week
+- **FOUR KEY METRICS**: Temperature ranges, lighting hours, feed amounts with protein specifications, and expected weight targets
+- **VISUAL INDICATORS**: Color-coded icons (red for temperature, yellow for lighting, green for feed, blue for weight) with compact card layout
+- **STAGE AWARENESS**: Automatic detection of flock development stage (Critical Care, Stabilization, Development, Growth, Pre-laying, Layer Prep, Laying Phase)
+- **RESPONSIVE DESIGN**: Adaptive grid layout that works across all device sizes (1 column on mobile, 2 on tablet, 4 on desktop)
