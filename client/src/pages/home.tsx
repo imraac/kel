@@ -488,7 +488,11 @@ export default function Home() {
               <MetricCard
                 title="Monthly Revenue"
                 value={`KSh ${metrics?.monthlyRevenue?.toLocaleString() || 0}`}
-                subtitle="↗ +12% from last month"
+                subtitle={
+                  metrics?.revenueChange 
+                    ? `${parseFloat(metrics.revenueChange) >= 0 ? '↗' : '↘'} ${parseFloat(metrics.revenueChange) >= 0 ? '+' : ''}${metrics.revenueChange}% from last month`
+                    : "No previous data"
+                }
                 icon="coins"
                 color="green"
               />
