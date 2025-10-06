@@ -127,6 +127,30 @@ export default function ComprehensiveDailyRecordForm({ onSuccess }: Comprehensiv
 
   const feedGuidance = getFeedGuidance(chickAge);
 
+  // Age-based weight guidance (matches brooding schedule)
+  const getWeightGuidance = (age: number): string => {
+    if (age <= 7) return "120-150g";      // Week 1
+    if (age <= 14) return "200-250g";     // Week 2
+    if (age <= 21) return "300-350g";     // Week 3
+    if (age <= 28) return "400-450g";     // Week 4
+    if (age <= 35) return "500-550g";     // Week 5
+    if (age <= 42) return "600-650g";     // Week 6
+    if (age <= 49) return "680-720g";     // Week 7
+    if (age <= 56) return "710-750g";     // Week 8
+    if (age <= 63) return "740-780g";     // Week 9
+    if (age <= 70) return "830-870g";     // Week 10
+    if (age <= 77) return "920-980g";     // Week 11
+    if (age <= 84) return "1020-1080g";   // Week 12
+    if (age <= 91) return "1120-1180g";   // Week 13
+    if (age <= 98) return "1220-1280g";   // Week 14
+    if (age <= 105) return "1320-1380g";  // Week 15
+    if (age <= 112) return "1420-1480g";  // Week 16
+    if (age <= 119) return "1520-1580g";  // Week 17
+    if (age <= 126) return "1620-1680g";  // Week 18
+    if (age <= 133) return "1720-1780g";  // Week 19
+    return "1800-2000g";                  // Week 20+
+  };
+
   // Automatic crate calculation
   useEffect(() => {
     const eggs = parseInt(eggsCollected) || 0;
@@ -278,7 +302,7 @@ export default function ComprehensiveDailyRecordForm({ onSuccess }: Comprehensiv
               </div>
               <div className="space-y-2">
                 <Badge variant="secondary">Expected Weight</Badge>
-                <p>{chickAge <= 7 ? "120-150g" : chickAge <= 14 ? "200-250g" : chickAge <= 21 ? "300-350g" : chickAge <= 28 ? "400-450g" : chickAge <= 42 ? "1000-1200g" : "1500-1800g"}</p>
+                <p>{getWeightGuidance(chickAge)}</p>
               </div>
             </div>
           </CardContent>
