@@ -306,8 +306,8 @@ export default function Home() {
         temperature: "21°C",
         lighting: "14 hours",
         feedType: "Growers Mash",
-        feedAmount: "58g per bird",
-        expectedWeight: "820g",
+        feedAmount: "60g per bird",
+        expectedWeight: "830-870g",
         weekLabel: "Week 10: Growth Phase"
       },
       11: {
