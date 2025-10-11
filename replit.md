@@ -101,7 +101,7 @@ Preferred communication style: Simple, everyday language.
 - **BOUNDARY-SAFE WEEK CALCULATION**: Implemented Math.max(1, Math.floor((age - 1) / 7) + 1) formula for accurate week numbering at day boundaries (prevents off-by-one errors)
 - **WEEK-SPECIFIC TARGETS**: Replaced week ranges (9-12, 13-15, 16+) with individual week-by-week lookup table providing precise feed amounts and expected weights for each week
   - Week 9: 52g per bird, 740g expected weight
-  - Week 10: 58g per bird, 820g expected weight  
+  - Week 10: 60g per bird, 830-870g expected weight  
   - Week 11: 65g per bird, 920g expected weight
   - Week 12: 75g per bird, 1050g expected weight
   - Week 13: 80g per bird, 1100g expected weight
