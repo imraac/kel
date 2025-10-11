@@ -98,3 +98,18 @@ Preferred communication style: Simple, everyday language.
 - **VISUAL INDICATORS**: Color-coded icons (red for temperature, yellow for lighting, green for feed, blue for weight) with compact card layout
 - **STAGE AWARENESS**: Automatic detection of flock development stage (Critical Care, Stabilization, Development, Growth, Pre-laying, Layer Prep, Laying Phase)
 - **RESPONSIVE DESIGN**: Adaptive grid layout that works across all device sizes (1 column on mobile, 2 on tablet, 4 on desktop)
+- **BOUNDARY-SAFE WEEK CALCULATION**: Implemented Math.max(1, Math.floor((age - 1) / 7) + 1) formula for accurate week numbering at day boundaries (prevents off-by-one errors)
+- **WEEK-SPECIFIC TARGETS**: Replaced week ranges (9-12, 13-15, 16+) with individual week-by-week lookup table providing precise feed amounts and expected weights for each week
+  - Week 9: 52g per bird, 740g expected weight
+  - Week 10: 58g per bird, 820g expected weight  
+  - Week 11: 65g per bird, 920g expected weight
+  - Week 12: 75g per bird, 1050g expected weight
+  - Week 13: 80g per bird, 1100g expected weight
+  - Week 14: 86g per bird, 1210g expected weight
+  - Week 15: 92g per bird, 1320g expected weight
+- **DYNAMIC WEEK LABELS**: Week labels now show current specific week (e.g., "Week 9: Growth Phase") instead of ranges (e.g., "Weeks 9-12: Growth Phase")
+
+### Body Weight Page Navigation Enhancement (October 2025)
+- **SIDEBAR INTEGRATION**: Added missing sidebar component to body weight tracking page for consistent navigation across the application
+- **MOBILE RESPONSIVE**: Implemented mobile menu overlay and hamburger button for touch device navigation
+- **LAYOUT CONSISTENCY**: Unified page structure with dashboard and other pages using the same header/sidebar wrapper pattern
