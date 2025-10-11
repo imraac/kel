@@ -218,6 +218,9 @@ export default function Home() {
   const getWeeklyTargets = (age: number | null) => {
     if (age === null || age === undefined) return null;
     
+    // Calculate the current week number
+    const currentWeek = Math.floor(age / 7) + 1;
+    
     // Week 1 (0-7 days)
     if (age <= 7) return {
       temperature: "35-32°C",
@@ -297,7 +300,7 @@ export default function Home() {
       feedType: "Growers Mash",
       feedAmount: "52-75g per bird",
       expectedWeight: "740-1050g",
-      weekLabel: "Weeks 9-12: Growth Phase"
+      weekLabel: `Week ${currentWeek}: Growth Phase`
     };
     // Week 13-15 (85-105 days)
     if (age <= 105) return {
@@ -306,7 +309,7 @@ export default function Home() {
       feedType: "Growers Mash",
       feedAmount: "80-92g per bird",
       expectedWeight: "1100-1320g",
-      weekLabel: "Weeks 13-15: Pre-Layer Development"
+      weekLabel: `Week ${currentWeek}: Pre-Layer Development`
     };
     // Week 16+ (106+ days)
     return {
@@ -315,7 +318,7 @@ export default function Home() {
       feedType: "Layers Mash",
       feedAmount: "100-120g per bird",
       expectedWeight: "1355-1750g",
-      weekLabel: "Weeks 16+: Layer Phase"
+      weekLabel: `Week ${currentWeek}: Layer Phase`
     };
   };
 
