@@ -212,114 +212,160 @@ export default function Home() {
   };
 
   const flockAge = primaryFlock ? getFlockAge(primaryFlock.hatchDate) : null;
-  const flockWeekAge = flockAge !== null ? Math.floor(flockAge / 7) + 1 : null;
+  const flockWeekAge = flockAge !== null ? Math.max(1, Math.floor((flockAge - 1) / 7) + 1) : null;
 
   // Get weekly targets based on flock age (matches brooding schedule)
   const getWeeklyTargets = (age: number | null) => {
     if (age === null || age === undefined) return null;
     
-    // Calculate the current week number
-    const currentWeek = Math.floor(age / 7) + 1;
+    // Calculate the current week number with boundary-safe formula
+    const currentWeek = Math.max(1, Math.floor((age - 1) / 7) + 1);
     
-    // Week 1 (0-7 days)
-    if (age <= 7) return {
-      temperature: "35-32°C",
-      lighting: "24 hours",
-      feedType: "Chick and Duck Mash",
-      feedAmount: "12g per bird",
-      expectedWeight: "40-60g",
-      weekLabel: "Week 1: Critical Care"
+    // Week-indexed lookup map for specific targets
+    const WEEKLY_TARGETS: Record<number, {
+      temperature: string;
+      lighting: string;
+      feedType: string;
+      feedAmount: string;
+      expectedWeight: string;
+      weekLabel: string;
+    }> = {
+      1: {
+        temperature: "35-32°C",
+        lighting: "24 hours",
+        feedType: "Chick and Duck Mash",
+        feedAmount: "12g per bird",
+        expectedWeight: "40-60g",
+        weekLabel: "Week 1: Critical Care"
+      },
+      2: {
+        temperature: "32-29°C",
+        lighting: "20 hours",
+        feedType: "Chick and Duck Mash",
+        feedAmount: "18g per bird",
+        expectedWeight: "85-120g",
+        weekLabel: "Week 2: Rapid Growth"
+      },
+      3: {
+        temperature: "29-26°C",
+        lighting: "16 hours",
+        feedType: "Chick and Duck Mash",
+        feedAmount: "25g per bird",
+        expectedWeight: "150-200g",
+        weekLabel: "Week 3: Development"
+      },
+      4: {
+        temperature: "26-23°C",
+        lighting: "14 hours",
+        feedType: "Chick and Duck Mash",
+        feedAmount: "31g per bird",
+        expectedWeight: "220-300g",
+        weekLabel: "Week 4: Feather Development"
+      },
+      5: {
+        temperature: "23-21°C",
+        lighting: "14 hours",
+        feedType: "Chick and Duck Mash",
+        feedAmount: "38g per bird",
+        expectedWeight: "380-400g",
+        weekLabel: "Week 5: Steady Growth"
+      },
+      6: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Chick and Duck Mash",
+        feedAmount: "41g per bird",
+        expectedWeight: "470-500g",
+        weekLabel: "Week 6: Grower Prep"
+      },
+      7: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Chick and Duck Mash",
+        feedAmount: "45g per bird",
+        expectedWeight: "560-600g",
+        weekLabel: "Week 7: Transition Prep"
+      },
+      8: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Gradual change to Growers Mash",
+        feedAmount: "49g per bird",
+        expectedWeight: "650g",
+        weekLabel: "Week 8: Feed Transition"
+      },
+      9: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Growers Mash",
+        feedAmount: "52g per bird",
+        expectedWeight: "740g",
+        weekLabel: "Week 9: Growth Phase"
+      },
+      10: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Growers Mash",
+        feedAmount: "58g per bird",
+        expectedWeight: "820g",
+        weekLabel: "Week 10: Growth Phase"
+      },
+      11: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Growers Mash",
+        feedAmount: "65g per bird",
+        expectedWeight: "920g",
+        weekLabel: "Week 11: Growth Phase"
+      },
+      12: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Growers Mash",
+        feedAmount: "75g per bird",
+        expectedWeight: "1050g",
+        weekLabel: "Week 12: Growth Phase"
+      },
+      13: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Growers Mash",
+        feedAmount: "80g per bird",
+        expectedWeight: "1100g",
+        weekLabel: "Week 13: Pre-Layer Development"
+      },
+      14: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Growers Mash",
+        feedAmount: "86g per bird",
+        expectedWeight: "1210g",
+        weekLabel: "Week 14: Pre-Layer Development"
+      },
+      15: {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Growers Mash",
+        feedAmount: "92g per bird",
+        expectedWeight: "1320g",
+        weekLabel: "Week 15: Pre-Layer Development"
+      }
     };
-    // Week 2 (8-14 days)
-    if (age <= 14) return {
-      temperature: "32-29°C",
-      lighting: "20 hours",
-      feedType: "Chick and Duck Mash",
-      feedAmount: "18g per bird",
-      expectedWeight: "85-120g",
-      weekLabel: "Week 2: Rapid Growth"
-    };
-    // Week 3 (15-21 days)
-    if (age <= 21) return {
-      temperature: "29-26°C",
-      lighting: "16 hours",
-      feedType: "Chick and Duck Mash",
-      feedAmount: "25g per bird",
-      expectedWeight: "150-200g",
-      weekLabel: "Week 3: Development"
-    };
-    // Week 4 (22-28 days)
-    if (age <= 28) return {
-      temperature: "26-23°C",
-      lighting: "14 hours",
-      feedType: "Chick and Duck Mash",
-      feedAmount: "31g per bird",
-      expectedWeight: "220-300g",
-      weekLabel: "Week 4: Feather Development"
-    };
-    // Week 5 (29-35 days)
-    if (age <= 35) return {
-      temperature: "23-21°C",
-      lighting: "14 hours",
-      feedType: "Chick and Duck Mash",
-      feedAmount: "38g per bird",
-      expectedWeight: "380-400g",
-      weekLabel: "Week 5: Steady Growth"
-    };
-    // Week 6 (36-42 days)
-    if (age <= 42) return {
-      temperature: "21°C",
-      lighting: "14 hours",
-      feedType: "Chick and Duck Mash",
-      feedAmount: "41g per bird",
-      expectedWeight: "470-500g",
-      weekLabel: "Week 6: Grower Prep"
-    };
-    // Week 7 (43-49 days)
-    if (age <= 49) return {
-      temperature: "21°C",
-      lighting: "14 hours",
-      feedType: "Chick and Duck Mash",
-      feedAmount: "45g per bird",
-      expectedWeight: "560-600g",
-      weekLabel: "Week 7: Transition Prep"
-    };
-    // Week 8 (50-56 days)
-    if (age <= 56) return {
-      temperature: "21°C",
-      lighting: "14 hours",
-      feedType: "Gradual change to Growers Mash",
-      feedAmount: "49g per bird",
-      expectedWeight: "650g",
-      weekLabel: "Week 8: Feed Transition"
-    };
-    // Week 9-12 (57-84 days)
-    if (age <= 84) return {
-      temperature: "21°C",
-      lighting: "14 hours",
-      feedType: "Growers Mash",
-      feedAmount: "52-75g per bird",
-      expectedWeight: "740-1050g",
-      weekLabel: `Week ${currentWeek}: Growth Phase`
-    };
-    // Week 13-15 (85-105 days)
-    if (age <= 105) return {
-      temperature: "21°C",
-      lighting: "14 hours",
-      feedType: "Growers Mash",
-      feedAmount: "80-92g per bird",
-      expectedWeight: "1100-1320g",
-      weekLabel: `Week ${currentWeek}: Pre-Layer Development`
-    };
-    // Week 16+ (106+ days)
-    return {
-      temperature: "21°C",
-      lighting: "14 hours",
-      feedType: "Layers Mash",
-      feedAmount: "100-120g per bird",
-      expectedWeight: "1355-1750g",
-      weekLabel: `Week ${currentWeek}: Layer Phase`
-    };
+    
+    // For week 16+, return a dynamic label based on the actual week
+    if (currentWeek >= 16) {
+      return {
+        temperature: "21°C",
+        lighting: "14 hours",
+        feedType: "Layers Mash",
+        feedAmount: "100-120g per bird",
+        expectedWeight: "1355-1750g",
+        weekLabel: `Week ${currentWeek}: Layer Phase`
+      };
+    }
+    
+    // Return the specific week's targets
+    return WEEKLY_TARGETS[currentWeek] || null;
   };
 
   const weeklyTargets = getWeeklyTargets(flockAge);
