@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
+import { useFarmContext } from "@/contexts/FarmContext";
 import {
   LineChart,
   Line,
@@ -67,10 +68,12 @@ export default function BreakEvenAnalysis() {
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rollingWindow, setRollingWindow] = useState<3 | 6 | 12>(6);
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
 
   // Fetch auto-calculated metrics with rolling window
   const { data: metrics, isLoading } = useQuery<BreakEvenMetrics>({
-    queryKey: [`/api/breakeven/metrics?months=${rollingWindow}`],
+    queryKey: [`/api/breakeven/metrics?months=${rollingWindow}&farmId=${activeFarmId}`],
+    enabled: hasActiveFarm, // Only fetch when farm is selected
     refetchOnWindowFocus: true, // Auto-refresh when user returns from linked pages
   });
 
