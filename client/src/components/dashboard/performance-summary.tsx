@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useFarmContext } from "@/contexts/FarmContext";
 
 // Helper function to get CV% status
 const getCVStatus = (cvPercent: number | null) => {
@@ -25,6 +26,7 @@ const getCVPerformanceScore = (cvPercent: number | null) => {
 
 export default function PerformanceSummary() {
   const { isAuthenticated } = useAuth();
+  const { activeFarmId } = useFarmContext();
 
   // Fetch all required data
   const { data: weightRecords = [] } = useQuery<any[]>({
@@ -43,8 +45,8 @@ export default function PerformanceSummary() {
   });
 
   const { data: sales = [] } = useQuery<any[]>({
-    queryKey: ["/api/sales"],
-    enabled: isAuthenticated,
+    queryKey: activeFarmId ? [`/api/sales?farmId=${activeFarmId}`] : ["/api/sales"],
+    enabled: isAuthenticated && !!activeFarmId,
   });
 
   // Calculate date ranges for weekly data
