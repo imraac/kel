@@ -70,7 +70,7 @@ export default function BreakEvenAnalysis() {
 
   // Fetch auto-calculated metrics with rolling window
   const { data: metrics, isLoading } = useQuery<BreakEvenMetrics>({
-    queryKey: ["/api/breakeven/metrics", rollingWindow],
+    queryKey: [`/api/breakeven/metrics?months=${rollingWindow}`],
     refetchOnWindowFocus: true, // Auto-refresh when user returns from linked pages
   });
 
