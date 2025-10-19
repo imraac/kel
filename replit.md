@@ -100,6 +100,13 @@ Preferred communication style: Simple, everyday language.
 - **VISUAL PERFORMANCE MONITORING**: Color-coded alert panels (red/orange/green) with highlighted warnings above charts
 - **PRODUCTION-READY EXPORTS**: CSV with detailed summaries and PDF via browser print dialog for comprehensive record keeping
 
+### Dashboard Performance Metrics - Decimal Formatting Standardization (October 2025)
+- **CONSISTENT PRECISION**: All numeric values in "This Week's Performance" card now display with exactly 2 decimal places for professional consistency
+- **PERCENTAGE FORMATTING**: All performance metrics (Laying Rate, Feed Efficiency, Mortality Rate, Revenue Target) now show `.toFixed(2)` formatting (e.g., 87.45% instead of 87.45000001%)
+- **CURRENCY FORMATTING**: Revenue values use `toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})` to ensure KSh amounts always show cents (e.g., KSh 268,450.00)
+- **EGGS PER DAY**: Changed from whole numbers to 2 decimal places for more accurate daily production tracking (e.g., 4,547.32 eggs/day)
+- **ENHANCED READABILITY**: Standardized decimal precision improves data interpretation and professional presentation across all dashboard metrics
+
 ### Dashboard Enhancement with Weekly Targets (October 2025)
 - **CONTEXTUAL INFORMATION**: Added week number (ISO week) and flock age display below the current date in dashboard header
 - **AGE-BASED TARGETS**: Dynamic weekly target widgets that adapt to the oldest flock's age, showing critical requirements for the current week
