@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Sprout, BarChart3, Baby, Scale, Egg, Wheat, Heart, ClipboardList, Receipt, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck, Building2 } from "lucide-react";
+import { Sprout, BarChart3, Baby, Scale, Egg, Wheat, Heart, ClipboardList, Receipt, TrendingUp, Users, Settings, LogOut, Store, ShoppingCart, Package2, UserCheck, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FarmSelector } from "@/components/FarmSelector";
 
@@ -27,6 +27,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     { path: "/health-records", icon: Heart, label: "Health Records", id: "health-records" },
     { path: "/reports", icon: ClipboardList, label: "Reports", id: "reports" },
     { path: "/expenses", icon: Receipt, label: "Expenses", id: "expenses" },
+    { path: "/break-even-analysis", icon: TrendingUp, label: "Break-Even Analysis", id: "break-even-analysis" },
   ];
 
   const marketplaceItems = [

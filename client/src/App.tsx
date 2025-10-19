@@ -13,6 +13,7 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import ChickBrooding from "@/pages/chick-brooding";
 import BodyWeights from "@/pages/body-weights";
+import BreakEvenAnalysis from "@/pages/break-even-analysis";
 import EggProduction from "@/pages/egg-production";
 import FeedManagement from "@/pages/feed-management";
 import HealthRecords from "@/pages/health-records";
@@ -80,6 +81,7 @@ function Router() {
           <Route path="/health-records" component={HealthRecords} />
           <Route path="/reports" component={Reports} />
           <Route path="/expenses" component={Expenses} />
+          <Route path="/break-even-analysis" component={BreakEvenAnalysis} />
           <Route path="/users" component={Users} />
           <Route path="/settings" component={Settings} />
           <Route path="/marketplace/customers" component={MarketplaceCustomers} />
