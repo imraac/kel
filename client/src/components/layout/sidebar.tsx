@@ -27,7 +27,6 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     { path: "/health-records", icon: Heart, label: "Health Records", id: "health-records" },
     { path: "/reports", icon: ClipboardList, label: "Reports", id: "reports" },
     { path: "/expenses", icon: Receipt, label: "Expenses", id: "expenses" },
-    { path: "/break-even-analysis", icon: TrendingUp, label: "Break-Even Analysis", id: "break-even-analysis" },
   ];
 
   const marketplaceItems = [
