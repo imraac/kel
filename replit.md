@@ -132,3 +132,4 @@ Preferred communication style: Simple, everyday language.
 - **INTERACTIVE NAVIGATION**: Direct links to sales, expenses, and feed management pages for data adjustments
 - **REAL-TIME REFRESH**: Auto-invalidates cache when user returns from linked pages (React Query integration)
 - **OPTIONAL OVERRIDES**: Manual what-if scenario drawer for testing different assumptions without changing actual data
+- **NAVIGATION CONSOLIDATION**: Moved Break-Even Analysis into Reports page as a fifth tab (after Trends & Forecasts) for better information architecture and reduced sidebar clutter. Removed standalone /break-even-analysis route and sidebar link.
