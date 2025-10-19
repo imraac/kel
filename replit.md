@@ -8,6 +8,15 @@ RoblePoultryPilot is a comprehensive poultry farm management system designed for
 
 Preferred communication style: Simple, everyday language.
 
+### Development Workflow Requirements
+
+**CRITICAL: Architect Review Before Testing**
+- Never proceed with feature testing without first calling the architect to review if everything is working properly
+- If architect raises any issues, fix them immediately
+- Call architect again for review after fixes
+- Only proceed with E2E testing once architect has approved the implementation
+- This ensures quality and prevents wasted testing cycles on broken features
+
 ## System Architecture
 
 ### Frontend Architecture
