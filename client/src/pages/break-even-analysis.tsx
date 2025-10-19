@@ -1,18 +1,17 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { TrendingUp, Calculator, DollarSign, Calendar, Download, AlertCircle, FileText } from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { 
+  TrendingUp, Calculator, DollarSign, Calendar, Download, AlertCircle, 
+  FileText, ArrowRight, ShoppingCart, DollarSign as CostsIcon, Package 
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
 import {
   LineChart,
@@ -28,27 +27,31 @@ import {
   ReferenceLine,
 } from "recharts";
 
-// Form schema for break-even assumptions
-const assumptionsFormSchema = z.object({
-  price: z.coerce.number().min(0.01, "Price must be greater than 0"),
-  unitVariableCost: z.coerce.number().min(0, "Unit variable cost must be non-negative"),
-  fixedCostsPerMonth: z.coerce.number().min(0, "Fixed costs must be non-negative"),
-  growthRate: z.coerce.number().min(-1, "Growth rate must be >= -100%").max(10, "Growth rate must be <= 1000%"),
-  notes: z.string().optional(),
-});
-
-type AssumptionsFormValues = z.infer<typeof assumptionsFormSchema>;
-
 interface BreakEvenMetrics {
-  contributionMargin: number;
-  contributionMarginRatio: number;
-  breakEvenUnits: number;
-  breakEvenRevenue: number;
-  breakEvenMonth: number | null;
-  breakEvenDate: string | null;
-  paybackPeriod: number | null;
-  cumulativeProfits: number[];
-  monthlyProjections: Array<{
+  hasData: boolean;
+  autoCalculated?: boolean;
+  message?: string;
+  suggestedActions?: Array<{ label: string; route: string }>;
+  dataSource?: {
+    monthsAnalyzed: number;
+    salesRecords: number;
+    expenseRecords: number;
+    dateRange: { startDate: string; endDate: string };
+  };
+  derivedValues?: {
+    averagePrice: number;
+    averageUnitVariableCost: number;
+    averageFixedCostsPerMonth: number;
+    averageMonthlyUnits: number;
+    calculatedGrowthRate: number;
+  };
+  contributionMargin?: number;
+  contributionMarginRatio?: number;
+  breakEvenUnits?: number;
+  breakEvenRevenue?: number;
+  breakEvenMonth?: number | null;
+  breakEvenDate?: string | null;
+  monthlyProjections?: Array<{
     month: number;
     units: number;
     revenue: number;
@@ -62,84 +65,23 @@ interface BreakEvenMetrics {
 
 export default function BreakEvenAnalysis() {
   const { toast } = useToast();
-  const [showForm, setShowForm] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [rollingWindow, setRollingWindow] = useState<3 | 6 | 12>(6);
 
-  // Fetch assumptions
-  const { data: assumptions, isLoading: loadingAssumptions } = useQuery<{
-    price: string;
-    unitVariableCost: string;
-    fixedCostsPerMonth: string;
-    growthRate: string;
-    notes: string | null;
-  }>({
-    queryKey: ["/api/breakeven/assumptions"],
-    retry: false,
+  // Fetch auto-calculated metrics with rolling window
+  const { data: metrics, isLoading } = useQuery<BreakEvenMetrics>({
+    queryKey: ["/api/breakeven/metrics", rollingWindow],
+    refetchOnWindowFocus: true, // Auto-refresh when user returns from linked pages
   });
-
-  // Fetch metrics
-  const { data: metrics, isLoading: loadingMetrics, error: metricsError } = useQuery<BreakEvenMetrics>({
-    queryKey: ["/api/breakeven/metrics"],
-    retry: false,
-  });
-
-  // Form setup
-  const form = useForm<AssumptionsFormValues>({
-    resolver: zodResolver(assumptionsFormSchema),
-    defaultValues: {
-      price: 0,
-      unitVariableCost: 0,
-      fixedCostsPerMonth: 0,
-      growthRate: 0,
-      notes: "",
-    },
-  });
-
-  // Update form when assumptions load
-  useEffect(() => {
-    if (assumptions && !form.formState.isDirty) {
-      form.reset({
-        price: parseFloat(assumptions.price || '0'),
-        unitVariableCost: parseFloat(assumptions.unitVariableCost || '0'),
-        fixedCostsPerMonth: parseFloat(assumptions.fixedCostsPerMonth || '0'),
-        growthRate: parseFloat(assumptions.growthRate || '0'),
-        notes: assumptions.notes || "",
-      });
-    }
-  }, [assumptions, form]);
-
-  // Save assumptions mutation
-  const saveMutation = useMutation({
-    mutationFn: async (values: AssumptionsFormValues) => {
-      return apiRequest("PUT", "/api/breakeven/assumptions", values);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/breakeven/assumptions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/breakeven/metrics"] });
-      toast({
-        title: "Success",
-        description: "Break-even assumptions saved successfully",
-      });
-      setShowForm(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save assumptions",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = (values: AssumptionsFormValues) => {
-    saveMutation.mutate(values);
-  };
 
   // Download CSV
   const downloadCSV = () => {
-    if (!metrics) return;
+    if (!metrics?.monthlyProjections) return;
 
-    const headers = ["Month", "Units", "Revenue", "Variable Costs", "Fixed Costs", "Total Costs", "Profit", "Cumulative Profit"];
+    const headers = [
+      "Month", "Units", "Revenue", "Variable Costs", "Fixed Costs", 
+      "Total Costs", "Profit", "Cumulative Profit"
+    ];
     const rows = metrics.monthlyProjections.map(m => [
       m.month,
       m.units,
@@ -151,7 +93,31 @@ export default function BreakEvenAnalysis() {
       m.cumulativeProfit,
     ]);
 
+    // Add summary section
+    const summaryRows = [
+      [""],
+      ["AUTO-CALCULATED METRICS"],
+      ["Data Source", `${metrics.dataSource?.monthsAnalyzed || 0} months of historical data`],
+      ["Sales Records", metrics.dataSource?.salesRecords || 0],
+      ["Expense Records", metrics.dataSource?.expenseRecords || 0],
+      [""],
+    ];
+
+    // Only add derived values if they exist
+    if (metrics.derivedValues) {
+      summaryRows.push(
+        ["DERIVED VALUES"],
+        ["Average Price/Crate", `$${metrics.derivedValues.averagePrice.toFixed(2)}`],
+        ["Avg Variable Cost/Crate", `$${metrics.derivedValues.averageUnitVariableCost.toFixed(2)}`],
+        ["Avg Fixed Costs/Month", `$${metrics.derivedValues.averageFixedCostsPerMonth.toFixed(2)}`],
+        ["Avg Monthly Units", metrics.derivedValues.averageMonthlyUnits.toString()],
+        ["Calculated Growth Rate", `${metrics.derivedValues.calculatedGrowthRate.toFixed(2)}%`]
+      );
+    }
+
     const csvContent = [
+      ...summaryRows.map(row => row.join(",")),
+      [""],
       headers.join(","),
       ...rows.map(row => row.join(",")),
     ].join("\n");
@@ -160,7 +126,7 @@ export default function BreakEvenAnalysis() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `break-even-analysis-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `break-even-analysis-${rollingWindow}months-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -168,7 +134,7 @@ export default function BreakEvenAnalysis() {
 
     toast({
       title: "Download Started",
-      description: "CSV file is being downloaded",
+      description: "CSV file with auto-calculated metrics is being downloaded",
     });
   };
 
@@ -188,6 +154,55 @@ export default function BreakEvenAnalysis() {
     }).format(value);
   };
 
+  // Missing Data State
+  if (!isLoading && metrics && !metrics.hasData) {
+    return (
+      <div className="min-h-screen flex bg-background">
+        <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+        <div className="flex-1 overflow-x-hidden">
+          <div className="container mx-auto p-4 md:p-6 space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Break-Even Analysis</h1>
+              <p className="text-muted-foreground mt-1">
+                Automatically calculated from your farm data
+              </p>
+            </div>
+
+            <Alert data-testid="alert-missing-data">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {metrics.message || "No data found for analysis"}
+              </AlertDescription>
+            </Alert>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Get Started</CardTitle>
+                <CardDescription>
+                  Add sales and expense records to enable break-even analysis
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {metrics.suggestedActions?.map((action, idx) => (
+                  <Link key={idx} href={action.route}>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between"
+                      data-testid={`button-${action.route.replace('/', '')}`}
+                    >
+                      {action.label}
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex bg-background">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
@@ -198,7 +213,7 @@ export default function BreakEvenAnalysis() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Break-Even Analysis</h1>
               <p className="text-muted-foreground mt-1">
-                Calculate when your farm will reach profitability
+                Automatically calculated from your farm data
               </p>
             </div>
             <div className="flex gap-2">
@@ -206,7 +221,7 @@ export default function BreakEvenAnalysis() {
                 variant="outline"
                 size="sm"
                 onClick={downloadCSV}
-                disabled={!metrics}
+                disabled={!metrics?.monthlyProjections}
                 data-testid="button-download-csv"
               >
                 <Download className="h-4 w-4 mr-2" />
@@ -216,7 +231,7 @@ export default function BreakEvenAnalysis() {
                 variant="outline"
                 size="sm"
                 onClick={downloadPDF}
-                disabled={!metrics}
+                disabled={!metrics?.monthlyProjections}
                 data-testid="button-download-pdf"
               >
                 <FileText className="h-4 w-4 mr-2" />
@@ -225,178 +240,181 @@ export default function BreakEvenAnalysis() {
             </div>
           </div>
 
-          {/* Assumptions Form */}
-          {showForm && (
-            <Card data-testid="card-assumptions-form">
-              <CardHeader>
-                <CardTitle>Financial Assumptions</CardTitle>
-                <CardDescription>
-                  Enter your pricing and cost assumptions to calculate break-even metrics
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingAssumptions ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                ) : (
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="price"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Price per Unit (Crate)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="0.00"
-                                  {...field}
-                                  data-testid="input-price"
-                                />
-                              </FormControl>
-                              <FormDescription>Selling price per crate of eggs</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+          {/* Rolling Window Selector */}
+          <Card data-testid="card-rolling-window">
+            <CardHeader>
+              <CardTitle>Analysis Period</CardTitle>
+              <CardDescription>
+                Select historical data timeframe for calculations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs 
+                value={rollingWindow.toString()} 
+                onValueChange={(v) => setRollingWindow(parseInt(v) as 3 | 6 | 12)}
+              >
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="3" data-testid="tab-3months">3 Months</TabsTrigger>
+                  <TabsTrigger value="6" data-testid="tab-6months">6 Months</TabsTrigger>
+                  <TabsTrigger value="12" data-testid="tab-12months">12 Months</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardContent>
+          </Card>
 
-                        <FormField
-                          control={form.control}
-                          name="unitVariableCost"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Variable Cost per Unit</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="0.00"
-                                  {...field}
-                                  data-testid="input-variable-cost"
-                                />
-                              </FormControl>
-                              <FormDescription>Feed and medication costs per crate</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="fixedCostsPerMonth"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Fixed Costs per Month</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="0.00"
-                                  {...field}
-                                  data-testid="input-fixed-costs"
-                                />
-                              </FormControl>
-                              <FormDescription>Labor, utilities, equipment per month</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="growthRate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Monthly Growth Rate (%)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="0.00"
-                                  {...field}
-                                  data-testid="input-growth-rate"
-                                />
-                              </FormControl>
-                              <FormDescription>Expected monthly increase (e.g., 0.05 for 5%)</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Notes</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Additional notes or assumptions..."
-                                className="resize-none"
-                                {...field}
-                                data-testid="input-notes"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="flex gap-2">
-                        <Button
-                          type="submit"
-                          disabled={saveMutation.isPending}
-                          data-testid="button-save-assumptions"
-                        >
-                          {saveMutation.isPending ? "Saving..." : "Calculate Break-Even"}
-                        </Button>
-                        {assumptions && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setShowForm(false)}
-                            data-testid="button-hide-form"
-                          >
-                            Hide Form
-                          </Button>
-                        )}
-                      </div>
-                    </form>
-                  </Form>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {!showForm && (
-            <Button
-              variant="outline"
-              onClick={() => setShowForm(true)}
-              data-testid="button-show-form"
-            >
-              Edit Assumptions
-            </Button>
-          )}
-
-          {/* Error State */}
-          {metricsError && (
-            <Alert variant="destructive" data-testid="alert-metrics-error">
+          {/* Data Source Banner */}
+          {metrics?.dataSource && (
+            <Alert data-testid="alert-data-source">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {(metricsError as Error).message || "Failed to load break-even metrics. Please set up your assumptions first."}
+                <strong>Auto-Calculated:</strong> Analyzing {metrics.dataSource.monthsAnalyzed} months 
+                ({metrics.dataSource.salesRecords} sales records, {metrics.dataSource.expenseRecords} expense records)
+                from {new Date(metrics.dataSource.dateRange.startDate).toLocaleDateString()} to {new Date(metrics.dataSource.dateRange.endDate).toLocaleDateString()}
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Results Cards */}
-          {loadingMetrics ? (
+          {/* Derived Values Summary */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Card key={i}>
+                  <CardHeader className="pb-2">
+                    <Skeleton className="h-4 w-24" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-6 w-20" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : metrics?.derivedValues ? (
+            <>
+              <div className="text-sm font-semibold text-muted-foreground mb-2">Calculated from Your Data</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <Card data-testid="card-avg-price">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      Avg Price/Crate
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold" data-testid="text-avg-price">
+                      {formatCurrency(metrics.derivedValues.averagePrice)}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-avg-variable-cost">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      Avg Variable Cost
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold" data-testid="text-avg-variable-cost">
+                      {formatCurrency(metrics.derivedValues.averageUnitVariableCost)}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-avg-fixed-costs">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      Avg Fixed Costs/Month
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold" data-testid="text-avg-fixed-costs">
+                      {formatCurrency(metrics.derivedValues.averageFixedCostsPerMonth)}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-avg-units">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      Avg Monthly Units
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold" data-testid="text-avg-units">
+                      {metrics.derivedValues.averageMonthlyUnits} crates
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-growth-rate">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                      Growth Rate (CAGR)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold" data-testid="text-growth-rate">
+                      {metrics.derivedValues.calculatedGrowthRate.toFixed(2)}%
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          ) : null}
+
+          {/* Interactive Navigation */}
+          <Card data-testid="card-navigation">
+            <CardHeader>
+              <CardTitle>Adjust Your Data</CardTitle>
+              <CardDescription>
+                Update sales, expenses, or feed to see real-time changes in your break-even analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Link href="/egg-production">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-between"
+                  data-testid="button-goto-sales"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    Manage Sales
+                  </div>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              
+              <Link href="/expenses">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-between"
+                  data-testid="button-goto-expenses"
+                >
+                  <div className="flex items-center gap-2">
+                    <CostsIcon className="h-4 w-4" />
+                    Manage Expenses
+                  </div>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              
+              <Link href="/feed-management">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-between"
+                  data-testid="button-goto-feed"
+                >
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Feed Management
+                  </div>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Break-Even Metrics */}
+          {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <Card key={i}>
@@ -409,9 +427,9 @@ export default function BreakEvenAnalysis() {
                 </Card>
               ))}
             </div>
-          ) : metrics ? (
+          ) : metrics && metrics.breakEvenUnits !== undefined ? (
             <>
-              {/* Key Metrics */}
+              <div className="text-sm font-semibold text-muted-foreground mb-2">Break-Even Projections</div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card data-testid="card-break-even-units">
                   <CardHeader className="pb-2">
@@ -440,7 +458,7 @@ export default function BreakEvenAnalysis() {
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5 text-green-500" />
                       <span className="text-2xl font-bold" data-testid="text-break-even-revenue">
-                        {formatCurrency(metrics.breakEvenRevenue)}
+                        {formatCurrency(metrics.breakEvenRevenue || 0)}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Per month</p>
@@ -478,11 +496,11 @@ export default function BreakEvenAnalysis() {
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-orange-500" />
                       <span className="text-2xl font-bold" data-testid="text-contribution-margin">
-                        {metrics.contributionMarginRatio.toFixed(1)}%
+                        {metrics.contributionMarginRatio?.toFixed(1)}%
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {formatCurrency(metrics.contributionMargin)} per unit
+                      {formatCurrency(metrics.contributionMargin || 0)} per unit
                     </p>
                   </CardContent>
                 </Card>
@@ -493,116 +511,122 @@ export default function BreakEvenAnalysis() {
                 <Alert data-testid="alert-not-reachable">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Break-even is not reachable within the 12-month projection period with current assumptions.
-                    Consider increasing price, reducing variable costs, or reducing fixed costs.
+                    Break-even is not reachable within the 12-month projection period with current data trends.
+                    Consider adjusting your prices or reducing costs.
                   </AlertDescription>
                 </Alert>
               )}
 
               {/* Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Cumulative Profit Chart */}
-                <Card data-testid="card-cumulative-profit-chart">
-                  <CardHeader>
-                    <CardTitle>Cumulative Profit Over Time</CardTitle>
-                    <CardDescription>Track when you'll reach profitability</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={metrics.monthlyProjections}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -5 }} />
-                        <YAxis label={{ value: "Profit ($)", angle: -90, position: "insideLeft" }} />
-                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                        <Legend />
-                        <ReferenceLine y={0} stroke="#000" strokeDasharray="3 3" />
-                        {metrics.breakEvenMonth !== null && (
-                          <ReferenceLine
-                            x={metrics.breakEvenMonth}
-                            stroke="#22c55e"
-                            strokeDasharray="3 3"
-                            label={{ value: "Break-Even", position: "top" }}
+              {metrics.monthlyProjections && metrics.monthlyProjections.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Cumulative Profit Chart */}
+                  <Card data-testid="card-cumulative-profit-chart">
+                    <CardHeader>
+                      <CardTitle>Cumulative Profit Over Time</CardTitle>
+                      <CardDescription>Track when you'll reach profitability</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={metrics.monthlyProjections}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -5 }} />
+                          <YAxis label={{ value: "Profit ($)", angle: -90, position: "insideLeft" }} />
+                          <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                          <Legend />
+                          <ReferenceLine y={0} stroke="#000" strokeDasharray="3 3" />
+                          {metrics.breakEvenMonth !== null && (
+                            <ReferenceLine
+                              x={metrics.breakEvenMonth}
+                              stroke="#22c55e"
+                              strokeDasharray="3 3"
+                              label={{ value: "Break-Even", position: "top" }}
+                            />
+                          )}
+                          <Line
+                            type="monotone"
+                            dataKey="cumulativeProfit"
+                            stroke="#8b5cf6"
+                            strokeWidth={2}
+                            name="Cumulative Profit"
                           />
-                        )}
-                        <Line
-                          type="monotone"
-                          dataKey="cumulativeProfit"
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          name="Cumulative Profit"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
 
-                {/* Revenue vs Costs Chart */}
-                <Card data-testid="card-revenue-costs-chart">
-                  <CardHeader>
-                    <CardTitle>Revenue vs Total Costs</CardTitle>
-                    <CardDescription>Monthly comparison</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={metrics.monthlyProjections}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -5 }} />
-                        <YAxis label={{ value: "Amount ($)", angle: -90, position: "insideLeft" }} />
-                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                        <Legend />
-                        <Bar dataKey="revenue" fill="#22c55e" name="Revenue" />
-                        <Bar dataKey="totalCosts" fill="#ef4444" name="Total Costs" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
+                  {/* Revenue vs Costs Chart */}
+                  <Card data-testid="card-revenue-costs-chart">
+                    <CardHeader>
+                      <CardTitle>Revenue vs Total Costs</CardTitle>
+                      <CardDescription>Monthly comparison</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={metrics.monthlyProjections}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -5 }} />
+                          <YAxis label={{ value: "Amount ($)", angle: -90, position: "insideLeft" }} />
+                          <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                          <Legend />
+                          <Bar dataKey="revenue" fill="#22c55e" name="Revenue" />
+                          <Bar dataKey="totalCosts" fill="#ef4444" name="Total Costs" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Monthly Projections Table */}
-              <Card data-testid="card-monthly-projections">
-                <CardHeader>
-                  <CardTitle>Monthly Projections</CardTitle>
-                  <CardDescription>Detailed breakdown of revenue and costs</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Month</th>
-                          <th className="text-right p-2">Units</th>
-                          <th className="text-right p-2">Revenue</th>
-                          <th className="text-right p-2">Var. Costs</th>
-                          <th className="text-right p-2">Fixed Costs</th>
-                          <th className="text-right p-2">Profit</th>
-                          <th className="text-right p-2">Cum. Profit</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {metrics.monthlyProjections.map((projection, idx) => (
-                          <tr
-                            key={idx}
-                            className={`border-b ${projection.month === metrics.breakEvenMonth ? "bg-green-50 dark:bg-green-950" : ""}`}
-                            data-testid={`row-projection-${projection.month}`}
-                          >
-                            <td className="p-2">{projection.month}</td>
-                            <td className="text-right p-2">{projection.units.toFixed(0)}</td>
-                            <td className="text-right p-2">{formatCurrency(projection.revenue)}</td>
-                            <td className="text-right p-2">{formatCurrency(projection.variableCosts)}</td>
-                            <td className="text-right p-2">{formatCurrency(projection.fixedCosts)}</td>
-                            <td className={`text-right p-2 ${projection.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                              {formatCurrency(projection.profit)}
-                            </td>
-                            <td className={`text-right p-2 font-semibold ${projection.cumulativeProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                              {formatCurrency(projection.cumulativeProfit)}
-                            </td>
+              {metrics.monthlyProjections && metrics.monthlyProjections.length > 0 && (
+                <Card data-testid="card-monthly-projections">
+                  <CardHeader>
+                    <CardTitle>Monthly Projections</CardTitle>
+                    <CardDescription>Detailed breakdown of revenue and costs</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Month</th>
+                            <th className="text-right p-2">Units</th>
+                            <th className="text-right p-2">Revenue</th>
+                            <th className="text-right p-2">Variable</th>
+                            <th className="text-right p-2">Fixed</th>
+                            <th className="text-right p-2">Total Costs</th>
+                            <th className="text-right p-2">Profit</th>
+                            <th className="text-right p-2">Cumulative</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+                        </thead>
+                        <tbody>
+                          {metrics.monthlyProjections.map((projection, idx) => (
+                            <tr
+                              key={idx}
+                              className={`border-b ${projection.cumulativeProfit >= 0 ? 'bg-green-50 dark:bg-green-950/20' : ''}`}
+                              data-testid={`row-projection-${idx}`}
+                            >
+                              <td className="p-2">{projection.month}</td>
+                              <td className="text-right p-2">{projection.units.toFixed(0)}</td>
+                              <td className="text-right p-2">{formatCurrency(projection.revenue)}</td>
+                              <td className="text-right p-2">{formatCurrency(projection.variableCosts)}</td>
+                              <td className="text-right p-2">{formatCurrency(projection.fixedCosts)}</td>
+                              <td className="text-right p-2">{formatCurrency(projection.totalCosts)}</td>
+                              <td className={`text-right p-2 ${projection.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {formatCurrency(projection.profit)}
+                              </td>
+                              <td className={`text-right p-2 font-semibold ${projection.cumulativeProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {formatCurrency(projection.cumulativeProfit)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           ) : null}
         </div>
