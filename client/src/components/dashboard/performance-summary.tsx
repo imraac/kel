@@ -109,7 +109,7 @@ export default function PerformanceSummary() {
       name: "Laying Rate",
       value: layingRate,
       target: layingRateTarget,
-      status: `Target: ${layingRateTarget}% | ${weeklyAvgEggs.toFixed(0)} eggs/day`,
+      status: `Target: ${layingRateTarget}% | ${weeklyAvgEggs.toFixed(2)} eggs/day`,
       color: "bg-primary",
     },
     {
@@ -131,7 +131,7 @@ export default function PerformanceSummary() {
       name: "Revenue Target",
       value: revenueProgress,
       target: 100,
-      status: `KSh ${weeklyRevenue.toLocaleString()} / KSh ${weeklyRevenueTarget.toLocaleString()}`,
+      status: `KSh ${weeklyRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} / KSh ${weeklyRevenueTarget.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
       color: "bg-chart-3",
     },
     {
@@ -158,7 +158,7 @@ export default function PerformanceSummary() {
                 <span className="text-sm font-medium text-foreground">
                   {item.name === "Weight Uniformity" && (item as any).cvPercent ? 
                     `CV: ${(item as any).cvPercent.toFixed(2)}%` :
-                    item.name === "Mortality Rate" ? `${item.value}%` : `${item.value}%`
+                    `${item.value.toFixed(2)}%`
                   }
                 </span>
               </div>
