@@ -10,6 +10,7 @@ import {
   insertFeedInventorySchema,
   insertHealthRecordSchema,
   insertExpenseSchema,
+  insertBreakEvenAssumptionsSchema,
   insertCustomerSchema,
   insertProductSchema,
   insertOrderSchema,
@@ -23,6 +24,7 @@ import {
 import { z } from "zod";
 import { normalizeNumericFields } from "./utils/numbers";
 import { safeDate } from "./utils/dates";
+import { aggregateByMonth, calculateBreakEven } from "./breakEvenUtils";
 
 // Farm context resolution helper - handles admin vs non-admin users with flockId fallback
 async function requireFarmContext(req: any, currentUser: any): Promise<string> {
@@ -847,6 +849,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating expense:", error);
         res.status(500).json({ message: "Failed to create expense" });
       }
+    }
+  });
+
+  // Break-Even Analysis routes
+  app.get('/api/breakeven/assumptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      let farmId;
+      try {
+        farmId = await requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+      }
+
+      const productId = req.query.productId as string | undefined;
+      const assumptions = await storage.getBreakEvenAssumptionsByFarm(farmId, productId || null);
+      
+      if (!assumptions) {
+        return res.status(404).json({ message: "Break-even assumptions not found" });
+      }
+      
+      res.json(assumptions);
+    } catch (error) {
+      console.error("Error fetching break-even assumptions:", error);
+      res.status(500).json({ message: "Failed to fetch break-even assumptions" });
+    }
+  });
+
+  app.put('/api/breakeven/assumptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      let farmId;
+      try {
+        farmId = await requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+      }
+
+      // Auto-inject farmId
+      const input = {
+        ...req.body,
+        farmId
+      };
+
+      // Defensive coercion: ensure decimal fields are strings for Drizzle schema
+      if (typeof input.price === 'number') {
+        input.price = String(input.price);
+      }
+      if (typeof input.unitVariableCost === 'number') {
+        input.unitVariableCost = String(input.unitVariableCost);
+      }
+      if (typeof input.fixedCostsPerMonth === 'number') {
+        input.fixedCostsPerMonth = String(input.fixedCostsPerMonth);
+      }
+      if (typeof input.growthRate === 'number') {
+        input.growthRate = String(input.growthRate);
+      }
+
+      const validatedData = insertBreakEvenAssumptionsSchema.parse(input);
+      
+      // Check if assumptions already exist (upsert pattern)
+      const existing = await storage.getBreakEvenAssumptionsByFarm(
+        farmId, 
+        validatedData.productId || null
+      );
+
+      let result;
+      if (existing) {
+        // Update existing
+        result = await storage.updateBreakEvenAssumptions(
+          farmId,
+          validatedData.productId || null,
+          validatedData
+        );
+      } else {
+        // Create new
+        result = await storage.createBreakEvenAssumptions(validatedData);
+      }
+      
+      res.status(existing ? 200 : 201).json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error("=== BREAK-EVEN ASSUMPTIONS ZOD VALIDATION ERRORS ===");
+        console.error("Raw request body:", JSON.stringify(req.body, null, 2));
+        console.error("Zod errors:", JSON.stringify(error.errors, null, 2));
+        res.status(400).json({ message: "Validation error", errors: error.errors });
+      } else {
+        console.error("Error saving break-even assumptions:", error);
+        res.status(500).json({ message: "Failed to save break-even assumptions" });
+      }
+    }
+  });
+
+  app.get('/api/breakeven/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      let farmId;
+      try {
+        farmId = await requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+      }
+
+      // Get date range (default to last 12 months)
+      const endDate = req.query.endDate || new Date().toISOString().split('T')[0];
+      const startDate = req.query.startDate || new Date(new Date().setMonth(new Date().getMonth() - 12)).toISOString().split('T')[0];
+
+      // Fetch sales and expenses for the farm
+      const sales = await storage.getSalesByDateRange(startDate, endDate);
+      const expenses = await storage.getExpensesByDateRange(startDate, endDate);
+
+      // Filter by farmId (farm-scoped data)
+      const farmSales = sales.filter(s => s.farmId === farmId);
+      const farmExpenses = expenses.filter(e => e.farmId === farmId);
+
+      // Aggregate by month
+      const monthlyData = aggregateByMonth(farmSales, farmExpenses);
+      
+      res.json(monthlyData);
+    } catch (error) {
+      console.error("Error fetching break-even history:", error);
+      res.status(500).json({ message: "Failed to fetch break-even history" });
+    }
+  });
+
+  app.get('/api/breakeven/metrics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      let farmId;
+      try {
+        farmId = await requireFarmContext(req, currentUser);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+      }
+
+      const productId = req.query.productId as string | undefined;
+      
+      // Get assumptions
+      const assumptions = await storage.getBreakEvenAssumptionsByFarm(farmId, productId || null);
+      if (!assumptions) {
+        return res.status(404).json({ message: "Break-even assumptions not found. Please set up assumptions first." });
+      }
+
+      // Get historical data to calculate initial units
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0];
+      
+      const sales = await storage.getSalesByDateRange(startDate, endDate);
+      const farmSales = sales.filter(s => s.farmId === farmId);
+
+      // Calculate average monthly units from recent sales
+      const totalUnits = farmSales.reduce((sum, sale) => sum + sale.cratesSold, 0);
+      const initialUnits = farmSales.length > 0 ? totalUnits / Math.max(1, farmSales.length) : 100; // Default to 100 if no data
+
+      // Parse assumptions
+      const price = parseFloat(assumptions.price || '0');
+      const unitVariableCost = parseFloat(assumptions.unitVariableCost || '0');
+      const fixedCostsPerMonth = parseFloat(assumptions.fixedCostsPerMonth || '0');
+      const growthRate = parseFloat(assumptions.growthRate || '0');
+      const seasonalityFactors = assumptions.seasonalityFactors as number[] | undefined;
+
+      // Calculate break-even metrics
+      const metrics = calculateBreakEven({
+        price,
+        unitVariableCost,
+        fixedCostsPerMonth,
+        initialUnits,
+        growthRate,
+        projectionMonths: 12,
+        seasonalityFactors,
+      });
+      
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error calculating break-even metrics:", error);
+      res.status(500).json({ message: "Failed to calculate break-even metrics" });
     }
   });
 
