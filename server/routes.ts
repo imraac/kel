@@ -992,44 +992,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: (error as Error).message });
       }
 
-      const productId = req.query.productId as string | undefined;
+      // Get rolling window period from query (default to 6 months)
+      const months = parseInt(req.query.months as string) || 6;
       
-      // Get assumptions
-      const assumptions = await storage.getBreakEvenAssumptionsByFarm(farmId, productId || null);
-      if (!assumptions) {
-        return res.status(404).json({ message: "Break-even assumptions not found. Please set up assumptions first." });
+      // Calculate date range for historical data
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(new Date().setMonth(new Date().getMonth() - months)).toISOString().split('T')[0];
+      
+      // Fetch farm-scoped sales and expenses
+      const sales = await storage.getSalesByDateRange(startDate, endDate);
+      const expenses = await storage.getExpensesByDateRange(startDate, endDate);
+      
+      const farmSales = sales.filter(s => s.farmId === farmId);
+      const farmExpenses = expenses.filter(e => e.farmId === farmId);
+
+      // Check if we have sufficient data
+      if (farmSales.length === 0) {
+        return res.status(200).json({
+          hasData: false,
+          message: "No sales data found. Please add sales records to calculate break-even metrics.",
+          suggestedActions: [
+            { label: "Add Sales Record", route: "/egg-production" },
+            { label: "View Reports", route: "/reports" }
+          ]
+        });
       }
 
-      // Get historical data to calculate initial units
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0];
-      
-      const sales = await storage.getSalesByDateRange(startDate, endDate);
-      const farmSales = sales.filter(s => s.farmId === farmId);
+      // Aggregate by month
+      const monthlyData = aggregateByMonth(farmSales, farmExpenses);
 
-      // Calculate average monthly units from recent sales
-      const totalUnits = farmSales.reduce((sum, sale) => sum + sale.cratesSold, 0);
-      const initialUnits = farmSales.length > 0 ? totalUnits / Math.max(1, farmSales.length) : 100; // Default to 100 if no data
+      // Calculate auto-derived metrics from real data
+      const totalRevenue = monthlyData.reduce((sum, m) => sum + m.revenue, 0);
+      const totalUnits = monthlyData.reduce((sum, m) => sum + m.unitsSold, 0);
+      const totalVariableCosts = monthlyData.reduce((sum, m) => sum + m.variableCosts, 0);
+      const totalFixedCosts = monthlyData.reduce((sum, m) => sum + m.fixedCosts, 0);
 
-      // Parse assumptions
-      const price = parseFloat(assumptions.price || '0');
-      const unitVariableCost = parseFloat(assumptions.unitVariableCost || '0');
-      const fixedCostsPerMonth = parseFloat(assumptions.fixedCostsPerMonth || '0');
-      const growthRate = parseFloat(assumptions.growthRate || '0');
-      const seasonalityFactors = assumptions.seasonalityFactors as number[] | undefined;
+      // Calculate averages
+      const avgPrice = totalUnits > 0 ? totalRevenue / totalUnits : 0;
+      const avgUnitVariableCost = totalUnits > 0 ? totalVariableCosts / totalUnits : 0;
+      const avgFixedCostsPerMonth = monthlyData.length > 0 ? totalFixedCosts / monthlyData.length : 0;
+      const avgMonthlyUnits = monthlyData.length > 0 ? totalUnits / monthlyData.length : 0;
 
-      // Calculate break-even metrics
+      // Calculate growth rate (CAGR from monthly data)
+      let growthRate = 0;
+      if (monthlyData.length >= 2) {
+        const firstMonthUnits = monthlyData[0].unitsSold || 1;
+        const lastMonthUnits = monthlyData[monthlyData.length - 1].unitsSold || 1;
+        const monthsElapsed = monthlyData.length - 1;
+        growthRate = monthsElapsed > 0 ? Math.pow(lastMonthUnits / firstMonthUnits, 1 / monthsElapsed) - 1 : 0;
+      }
+
+      // Calculate break-even metrics using auto-derived values
       const metrics = calculateBreakEven({
-        price,
-        unitVariableCost,
-        fixedCostsPerMonth,
-        initialUnits,
+        price: avgPrice,
+        unitVariableCost: avgUnitVariableCost,
+        fixedCostsPerMonth: avgFixedCostsPerMonth,
+        initialUnits: avgMonthlyUnits,
         growthRate,
         projectionMonths: 12,
-        seasonalityFactors,
       });
       
-      res.json(metrics);
+      res.json({
+        hasData: true,
+        autoCalculated: true,
+        dataSource: {
+          monthsAnalyzed: months,
+          salesRecords: farmSales.length,
+          expenseRecords: farmExpenses.length,
+          dateRange: { startDate, endDate }
+        },
+        derivedValues: {
+          averagePrice: Math.round(avgPrice * 100) / 100,
+          averageUnitVariableCost: Math.round(avgUnitVariableCost * 100) / 100,
+          averageFixedCostsPerMonth: Math.round(avgFixedCostsPerMonth * 100) / 100,
+          averageMonthlyUnits: Math.round(avgMonthlyUnits),
+          calculatedGrowthRate: Math.round(growthRate * 10000) / 100, // As percentage
+        },
+        ...metrics
+      });
     } catch (error) {
       console.error("Error calculating break-even metrics:", error);
       res.status(500).json({ message: "Failed to calculate break-even metrics" });

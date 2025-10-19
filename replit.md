@@ -113,3 +113,13 @@ Preferred communication style: Simple, everyday language.
 - **SIDEBAR INTEGRATION**: Added missing sidebar component to body weight tracking page for consistent navigation across the application
 - **MOBILE RESPONSIVE**: Implemented mobile menu overlay and hamburger button for touch device navigation
 - **LAYOUT CONSISTENCY**: Unified page structure with dashboard and other pages using the same header/sidebar wrapper pattern
+
+### Break-Even Analysis - Dynamic Data-Driven Feature (October 2025)
+- **AUTO-CALCULATED METRICS**: Automatically aggregates sales and expenses data to calculate break-even point (no manual entry required)
+- **ROLLING WINDOWS**: Analyzes 3/6/12 month historical data with configurable lookback period
+- **INTELLIGENT CATEGORIZATION**: Auto-categorizes expenses into variable costs (feed, medication) and fixed costs (labor, utilities, equipment)
+- **CAGR CALCULATION**: Calculates compound annual growth rate from historical sales trends for accurate projections
+- **MISSING DATA HANDLING**: Graceful fallback with actionable suggestions when insufficient data exists
+- **INTERACTIVE NAVIGATION**: Direct links to sales, expenses, and feed management pages for data adjustments
+- **REAL-TIME REFRESH**: Auto-invalidates cache when user returns from linked pages (React Query integration)
+- **OPTIONAL OVERRIDES**: Manual what-if scenario drawer for testing different assumptions without changing actual data
