@@ -52,7 +52,7 @@ import {
   type BreedStandard,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, sql, ne, isNotNull } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, sql, ne, isNotNull, isNull } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -624,9 +624,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBreakEvenAssumptionsByFarm(farmId: string, productId?: string | null): Promise<BreakEvenAssumptions | undefined> {
-    const conditions = productId !== undefined
+    // When productId is undefined or null, we need to explicitly query for NULL productId
+    const conditions = productId !== undefined && productId !== null
       ? and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId))
-      : eq(breakEvenAssumptions.farmId, farmId);
+      : and(eq(breakEvenAssumptions.farmId, farmId), isNull(breakEvenAssumptions.productId));
     
     const results = await db
       .select()
@@ -640,7 +641,7 @@ export class DatabaseStorage implements IStorage {
   async updateBreakEvenAssumptions(farmId: string, productId: string | null, updates: Partial<InsertBreakEvenAssumptions>): Promise<BreakEvenAssumptions> {
     const conditions = productId !== null
       ? and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId))
-      : and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId));
+      : and(eq(breakEvenAssumptions.farmId, farmId), isNull(breakEvenAssumptions.productId));
 
     const [updated] = await db
       .update(breakEvenAssumptions)
@@ -656,9 +657,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBreakEvenAssumptions(farmId: string, productId?: string | null): Promise<void> {
-    const conditions = productId !== undefined
+    const conditions = productId !== undefined && productId !== null
       ? and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId))
-      : eq(breakEvenAssumptions.farmId, farmId);
+      : and(eq(breakEvenAssumptions.farmId, farmId), isNull(breakEvenAssumptions.productId));
     
     await db.delete(breakEvenAssumptions).where(conditions);
   }
