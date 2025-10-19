@@ -7,6 +7,7 @@ import {
   feedInventory,
   healthRecords,
   expenses,
+  breakEvenAssumptions,
   notifications,
   customers,
   products,
@@ -31,6 +32,8 @@ import {
   type HealthRecord,
   type InsertExpense,
   type Expense,
+  type InsertBreakEvenAssumptions,
+  type BreakEvenAssumptions,
   type InsertCustomer,
   type Customer,
   type InsertProduct,
@@ -108,6 +111,12 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   getExpenses(limit?: number): Promise<Expense[]>;
   getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]>;
+
+  // Break-Even Analysis Assumptions operations
+  createBreakEvenAssumptions(assumptions: InsertBreakEvenAssumptions): Promise<BreakEvenAssumptions>;
+  getBreakEvenAssumptionsByFarm(farmId: string, productId?: string | null): Promise<BreakEvenAssumptions | undefined>;
+  updateBreakEvenAssumptions(farmId: string, productId: string | null, updates: Partial<InsertBreakEvenAssumptions>): Promise<BreakEvenAssumptions>;
+  deleteBreakEvenAssumptions(farmId: string, productId?: string | null): Promise<void>;
 
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -606,6 +615,52 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(expenses.expenseDate));
+  }
+
+  // Break-Even Analysis Assumptions operations
+  async createBreakEvenAssumptions(assumptions: InsertBreakEvenAssumptions): Promise<BreakEvenAssumptions> {
+    const [newAssumptions] = await db.insert(breakEvenAssumptions).values(assumptions).returning();
+    return newAssumptions;
+  }
+
+  async getBreakEvenAssumptionsByFarm(farmId: string, productId?: string | null): Promise<BreakEvenAssumptions | undefined> {
+    const conditions = productId !== undefined
+      ? and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId))
+      : eq(breakEvenAssumptions.farmId, farmId);
+    
+    const results = await db
+      .select()
+      .from(breakEvenAssumptions)
+      .where(conditions)
+      .limit(1);
+    
+    return results[0];
+  }
+
+  async updateBreakEvenAssumptions(farmId: string, productId: string | null, updates: Partial<InsertBreakEvenAssumptions>): Promise<BreakEvenAssumptions> {
+    const conditions = productId !== null
+      ? and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId))
+      : and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId));
+
+    const [updated] = await db
+      .update(breakEvenAssumptions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(conditions)
+      .returning();
+    
+    if (!updated) {
+      throw new Error('Break-even assumptions not found');
+    }
+    
+    return updated;
+  }
+
+  async deleteBreakEvenAssumptions(farmId: string, productId?: string | null): Promise<void> {
+    const conditions = productId !== undefined
+      ? and(eq(breakEvenAssumptions.farmId, farmId), eq(breakEvenAssumptions.productId, productId))
+      : eq(breakEvenAssumptions.farmId, farmId);
+    
+    await db.delete(breakEvenAssumptions).where(conditions);
   }
 
   // Notification operations

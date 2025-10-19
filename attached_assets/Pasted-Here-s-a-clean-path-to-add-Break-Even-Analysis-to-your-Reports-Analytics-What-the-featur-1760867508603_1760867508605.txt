@@ -1,0 +1,238 @@
+Here’s a clean path to add **Break-Even Analysis** to your Reports & Analytics.
+
+# What the feature should compute
+
+1. **Contribution margin**
+
+   * `unit_contribution = unit_price − unit_variable_cost`
+   * `contribution_margin_ratio = unit_contribution / unit_price`
+
+2. **Break-even point**
+
+   * In units: `fixed_costs / unit_contribution`
+   * In revenue: `fixed_costs / contribution_margin_ratio`
+
+3. **Time to break even**
+
+   * Build a month-by-month forecast of revenue and variable costs.
+   * Add fixed costs for each month.
+   * Compute cumulative profit.
+   * First month where `cumulative_profit >= 0` is the break-even month.
+   * If it crosses inside a month, interpolate the day.
+
+# Inputs and where to source them
+
+* **Revenue**
+
+  * From `sales` table by month. Use realized revenue for historical. Use simple forecast for future months.
+* **Variable costs**
+
+  * Feed from `feed_inventory` + feed conversion assumption.
+  * Medication from `health_records.cost`.
+  * Direct labor that scales with volume. Tag via `expenses.category`.
+* **Fixed costs**
+
+  * Rent, salaried labor, utilities base fee, depreciation. Tag or whitelist categories in `expenses`.
+* **Volume and pricing assumptions**
+
+  * From `products.currentPrice`, `daily_records.crates_produced`, flock size, mortality, lay rate. Store in an assumptions table for forecasting.
+
+# Minimal data model additions
+
+* `break_even_assumptions` table
+
+  * `farmId`, `productId` nullable, `startMonth`, `avgPrice`, `unitVariableCost`, `fixedCostsPerMonth`, `growthRatePct`, `seasonalityJson`, `layRatePct`, `mortalityPct`, `notes`
+* Or store per-farm JSON in `meta` if you want fast rollout.
+
+# Calculation details
+
+Monthly pipeline per farm:
+
+1. Aggregate **historical** revenue and costs to the end of the last complete month.
+2. From the next month onward, **forecast**:
+
+   * Revenue_t = `volume_t * price_t`
+   * VariableCost_t = `volume_t * unitVariableCost_t`
+   * FixedCost_t = `fixedCostsPerMonth`
+   * Profit_t = `Revenue_t − VariableCost_t − FixedCost_t`
+   * `cumulative_profit += Profit_t`
+3. Pick the first month where `cumulative_profit >= 0`.
+
+Interpolation inside a month:
+
+```
+days_to_breakeven_in_month =
+  remaining_loss_at_month_start / daily_contribution_this_month
+```
+
+Daily contribution can be `Revenue_t − VariableCost_t − FixedCost_t` divided by days in month.
+
+# Edge cases to handle
+
+* Contribution margin ≤ 0 → “Not reachable with current price and costs.”
+* No volume forecast → prompt for assumptions.
+* Multi-product farms → compute per product and consolidated.
+* Mortality or seasonality → apply to volume in forecast.
+* Decimal typing and farmId
+
+  * Coerce numbers at API boundary.
+  * Inject `farmId` from context. Admin must select active farm.
+
+# UI
+
+* New menu: **Break-Even Analysis**
+
+  * Inputs panel: price, unit variable cost, fixed costs per month, growth rate, seasonality toggle.
+  * Results cards: break-even units, break-even revenue, month and date, payback period (months).
+  * Charts:
+
+    * Cumulative profit by month with a marker on break-even month.
+    * Revenue vs total cost lines per month.
+  * Download PDF/CSV.
+
+# Testing checklist
+
+* Data type test first: “DATA TYPE ISSUE IDENTIFIED…” on decimals if strings.
+* Unit tests for formulas with known fixtures.
+* E2E: change price or costs and confirm the break-even month moves in the expected direction.
+* Multi-farm scoping in queries and caches.
+
+# Example SQL for monthly aggregates
+
+```sql
+-- revenue per month
+SELECT farm_id,
+       date_trunc('month', sale_date)::date AS month,
+       SUM(total_amount::decimal) AS revenue
+FROM sales
+WHERE farm_id = $1
+GROUP BY 1,2
+ORDER BY 2;
+
+-- expenses per month, split by variable vs fixed via category mapping
+SELECT farm_id,
+       date_trunc('month', expense_date)::date AS month,
+       SUM(CASE WHEN category IN ('feed','medication','packaging','direct_labor')
+                THEN amount::decimal ELSE 0 END) AS variable_costs,
+       SUM(CASE WHEN category IN ('rent','salaried_labor','utilities_base','depreciation','insurance')
+                THEN amount::decimal ELSE 0 END) AS fixed_costs
+FROM expenses
+WHERE farm_id = $1
+GROUP BY 1,2
+ORDER BY 2;
+```
+
+# Example service function (TypeScript)
+
+```ts
+type MonthPoint = { month: string; revenue: number; varCost: number; fixedCost: number; profit: number; cumProfit: number };
+
+export function computeBreakEven({
+  history,          // MonthPoint[] with revenue, varCost, fixedCost filled for past months
+  forecastHorizon,  // months ahead to simulate
+  startMonthISO,    // e.g. "2025-11-01"
+  unitContribution, // price - unitVariableCost
+  fixedPerMonth,    // fallback if missing in history
+  growthRate = 0.0  // monthly volume growth fraction
+}) {
+  const points: MonthPoint[] = [...history];
+  let cumProfit = history.reduce((a, p) => a + p.profit, 0);
+
+  let current = new Date(startMonthISO);
+  for (let i = 0; i < forecastHorizon; i++) {
+    // simple baseline: grow revenue and variable cost together based on growthRate
+    const prev = points[points.length - 1];
+    const revenue = prev ? prev.revenue * (1 + growthRate) : 0;
+    const varCost = prev ? prev.varCost * (1 + growthRate) : 0;
+    const fixedCost = fixedPerMonth;
+
+    const profit = revenue - varCost - fixedCost;
+    cumProfit += profit;
+
+    points.push({
+      month: current.toISOString().slice(0,10),
+      revenue, varCost, fixedCost, profit, cumProfit
+    });
+
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  const idx = points.findIndex(p => p.cumProfit >= 0);
+  if (idx === -1) return { breaksEven: false, points };
+
+  // interpolate within first nonnegative month
+  const prevCum = idx > 0 ? points[idx - 1].cumProfit : 0;
+  const monthProfit = points[idx].profit;
+  const ratio = monthProfit !== 0 ? (-prevCum) / monthProfit : 0; // 0..1 of the month
+  const dt = new Date(points[idx].month);
+  const days = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
+  const day = Math.min(days, Math.max(1, Math.round(ratio * days)));
+
+  const breakEvenDate = new Date(dt.getFullYear(), dt.getMonth(), day).toISOString().slice(0,10);
+
+  return {
+    breaksEven: true,
+    breakEvenMonth: points[idx].month,
+    breakEvenDate,
+    points
+  };
+}
+```
+
+# Prompt for Replit to implement
+
+Paste this into Replit AI.
+
+> Add a **Break-Even Analysis** report under Reports & Analytics.
+>
+> Deliverables:
+>
+> 1. Backend
+>
+> * SQL endpoints that return monthly revenue and expenses per farm, splitting variable vs fixed by category mapping.
+>
+> * A service that computes contribution margin, break-even units and revenue, and the first month and date when cumulative profit ≥ 0. Include interpolation inside the month.
+>
+> * Use API middleware to coerce decimals to numbers and inject `farmId` from context. Admin must supply activeFarmId.
+>
+> 2. Assumptions management
+>
+> * Add `break_even_assumptions` storage (table or JSON) with: price, unitVariableCost, fixedCostsPerMonth, growthRate, optional seasonality factors, notes.
+>
+> * Endpoint to read/update assumptions per farm.
+>
+> 3. Frontend
+>
+> * New menu item “Break-Even Analysis.”
+>
+> * Inputs panel bound to the assumptions store. Live validation and number coercion.
+>
+> * Results cards: break-even units, break-even revenue, break-even month, break-even date, payback period in months.
+>
+> * Charts:
+>
+>   * Cumulative profit by month with a marker on the break-even month.
+>   * Revenue vs Total Cost per month lines.
+>
+> * Download as CSV/PDF.
+>
+> * Scope all queries and caches by `['/api/breakeven', activeFarmId]`.
+>
+> 4. Rules and edge cases
+>
+> * If contribution margin ≤ 0, show “Not reachable with current price and costs” and highlight inputs.
+>
+> * If data is missing for history, run forecast only from the current month.
+>
+> * Multi-product farms: compute per product and a consolidated view.
+>
+> 5. Tests
+>
+> * First check: “DATA TYPE ISSUE IDENTIFIED…” if any decimal fields are sent as strings.
+> * Unit tests for formulas with fixtures.
+> * E2E: change price or costs and verify the break-even month shifts correctly.
+> * Farm scoping tests for admin vs non-admin.
+>
+> Keep numeric fields as numbers, not strings. Inject `farmId` server side for non-admins. Use the global `activeFarmId` for admins.
+
+If you want, I can also provide a minimal React component scaffold for the Results cards and the two charts to speed up implementation.
