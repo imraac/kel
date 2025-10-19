@@ -9,9 +9,62 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { BarChart3, TrendingUp, Download, Calendar, Menu, FileText, PieChart } from "lucide-react";
+import { BarChart3, TrendingUp, Download, Calendar, Menu, FileText, PieChart, Calculator, DollarSign, AlertCircle, ArrowRight, ShoppingCart, DollarSign as CostsIcon, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Link } from "wouter";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
+
+// Break-even metrics type
+interface BreakEvenMetrics {
+  hasData: boolean;
+  autoCalculated?: boolean;
+  message?: string;
+  suggestedActions?: Array<{ label: string; route: string }>;
+  dataSource?: {
+    monthsAnalyzed: number;
+    salesRecords: number;
+    expenseRecords: number;
+    dateRange: { startDate: string; endDate: string };
+  };
+  derivedValues?: {
+    averagePrice: number;
+    averageUnitVariableCost: number;
+    averageFixedCostsPerMonth: number;
+    averageMonthlyUnits: number;
+    calculatedGrowthRate: number;
+  };
+  contributionMargin?: number;
+  contributionMarginRatio?: number;
+  breakEvenUnits?: number;
+  breakEvenRevenue?: number;
+  breakEvenMonth?: number | null;
+  breakEvenDate?: string | null;
+  monthlyProjections?: Array<{
+    month: number;
+    units: number;
+    revenue: number;
+    variableCosts: number;
+    fixedCosts: number;
+    totalCosts: number;
+    profit: number;
+    cumulativeProfit: number;
+  }>;
+}
 
 export default function Reports() {
   const { toast } = useToast();
@@ -19,6 +72,7 @@ export default function Reports() {
   const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("30");
+  const [rollingWindow, setRollingWindow] = useState<3 | 6 | 12>(6);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -53,6 +107,13 @@ export default function Reports() {
   const { data: feedInventory, error: feedError } = useQuery({
     queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`],
     enabled: isAuthenticated && hasActiveFarm,
+  });
+
+  // Break-even analysis data
+  const { data: breakEvenMetrics, isLoading: breakEvenLoading } = useQuery<BreakEvenMetrics>({
+    queryKey: [`/api/breakeven/metrics?months=${rollingWindow}&farmId=${activeFarmId}`],
+    enabled: isAuthenticated && hasActiveFarm,
+    refetchOnWindowFocus: true,
   });
 
   // Handle unauthorized errors
@@ -133,6 +194,83 @@ export default function Reports() {
     toast({
       title: "Export Started",
       description: `${reportType} report export will begin shortly`,
+    });
+  };
+
+  // Break-even utility functions
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const downloadBreakEvenCSV = () => {
+    if (!breakEvenMetrics?.monthlyProjections) return;
+
+    const headers = [
+      "Month", "Units", "Revenue", "Variable Costs", "Fixed Costs", 
+      "Total Costs", "Profit", "Cumulative Profit"
+    ];
+    const rows = breakEvenMetrics.monthlyProjections.map(m => [
+      m.month,
+      m.units,
+      m.revenue,
+      m.variableCosts,
+      m.fixedCosts,
+      m.totalCosts,
+      m.profit,
+      m.cumulativeProfit,
+    ]);
+
+    const summaryRows = [
+      [""],
+      ["AUTO-CALCULATED METRICS"],
+      ["Data Source", `${breakEvenMetrics.dataSource?.monthsAnalyzed || 0} months of historical data`],
+      ["Sales Records", breakEvenMetrics.dataSource?.salesRecords || 0],
+      ["Expense Records", breakEvenMetrics.dataSource?.expenseRecords || 0],
+      [""],
+    ];
+
+    if (breakEvenMetrics.derivedValues) {
+      summaryRows.push(
+        ["DERIVED VALUES"],
+        ["Average Price/Crate", `${formatCurrency(breakEvenMetrics.derivedValues.averagePrice)}`],
+        ["Avg Variable Cost/Crate", `${formatCurrency(breakEvenMetrics.derivedValues.averageUnitVariableCost)}`],
+        ["Avg Fixed Costs/Month", `${formatCurrency(breakEvenMetrics.derivedValues.averageFixedCostsPerMonth)}`],
+        ["Avg Monthly Units", breakEvenMetrics.derivedValues.averageMonthlyUnits.toString()],
+        ["Calculated Growth Rate", `${breakEvenMetrics.derivedValues.calculatedGrowthRate.toFixed(2)}%`]
+      );
+    }
+
+    const csvContent = [
+      ...summaryRows.map(row => row.join(",")),
+      [""],
+      headers.join(","),
+      ...rows.map(row => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `break-even-analysis-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Successful",
+      description: "CSV file downloaded successfully",
+    });
+  };
+
+  const downloadBreakEvenPDF = () => {
+    window.print();
+    toast({
+      title: "Print Dialog",
+      description: "Use Print > Save as PDF to export",
     });
   };
 
@@ -261,6 +399,7 @@ export default function Reports() {
               <TabsTrigger value="financial">Financial Report</TabsTrigger>
               <TabsTrigger value="efficiency">Efficiency Analysis</TabsTrigger>
               <TabsTrigger value="trends">Trends & Forecasts</TabsTrigger>
+              <TabsTrigger value="breakeven">Break-Even Analysis</TabsTrigger>
             </TabsList>
 
             <TabsContent value="production">
@@ -544,6 +683,461 @@ export default function Reports() {
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="breakeven">
+              <div className="space-y-6">
+                {/* Rolling Window Selector */}
+                <Card data-testid="card-rolling-window">
+                  <CardHeader>
+                    <CardTitle>Analysis Period</CardTitle>
+                    <CardDescription>
+                      Select historical data timeframe for calculations
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs 
+                      value={rollingWindow.toString()} 
+                      onValueChange={(v) => setRollingWindow(parseInt(v) as 3 | 6 | 12)}
+                    >
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="3" data-testid="tab-3months">3 Months</TabsTrigger>
+                        <TabsTrigger value="6" data-testid="tab-6months">6 Months</TabsTrigger>
+                        <TabsTrigger value="12" data-testid="tab-12months">12 Months</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+
+                {/* No Data State */}
+                {!breakEvenLoading && breakEvenMetrics && !breakEvenMetrics.hasData ? (
+                  <div className="space-y-4">
+                    <Alert data-testid="alert-no-data">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        {breakEvenMetrics.message || "No data found for analysis"}
+                      </AlertDescription>
+                    </Alert>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Get Started</CardTitle>
+                        <CardDescription>
+                          Add sales and expense records to enable break-even analysis
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {breakEvenMetrics.suggestedActions?.map((action, idx) => (
+                          <Link key={idx} href={action.route}>
+                            <Button 
+                              variant="outline" 
+                              className="w-full justify-between"
+                              data-testid={`button-${action.route.replace('/', '')}`}
+                            >
+                              {action.label}
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <>
+                    {/* Data Source Banner */}
+                    {breakEvenMetrics?.dataSource && (
+                      <Alert data-testid="alert-data-source">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Auto-Calculated:</strong> Analyzing {breakEvenMetrics.dataSource.monthsAnalyzed} months 
+                          ({breakEvenMetrics.dataSource.salesRecords} sales records, {breakEvenMetrics.dataSource.expenseRecords} expense records)
+                          from {new Date(breakEvenMetrics.dataSource.dateRange.startDate).toLocaleDateString()} to {new Date(breakEvenMetrics.dataSource.dateRange.endDate).toLocaleDateString()}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Derived Values Summary */}
+                    {breakEvenLoading ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Card key={i}>
+                            <CardHeader className="pb-2">
+                              <Skeleton className="h-4 w-24" />
+                            </CardHeader>
+                            <CardContent>
+                              <Skeleton className="h-6 w-20" />
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : breakEvenMetrics?.derivedValues ? (
+                      <>
+                        <div className="text-sm font-semibold text-muted-foreground mb-2">Calculated from Your Data</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                          <Card data-testid="card-avg-price">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-xs font-medium text-muted-foreground">
+                                Avg Price/Crate
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-xl font-bold" data-testid="text-avg-price">
+                                {formatCurrency(breakEvenMetrics.derivedValues.averagePrice)}
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card data-testid="card-avg-variable-cost">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-xs font-medium text-muted-foreground">
+                                Avg Variable Cost
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-xl font-bold" data-testid="text-avg-variable-cost">
+                                {formatCurrency(breakEvenMetrics.derivedValues.averageUnitVariableCost)}
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card data-testid="card-avg-fixed-costs">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-xs font-medium text-muted-foreground">
+                                Avg Fixed Costs/Month
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-xl font-bold" data-testid="text-avg-fixed-costs">
+                                {formatCurrency(breakEvenMetrics.derivedValues.averageFixedCostsPerMonth)}
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card data-testid="card-avg-units">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-xs font-medium text-muted-foreground">
+                                Avg Monthly Units
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-xl font-bold" data-testid="text-avg-units">
+                                {breakEvenMetrics.derivedValues.averageMonthlyUnits} crates
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card data-testid="card-growth-rate">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-xs font-medium text-muted-foreground">
+                                Growth Rate (CAGR)
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-xl font-bold" data-testid="text-growth-rate">
+                                {breakEvenMetrics.derivedValues.calculatedGrowthRate.toFixed(2)}%
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {/* Interactive Navigation */}
+                    <Card data-testid="card-navigation">
+                      <CardHeader>
+                        <CardTitle>Adjust Your Data</CardTitle>
+                        <CardDescription>
+                          Update sales, expenses, or feed to see real-time changes in your break-even analysis
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <Link href="/egg-production">
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-between"
+                            data-testid="button-goto-sales"
+                          >
+                            <div className="flex items-center gap-2">
+                              <ShoppingCart className="h-4 w-4" />
+                              Manage Sales
+                            </div>
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        
+                        <Link href="/expenses">
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-between"
+                            data-testid="button-goto-expenses"
+                          >
+                            <div className="flex items-center gap-2">
+                              <CostsIcon className="h-4 w-4" />
+                              Manage Expenses
+                            </div>
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        
+                        <Link href="/feed-management">
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-between"
+                            data-testid="button-goto-feed"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4" />
+                              Feed Management
+                            </div>
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </CardContent>
+                    </Card>
+
+                    {/* Break-Even Metrics */}
+                    {breakEvenLoading ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[1, 2, 3, 4].map((i) => (
+                          <Card key={i}>
+                            <CardHeader className="pb-2">
+                              <Skeleton className="h-4 w-24" />
+                            </CardHeader>
+                            <CardContent>
+                              <Skeleton className="h-8 w-32" />
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : breakEvenMetrics && breakEvenMetrics.breakEvenUnits !== undefined ? (
+                      <>
+                        <div className="text-sm font-semibold text-muted-foreground mb-2">Break-Even Projections</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <Card data-testid="card-break-even-units">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm font-medium text-muted-foreground">
+                                Break-Even Units
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="flex items-center gap-2">
+                                <Calculator className="h-5 w-5 text-blue-500" />
+                                <span className="text-2xl font-bold" data-testid="text-break-even-units">
+                                  {breakEvenMetrics.breakEvenUnits.toFixed(0)} crates
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">Per month</p>
+                            </CardContent>
+                          </Card>
+
+                          <Card data-testid="card-break-even-revenue">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm font-medium text-muted-foreground">
+                                Break-Even Revenue
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="h-5 w-5 text-green-500" />
+                                <span className="text-2xl font-bold" data-testid="text-break-even-revenue">
+                                  {formatCurrency(breakEvenMetrics.breakEvenRevenue || 0)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">Per month</p>
+                            </CardContent>
+                          </Card>
+
+                          <Card data-testid="card-break-even-month">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm font-medium text-muted-foreground">
+                                Break-Even Month
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-5 w-5 text-purple-500" />
+                                <span className="text-2xl font-bold" data-testid="text-break-even-month">
+                                  {breakEvenMetrics.breakEvenMonth !== null ? `Month ${breakEvenMetrics.breakEvenMonth}` : "Not Reachable"}
+                                </span>
+                              </div>
+                              {breakEvenMetrics.breakEvenDate && (
+                                <p className="text-xs text-muted-foreground mt-1" data-testid="text-break-even-date">
+                                  {new Date(breakEvenMetrics.breakEvenDate).toLocaleDateString()}
+                                </p>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          <Card data-testid="card-contribution-margin">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm font-medium text-muted-foreground">
+                                Contribution Margin
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-orange-500" />
+                                <span className="text-2xl font-bold" data-testid="text-contribution-margin">
+                                  {breakEvenMetrics.contributionMarginRatio?.toFixed(1)}%
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatCurrency(breakEvenMetrics.contributionMargin || 0)} per unit
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Not Reachable Warning */}
+                        {breakEvenMetrics.breakEvenMonth === null && (
+                          <Alert data-testid="alert-not-reachable">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              Break-even is not reachable within the 12-month projection period with current data trends.
+                              Consider adjusting your prices or reducing costs.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        {/* Charts */}
+                        {breakEvenMetrics.monthlyProjections && breakEvenMetrics.monthlyProjections.length > 0 && (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Cumulative Profit Chart */}
+                            <Card data-testid="card-cumulative-profit-chart">
+                              <CardHeader>
+                                <CardTitle>Cumulative Profit Over Time</CardTitle>
+                                <CardDescription>Track when you'll reach profitability</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                  <LineChart data={breakEvenMetrics.monthlyProjections}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -5 }} />
+                                    <YAxis label={{ value: "Profit (KES)", angle: -90, position: "insideLeft" }} />
+                                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                    <Legend />
+                                    <ReferenceLine y={0} stroke="#000" strokeDasharray="3 3" />
+                                    {breakEvenMetrics.breakEvenMonth !== null && (
+                                      <ReferenceLine
+                                        x={breakEvenMetrics.breakEvenMonth}
+                                        stroke="#22c55e"
+                                        strokeDasharray="3 3"
+                                        label={{ value: "Break-Even", position: "top" }}
+                                      />
+                                    )}
+                                    <Line
+                                      type="monotone"
+                                      dataKey="cumulativeProfit"
+                                      stroke="#8b5cf6"
+                                      strokeWidth={2}
+                                      name="Cumulative Profit"
+                                    />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+
+                            {/* Revenue vs Costs Chart */}
+                            <Card data-testid="card-revenue-costs-chart">
+                              <CardHeader>
+                                <CardTitle>Revenue vs Total Costs</CardTitle>
+                                <CardDescription>Monthly comparison</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                  <BarChart data={breakEvenMetrics.monthlyProjections}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -5 }} />
+                                    <YAxis label={{ value: "Amount (KES)", angle: -90, position: "insideLeft" }} />
+                                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                    <Legend />
+                                    <Bar dataKey="revenue" fill="#22c55e" name="Revenue" />
+                                    <Bar dataKey="totalCosts" fill="#ef4444" name="Total Costs" />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+
+                        {/* Monthly Projections Table */}
+                        {breakEvenMetrics.monthlyProjections && breakEvenMetrics.monthlyProjections.length > 0 && (
+                          <Card data-testid="card-monthly-projections">
+                            <CardHeader>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <CardTitle>Monthly Projections</CardTitle>
+                                  <CardDescription>Detailed breakdown of revenue and costs</CardDescription>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={downloadBreakEvenCSV}
+                                    data-testid="button-download-csv"
+                                  >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    CSV
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={downloadBreakEvenPDF}
+                                    data-testid="button-download-pdf"
+                                  >
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    PDF
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="border-b">
+                                      <th className="text-left p-2">Month</th>
+                                      <th className="text-right p-2">Units</th>
+                                      <th className="text-right p-2">Revenue</th>
+                                      <th className="text-right p-2">Variable</th>
+                                      <th className="text-right p-2">Fixed</th>
+                                      <th className="text-right p-2">Total Costs</th>
+                                      <th className="text-right p-2">Profit</th>
+                                      <th className="text-right p-2">Cumulative</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {breakEvenMetrics.monthlyProjections.map((projection, idx) => (
+                                      <tr
+                                        key={idx}
+                                        className={`border-b ${projection.cumulativeProfit >= 0 ? 'bg-green-50 dark:bg-green-950/20' : ''}`}
+                                        data-testid={`row-projection-${idx}`}
+                                      >
+                                        <td className="p-2">{projection.month}</td>
+                                        <td className="text-right p-2">{projection.units.toFixed(0)}</td>
+                                        <td className="text-right p-2">{formatCurrency(projection.revenue)}</td>
+                                        <td className="text-right p-2">{formatCurrency(projection.variableCosts)}</td>
+                                        <td className="text-right p-2">{formatCurrency(projection.fixedCosts)}</td>
+                                        <td className="text-right p-2">{formatCurrency(projection.totalCosts)}</td>
+                                        <td className={`text-right p-2 ${projection.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                          {formatCurrency(projection.profit)}
+                                        </td>
+                                        <td className={`text-right p-2 font-semibold ${projection.cumulativeProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                          {formatCurrency(projection.cumulativeProfit)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </>
+                    ) : null}
+                  </>
+                )}
               </div>
             </TabsContent>
           </Tabs>
