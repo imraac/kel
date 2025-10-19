@@ -86,12 +86,13 @@ export default function PerformanceSummary() {
   const mortalityRate = totalBirds > 0 ? (weeklyMortality / totalBirds) * 100 : 0;
   const mortalityTarget = 0.5; // 0.5% weekly is acceptable
 
-  // Calculate REVENUE TARGET (weekly sales vs monthly target)
+  // Calculate REVENUE TARGET (weekly sales vs baseline target)
   const weeklyRevenue = weeklySales.reduce((sum: number, sale: any) => sum + parseFloat(sale.totalAmount || '0'), 0);
-  // Estimate monthly target as 4x weekly target (assuming current weekly is ~78% of weekly target)
-  const estimatedWeeklyTarget = weeklyRevenue > 0 ? weeklyRevenue / 0.78 : 50000; // Default to 50k if no sales
-  const monthlyTarget = estimatedWeeklyTarget * 4;
-  const revenueProgress = estimatedWeeklyTarget > 0 ? (weeklyRevenue / estimatedWeeklyTarget) * 100 : 0;
+  // Use a baseline weekly target derived from expected production
+  // Assuming: 80% laying rate, average price KSh 15/egg
+  const expectedWeeklyEggs = totalBirds > 0 ? (totalBirds * 0.80 * 7) : 0;
+  const weeklyRevenueTarget = expectedWeeklyEggs * 15;
+  const revenueProgress = weeklyRevenueTarget > 0 ? (weeklyRevenue / weeklyRevenueTarget) * 100 : 0;
 
   // Get the latest weight record with CV% data
   const latestWeightRecord = weightRecords.length > 0 ? 
@@ -128,7 +129,7 @@ export default function PerformanceSummary() {
       name: "Revenue Target",
       value: revenueProgress,
       target: 100,
-      status: `KSh ${weeklyRevenue.toLocaleString()} / KSh ${estimatedWeeklyTarget.toLocaleString()}`,
+      status: `KSh ${weeklyRevenue.toLocaleString()} / KSh ${weeklyRevenueTarget.toLocaleString()}`,
       color: "bg-chart-3",
     },
     {
@@ -160,7 +161,10 @@ export default function PerformanceSummary() {
                 </span>
               </div>
               <Progress 
-                value={(item as any).inverted ? (item.value / item.target) * 31 : item.value} 
+                value={(item as any).inverted 
+                  ? Math.max(0, Math.min(100, 100 - ((item.value / item.target) * 100)))
+                  : Math.min(100, item.value)
+                } 
                 className="w-full h-2 mb-1"
                 data-testid={`progress-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
               />
