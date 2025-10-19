@@ -233,6 +233,37 @@ export const expenses = pgTable("expenses", {
   check("chk_expenses_amount", sql`amount >= 0`),
 ]);
 
+// Break-Even Analysis Assumptions table
+export const breakEvenAssumptions = pgTable("break_even_assumptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  farmId: varchar("farm_id").notNull().references(() => farms.id, { onDelete: "cascade", onUpdate: "cascade" }), // Associate with specific farm
+  productId: varchar("product_id").references(() => products.id, { onDelete: "cascade" }), // Optional: for multi-product analysis
+  
+  // Pricing and cost assumptions
+  price: decimal("price", { precision: 12, scale: 2 }).notNull(), // Average selling price per unit
+  unitVariableCost: decimal("unit_variable_cost", { precision: 12, scale: 2 }).notNull(), // Variable cost per unit
+  fixedCostsPerMonth: decimal("fixed_costs_per_month", { precision: 12, scale: 2 }).notNull(), // Monthly fixed costs
+  
+  // Growth and seasonality
+  growthRate: decimal("growth_rate", { precision: 5, scale: 4 }).default('0'), // Monthly growth rate (e.g., 0.05 = 5%)
+  seasonalityFactors: jsonb("seasonality_factors"), // Optional monthly seasonality adjustments { "1": 1.0, "2": 0.9, ... }
+  
+  // Metadata
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_break_even_farm_id").on(table.farmId),
+  index("idx_break_even_product_id").on(table.productId),
+  uniqueIndex("unique_break_even_farm_product").on(table.farmId, table.productId), // One set of assumptions per farm-product combo
+  check("chk_break_even_positive", sql`
+    price > 0 and 
+    unit_variable_cost >= 0 and 
+    fixed_costs_per_month >= 0 and
+    (growth_rate is null or growth_rate >= -1)
+  `),
+]);
+
 // Marketplace tables
 
 // Customers table
@@ -366,6 +397,7 @@ export const farmsRelations = relations(farms, ({ many }) => ({
   sales: many(sales),
   feedInventory: many(feedInventory),
   expenses: many(expenses),
+  breakEvenAssumptions: many(breakEvenAssumptions),
   products: many(products),
   orders: many(orders),
 }));
@@ -443,6 +475,17 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
   user: one(users, {
     fields: [expenses.userId],
     references: [users.id],
+  }),
+}));
+
+export const breakEvenAssumptionsRelations = relations(breakEvenAssumptions, ({ one }) => ({
+  farm: one(farms, {
+    fields: [breakEvenAssumptions.farmId],
+    references: [farms.id],
+  }),
+  product: one(products, {
+    fields: [breakEvenAssumptions.productId],
+    references: [products.id],
   }),
 }));
 
@@ -529,6 +572,7 @@ export const insertSaleSchema = createInsertSchema(sales).omit({ id: true, creat
 export const insertFeedInventorySchema = createInsertSchema(feedInventory).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertHealthRecordSchema = createInsertSchema(healthRecords).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBreakEvenAssumptionsSchema = createInsertSchema(breakEvenAssumptions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Marketplace insert schemas
@@ -578,6 +622,8 @@ export type InsertHealthRecord = z.infer<typeof insertHealthRecordSchema>;
 export type HealthRecord = typeof healthRecords.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+export type InsertBreakEvenAssumptions = z.infer<typeof insertBreakEvenAssumptionsSchema>;
+export type BreakEvenAssumptions = typeof breakEvenAssumptions.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
