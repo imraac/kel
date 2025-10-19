@@ -23,57 +23,114 @@ const getCVPerformanceScore = (cvPercent: number | null) => {
   return 40;
 };
 
-const staticPerformanceData = [
-  {
-    name: "Laying Rate",
-    value: 89.4,
-    target: 90,
-    status: "Target: 90%",
-    color: "bg-primary",
-  },
-  {
-    name: "Feed Efficiency",
-    value: 92.1,
-    target: 90,
-    status: "Excellent",
-    color: "bg-chart-2",
-  },
-  {
-    name: "Mortality Rate",
-    value: 0.31,
-    target: 0.25,
-    status: "Above average",
-    color: "bg-orange-400",
-    inverted: true,
-  },
-  {
-    name: "Revenue Target",
-    value: 78.2,
-    target: 100,
-    status: "KSh 268,450 / KSh 343,000",
-    color: "bg-chart-3",
-  },
-];
-
 export default function PerformanceSummary() {
   const { isAuthenticated } = useAuth();
 
-  // Fetch latest weight records to get CV% data
+  // Fetch all required data
   const { data: weightRecords = [] } = useQuery<any[]>({
     queryKey: ["/api/weight-records"],
     enabled: isAuthenticated,
   });
 
+  const { data: dailyRecords = [] } = useQuery<any[]>({
+    queryKey: ["/api/daily-records"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: flocks = [] } = useQuery<any[]>({
+    queryKey: ["/api/flocks"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: sales = [] } = useQuery<any[]>({
+    queryKey: ["/api/sales"],
+    enabled: isAuthenticated,
+  });
+
+  // Calculate date ranges for weekly data
+  const today = new Date();
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Filter weekly records
+  const weeklyRecords = dailyRecords.filter((record: any) => {
+    const recordDate = new Date(record.recordDate);
+    return recordDate >= sevenDaysAgo && recordDate <= today;
+  });
+
+  // Filter weekly sales
+  const weeklySales = sales.filter((sale: any) => {
+    const saleDate = new Date(sale.saleDate);
+    return saleDate >= sevenDaysAgo && saleDate <= today;
+  });
+
+  // Calculate total active birds
+  const totalBirds = flocks.reduce((sum: number, flock: any) => sum + (flock.currentCount || 0), 0);
+
+  // Calculate LAYING RATE (average weekly production rate)
+  const weeklyEggs = weeklyRecords.reduce((sum: number, record: any) => sum + (record.eggsCollected || 0), 0);
+  const weeklyAvgEggs = weeklyEggs / 7;
+  const layingRate = totalBirds > 0 ? (weeklyAvgEggs / totalBirds) * 100 : 0;
+  const layingRateTarget = 90;
+
+  // Calculate FEED EFFICIENCY (kg feed per dozen eggs)
+  const weeklyFeed = weeklyRecords.reduce((sum: number, record: any) => sum + parseFloat(record.feedConsumed || '0'), 0);
+  const dozenEggs = weeklyEggs / 12;
+  const feedPerDozen = dozenEggs > 0 ? weeklyFeed / dozenEggs : 0;
+  // Good feed efficiency: ~1.8-2.2 kg per dozen eggs, convert to percentage (lower is better)
+  // Target: 2.0 kg/dozen, so calculate as inverted percentage
+  const feedEfficiencyScore = feedPerDozen > 0 ? Math.min(100, ((2.0 / feedPerDozen) * 100)) : 0;
+
+  // Calculate MORTALITY RATE (weekly average)
+  const weeklyMortality = weeklyRecords.reduce((sum: number, record: any) => sum + (record.mortalityCount || 0), 0);
+  const mortalityRate = totalBirds > 0 ? (weeklyMortality / totalBirds) * 100 : 0;
+  const mortalityTarget = 0.5; // 0.5% weekly is acceptable
+
+  // Calculate REVENUE TARGET (weekly sales vs monthly target)
+  const weeklyRevenue = weeklySales.reduce((sum: number, sale: any) => sum + parseFloat(sale.totalAmount || '0'), 0);
+  // Estimate monthly target as 4x weekly target (assuming current weekly is ~78% of weekly target)
+  const estimatedWeeklyTarget = weeklyRevenue > 0 ? weeklyRevenue / 0.78 : 50000; // Default to 50k if no sales
+  const monthlyTarget = estimatedWeeklyTarget * 4;
+  const revenueProgress = estimatedWeeklyTarget > 0 ? (weeklyRevenue / estimatedWeeklyTarget) * 100 : 0;
+
   // Get the latest weight record with CV% data
   const latestWeightRecord = weightRecords.length > 0 ? 
-    weightRecords.sort((a, b) => new Date(b.recordDate).getTime() - new Date(a.recordDate).getTime())[0] : 
+    [...weightRecords].sort((a, b) => new Date(b.recordDate).getTime() - new Date(a.recordDate).getTime())[0] : 
     null;
 
   const latestCVPercent = latestWeightRecord?.cvPercent ? parseFloat(latestWeightRecord.cvPercent) : null;
 
-  // Create dynamic performance data including CV%
+  // Create dynamic performance data
   const performanceData = [
-    ...staticPerformanceData,
+    {
+      name: "Laying Rate",
+      value: layingRate,
+      target: layingRateTarget,
+      status: `Target: ${layingRateTarget}% | ${weeklyAvgEggs.toFixed(0)} eggs/day`,
+      color: "bg-primary",
+    },
+    {
+      name: "Feed Efficiency",
+      value: feedEfficiencyScore,
+      target: 100,
+      status: feedPerDozen > 0 ? `${feedPerDozen.toFixed(2)} kg/dozen eggs` : "No data",
+      color: "bg-chart-2",
+    },
+    {
+      name: "Mortality Rate",
+      value: mortalityRate,
+      target: mortalityTarget,
+      status: `${weeklyMortality} birds this week`,
+      color: "bg-orange-400",
+      inverted: true,
+    },
+    {
+      name: "Revenue Target",
+      value: revenueProgress,
+      target: 100,
+      status: `KSh ${weeklyRevenue.toLocaleString()} / KSh ${estimatedWeeklyTarget.toLocaleString()}`,
+      color: "bg-chart-3",
+    },
     {
       name: "Weight Uniformity",
       value: getCVPerformanceScore(latestCVPercent),
