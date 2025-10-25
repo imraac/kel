@@ -107,6 +107,16 @@ Preferred communication style: Simple, everyday language.
 - **EGGS PER DAY**: Changed from whole numbers to 2 decimal places for more accurate daily production tracking (e.g., 4,547.32 eggs/day)
 - **ENHANCED READABILITY**: Standardized decimal precision improves data interpretation and professional presentation across all dashboard metrics
 
+### Egg Quality Metric - Real-time Quality Tracking (October 2025)
+- **NEW 6TH PERFORMANCE METRIC**: Added Egg Quality to "This Week's Performance" dashboard card for real-time quality monitoring
+- **AUTOMATIC CALCULATION**: Formula = (Good Eggs / Total Eggs) × 100, where Good Eggs = Eggs Collected - Broken Eggs
+- **WEEKLY ANALYSIS**: Uses 7-day rolling window from daily records to track quality trends
+- **INDUSTRY TARGET**: 95% quality target (industry standard for commercial egg production)
+- **VISUAL DISPLAY**: Green progress bar with status showing "X good / Y total" eggs collected
+- **DATA SAFEGUARDS**: Math.max(0, ...) clamping prevents negative values from data inconsistencies
+- **CONSISTENT FORMATTING**: 2 decimal places for percentage values aligned with other performance metrics
+- **ZERO-STATE HANDLING**: Shows "No data" when no eggs have been collected in the tracking period
+
 ### Dashboard Enhancement with Weekly Targets (October 2025)
 - **CONTEXTUAL INFORMATION**: Added week number (ISO week) and flock age display below the current date in dashboard header
 - **AGE-BASED TARGETS**: Dynamic weekly target widgets that adapt to the oldest flock's age, showing critical requirements for the current week
