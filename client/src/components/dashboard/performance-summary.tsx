@@ -96,6 +96,12 @@ export default function PerformanceSummary() {
   const weeklyRevenueTarget = expectedWeeklyEggs * 15;
   const revenueProgress = weeklyRevenueTarget > 0 ? (weeklyRevenue / weeklyRevenueTarget) * 100 : 0;
 
+  // Calculate EGG QUALITY (good eggs / total eggs * 100)
+  const weeklyBrokenEggs = weeklyRecords.reduce((sum: number, record: any) => sum + (record.brokenEggs || 0), 0);
+  const weeklyGoodEggs = Math.max(0, weeklyEggs - weeklyBrokenEggs); // Clamp to 0 in case of data inconsistencies
+  const eggQuality = weeklyEggs > 0 ? (weeklyGoodEggs / weeklyEggs) * 100 : 0;
+  const eggQualityTarget = 95; // 95% is target for good quality eggs
+
   // Get the latest weight record with CV% data
   const latestWeightRecord = weightRecords.length > 0 ? 
     [...weightRecords].sort((a, b) => new Date(b.recordDate).getTime() - new Date(a.recordDate).getTime())[0] : 
@@ -133,6 +139,13 @@ export default function PerformanceSummary() {
       target: 100,
       status: `KSh ${weeklyRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} / KSh ${weeklyRevenueTarget.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
       color: "bg-chart-3",
+    },
+    {
+      name: "Egg Quality",
+      value: eggQuality,
+      target: eggQualityTarget,
+      status: weeklyEggs > 0 ? `${weeklyGoodEggs.toLocaleString()} good / ${weeklyEggs.toLocaleString()} total` : "No data",
+      color: "bg-green-500",
     },
     {
       name: "Weight Uniformity",
