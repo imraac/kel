@@ -24,6 +24,19 @@ const getCVPerformanceScore = (cvPercent: number | null) => {
   return 40;
 };
 
+// Helper function to get egg quality classification
+const getEggQualityStatus = (qualityPercent: number, goodEggs: number, totalEggs: number) => {
+  if (totalEggs === 0) return "No data";
+  
+  let classification = "";
+  if (qualityPercent >= 95) classification = "Excellent";
+  else if (qualityPercent >= 90) classification = "Good";
+  else if (qualityPercent >= 85) classification = "Fair";
+  else classification = "Poor";
+  
+  return `${classification} | ${goodEggs.toLocaleString()} good / ${totalEggs.toLocaleString()} total`;
+};
+
 export default function PerformanceSummary() {
   const { isAuthenticated } = useAuth();
   const { activeFarmId } = useFarmContext();
@@ -144,7 +157,7 @@ export default function PerformanceSummary() {
       name: "Egg Quality",
       value: eggQuality,
       target: eggQualityTarget,
-      status: weeklyEggs > 0 ? `${weeklyGoodEggs.toLocaleString()} good / ${weeklyEggs.toLocaleString()} total` : "No data",
+      status: getEggQualityStatus(eggQuality, weeklyGoodEggs, weeklyEggs),
       color: "bg-green-500",
     },
     {
@@ -190,9 +203,14 @@ export default function PerformanceSummary() {
                     ? latestCVPercent < 5 ? "text-green-600" :
                       latestCVPercent < 8 ? "text-blue-600" :
                       latestCVPercent < 12 ? "text-yellow-600" : "text-red-600"
-                    : item.value >= item.target 
-                      ? "text-muted-foreground" 
-                      : "text-muted-foreground"
+                    : item.name === "Egg Quality"
+                      ? weeklyEggs === 0 ? "text-muted-foreground" :
+                        item.value >= 95 ? "text-green-600" :
+                        item.value >= 90 ? "text-blue-600" :
+                        item.value >= 85 ? "text-yellow-600" : "text-red-600"
+                      : item.value >= item.target 
+                        ? "text-muted-foreground" 
+                        : "text-muted-foreground"
               }`}>
                 {item.status}
               </p>
