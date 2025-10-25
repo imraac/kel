@@ -112,10 +112,15 @@ Preferred communication style: Simple, everyday language.
 - **AUTOMATIC CALCULATION**: Formula = (Good Eggs / Total Eggs) × 100, where Good Eggs = Eggs Collected - Broken Eggs
 - **WEEKLY ANALYSIS**: Uses 7-day rolling window from daily records to track quality trends
 - **INDUSTRY TARGET**: 95% quality target (industry standard for commercial egg production)
-- **VISUAL DISPLAY**: Green progress bar with status showing "X good / Y total" eggs collected
+- **QUALITY CLASSIFICATION BANDS**: Automatic quality grading with color-coded status
+  - **Excellent** (≥95%): Green - Industry target met or exceeded
+  - **Good** (90-94.99%): Blue - Acceptable quality with minor room for improvement
+  - **Fair** (85-89.99%): Yellow - Below target, needs attention
+  - **Poor** (<85%): Red - Critical quality issues requiring immediate action
+- **VISUAL DISPLAY**: Green progress bar with classification label and egg counts (e.g., "Excellent | 5,200 good / 5,500 total")
 - **DATA SAFEGUARDS**: Math.max(0, ...) clamping prevents negative values from data inconsistencies
 - **CONSISTENT FORMATTING**: 2 decimal places for percentage values aligned with other performance metrics
-- **ZERO-STATE HANDLING**: Shows "No data" when no eggs have been collected in the tracking period
+- **ZERO-STATE HANDLING**: Shows "No data" with neutral gray color when no eggs have been collected in the tracking period
 
 ### Dashboard Enhancement with Weekly Targets (October 2025)
 - **CONTEXTUAL INFORMATION**: Added week number (ISO week) and flock age display below the current date in dashboard header
