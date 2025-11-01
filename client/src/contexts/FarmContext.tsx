@@ -53,17 +53,18 @@ export function FarmProvider({ children }: FarmProviderProps) {
     }
 
     if (user.role === 'admin') {
-      // Admin users: automatically select first available farm
-      // Keep existing activeFarmId if valid, otherwise auto-select first farm
-      if (activeFarmId && farms.some(farm => farm.id === activeFarmId)) {
-        setError(null);
-      } else if (farms.length > 0) {
+      // Admin users: only auto-select if no farm is selected
+      if (!activeFarmId && farms.length > 0) {
         // Auto-select the first available farm for admin users
         setActiveFarmId(farms[0].id);
         setError(null);
-      } else {
-        // No farms available - this is a different issue
-        setActiveFarmId(null);
+      } else if (activeFarmId && !farms.some(farm => farm.id === activeFarmId)) {
+        // Selected farm no longer exists, reset to first farm
+        if (farms.length > 0) {
+          setActiveFarmId(farms[0].id);
+        } else {
+          setActiveFarmId(null);
+        }
         setError(null);
       }
     } else if (user.role === 'customer') {
@@ -80,7 +81,9 @@ export function FarmProvider({ children }: FarmProviderProps) {
         setActiveFarmId(null);
       }
     }
-  }, [user, isAuthenticated, farms, activeFarmId]);
+    // Note: activeFarmId intentionally NOT in dependency array to prevent loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isAuthenticated, farms]);
 
   const hasActiveFarm = !!activeFarmId || user?.role === 'customer';
 
