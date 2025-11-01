@@ -39,27 +39,47 @@ const getEggQualityStatus = (qualityPercent: number, goodEggs: number, totalEggs
 
 export default function PerformanceSummary() {
   const { isAuthenticated } = useAuth();
-  const { activeFarmId } = useFarmContext();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
 
   // Fetch all required data
   const { data: weightRecords = [] } = useQuery<any[]>({
-    queryKey: ["/api/weight-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/weight-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/weight-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch weight records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: dailyRecords = [] } = useQuery<any[]>({
-    queryKey: ["/api/daily-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/daily-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch daily records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: flocks = [] } = useQuery<any[]>({
-    queryKey: ["/api/flocks"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/flocks", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch flocks');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: sales = [] } = useQuery<any[]>({
-    queryKey: activeFarmId ? [`/api/sales?farmId=${activeFarmId}`] : ["/api/sales"],
-    enabled: isAuthenticated && !!activeFarmId,
+    queryKey: ["/api/sales", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/sales?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch sales');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Calculate date ranges for weekly data

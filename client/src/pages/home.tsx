@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import Sidebar from "@/components/layout/sidebar";
 import MetricCard from "@/components/dashboard/metric-card";
 import AlertPanel from "@/components/dashboard/alert-panel";
@@ -38,6 +39,7 @@ type EggEntryData = z.infer<typeof eggEntrySchema>;
 export default function Home() {
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [eggDialogOpen, setEggDialogOpen] = useState(false);
   const [dailyRecordDialogOpen, setDailyRecordDialogOpen] = useState(false);
@@ -59,23 +61,43 @@ export default function Home() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: metrics = {}, error: metricsError, isLoading: metricsLoading } = useQuery<any>({
-    queryKey: ["/api/dashboard/metrics"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/dashboard/metrics", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/metrics?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch metrics');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: activity = [], error: activityError, isLoading: activityLoading } = useQuery<any[]>({
-    queryKey: ["/api/dashboard/activity"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/dashboard/activity", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/activity?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch activity');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: flocks = [] } = useQuery<any[]>({
-    queryKey: ["/api/flocks"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/flocks", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch flocks');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: dailyRecords = [] } = useQuery<any[]>({
-    queryKey: ["/api/daily-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/daily-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch daily records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Calculate weekly mortality (last 7 days)
@@ -143,9 +165,9 @@ export default function Home() {
       await apiRequest("POST", "/api/daily-records", recordData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/daily-records"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-records", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity", activeFarmId] });
       toast({
         title: "Success",
         description: "Egg collection recorded successfully",

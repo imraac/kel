@@ -26,9 +26,9 @@ export function useSaleMutation() {
     },
     onSuccess: () => {
       // Invalidate all relevant caches with farm-scoped keys
-      queryClient.invalidateQueries({ queryKey: [`/api/sales?farmId=${activeFarmId}`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sales", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity", activeFarmId] });
       
       toast({
         title: "Success",

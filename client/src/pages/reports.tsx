@@ -90,29 +90,54 @@ export default function Reports() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: dailyRecords, error: recordsError } = useQuery({
-    queryKey: ["/api/daily-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/daily-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch daily records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: sales, error: salesError } = useQuery({
-    queryKey: [`/api/sales?farmId=${activeFarmId}`],
-    enabled: isAuthenticated && hasActiveFarm,
+    queryKey: ["/api/sales", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/sales?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch sales');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: expenses, error: expensesError } = useQuery({
-    queryKey: ["/api/expenses"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/expenses", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/expenses?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch expenses');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: feedInventory, error: feedError } = useQuery({
-    queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`],
-    enabled: isAuthenticated && hasActiveFarm,
+    queryKey: ["/api/feed-inventory", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/feed-inventory?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch feed inventory');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Break-even analysis data
   const { data: breakEvenMetrics, isLoading: breakEvenLoading } = useQuery<BreakEvenMetrics>({
-    queryKey: [`/api/breakeven/metrics?months=${rollingWindow}&farmId=${activeFarmId}`],
-    enabled: isAuthenticated && hasActiveFarm,
+    queryKey: ["/api/breakeven/metrics", rollingWindow, activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/breakeven/metrics?months=${rollingWindow}&farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch break-even metrics');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
     refetchOnWindowFocus: true,
   });
 

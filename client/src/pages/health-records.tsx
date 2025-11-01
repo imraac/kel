@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useFarmContext } from "@/contexts/FarmContext";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ type HealthFormData = z.infer<typeof healthFormSchema>;
 export default function HealthRecords() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [healthDialogOpen, setHealthDialogOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -69,13 +71,23 @@ export default function HealthRecords() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: healthRecords = [], error: recordsError } = useQuery<any[]>({
-    queryKey: ["/api/health-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/health-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/health-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch health records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: flocks = [], error: flocksError } = useQuery<any[]>({
-    queryKey: ["/api/flocks"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/flocks", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch flocks');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Handle unauthorized errors

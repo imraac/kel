@@ -401,7 +401,7 @@ const downloadPDFReport = (weightRecord: WeightRecord) => {
 };
 
 export default function BodyWeights() {
-  const { activeFarmId } = useFarmContext();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [weightInputs, setWeightInputs] = useState<{ id: number; weight: string }[]>([
@@ -413,14 +413,24 @@ export default function BodyWeights() {
 
   // Fetch flocks for the dropdown
   const { data: flocks = [], isLoading: flocksLoading } = useQuery<Flock[]>({
-    queryKey: ['/api/flocks'],
-    enabled: !!activeFarmId,
+    queryKey: ['/api/flocks', activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch flocks');
+      return response.json();
+    },
+    enabled: hasActiveFarm && !!activeFarmId,
   });
 
   // Fetch existing weight records
   const { data: weightRecords = [], isLoading: recordsLoading } = useQuery<WeightRecord[]>({
-    queryKey: ['/api/weight-records'],
-    enabled: !!activeFarmId,
+    queryKey: ['/api/weight-records', activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/weight-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch weight records');
+      return response.json();
+    },
+    enabled: hasActiveFarm && !!activeFarmId,
   });
 
   // Filter weight records by selected flock
