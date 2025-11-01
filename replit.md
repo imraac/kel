@@ -67,3 +67,18 @@ Preferred communication style: Simple, everyday language.
 - **Development Platform**: Replit
 - **Font Services**: Google Fonts (Architects Daughter, DM Sans, Fira Code, Geist Mono)
 - **Build & Deployment**: Replit hosting
+
+## Recent Changes
+
+### Farm Selector Multi-Tenant Data Isolation Fix (November 2025)
+- **CRITICAL BUG FIX**: Resolved farm selector not updating dashboard data when admins switch farms
+- **Backend Storage Updates**: Updated `getDashboardMetrics()` and `getRecentActivity()` to require and filter by farmId parameter
+  - Active flocks filtered by `eq(flocks.farmId, farmId)`
+  - Daily records filtered by farm's flockIds using SQL IN clause
+  - Feed inventory filtered by `eq(feedInventory.farmId, farmId)`
+  - Sales revenue (current & last month) filtered by `eq(sales.farmId, farmId)` with date ranges
+  - Recent activity filtered by farm's flockIds
+- **Backend Route Updates**: Dashboard routes (`/api/dashboard/metrics`, `/api/dashboard/activity`) now extract farmId via `requireFarmContext()` and pass to storage methods
+- **Frontend Context Fix**: Fixed FarmContext useEffect dependency array - removed `activeFarmId` to prevent infinite loops when `setActiveFarmId` is called
+- **Proper Multi-Tenant Scoping**: Admin users can now switch farms via dropdown and immediately see data update for the selected farm
+- **Architect Validated**: Comprehensive review confirmed dashboard metrics and activity properly scope to selected farm with no stale data issues
