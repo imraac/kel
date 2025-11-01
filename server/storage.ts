@@ -125,8 +125,8 @@ export interface IStorage {
   markNotificationAsRead(notificationId: string): Promise<void>;
 
   // Dashboard analytics
-  getDashboardMetrics(): Promise<any>;
-  getRecentActivity(limit?: number): Promise<any[]>;
+  getDashboardMetrics(farmId: string): Promise<any>;
+  getRecentActivity(farmId: string, limit?: number): Promise<any[]>;
 
   // Marketplace operations - Customers
   createCustomer(customer: InsertCustomer): Promise<Customer>;
@@ -715,27 +715,43 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard analytics
-  async getDashboardMetrics(): Promise<any> {
-    // Get total birds from all active flocks (excluding deactivated)
-    const activeFlocks = await db.select().from(flocks).where(ne(flocks.status, 'deactivated'));
+  async getDashboardMetrics(farmId: string): Promise<any> {
+    // Get total birds from all active flocks for this farm (excluding deactivated)
+    const activeFlocks = await db
+      .select()
+      .from(flocks)
+      .where(
+        and(
+          eq(flocks.farmId, farmId),
+          ne(flocks.status, 'deactivated')
+        )
+      );
     const totalBirds = activeFlocks.reduce((sum, flock) => sum + flock.currentCount, 0);
+
+    // Get the flockIds for this farm to filter daily records
+    const flockIds = activeFlocks.map(f => f.id);
 
     // Get today's egg production (check today and yesterday to handle timezone issues)
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    // Get records from the past 2 days to handle timezone differences
-    const recentRecords = await db
-      .select()
-      .from(dailyRecords)
-      .where(
-        or(
-          eq(dailyRecords.recordDate, yesterday),
-          eq(dailyRecords.recordDate, today),
-          eq(dailyRecords.recordDate, tomorrow)
-        )
-      );
+    // Get records from the past 2 days for this farm's flocks
+    const recentRecords = flockIds.length > 0
+      ? await db
+          .select()
+          .from(dailyRecords)
+          .where(
+            and(
+              sql`${dailyRecords.flockId} IN (${sql.join(flockIds.map(id => sql`${id}`), sql`, `)})`,
+              or(
+                eq(dailyRecords.recordDate, yesterday),
+                eq(dailyRecords.recordDate, today),
+                eq(dailyRecords.recordDate, tomorrow)
+              )
+            )
+          )
+      : [];
     
     // Get the most recent date that has egg collection data
     const recordsByDate = recentRecords.reduce((acc, record) => {
@@ -766,22 +782,28 @@ export class DatabaseStorage implements IStorage {
       todayCrates = todayRecords.reduce((sum, record) => sum + (record.cratesProduced || 0), 0);
     }
 
-    // Get feed inventory total
-    const feedInventoryData = await db.select().from(feedInventory);
+    // Get feed inventory total for this farm
+    const feedInventoryData = await db
+      .select()
+      .from(feedInventory)
+      .where(eq(feedInventory.farmId, farmId));
     const totalFeedStock = feedInventoryData.reduce((sum, feed) => sum + parseFloat(feed.quantityKg || '0'), 0);
 
-    // Calculate feed days remaining based on recent consumption
+    // Calculate feed days remaining based on recent consumption for this farm's flocks
     // Get last 14 days of daily records to calculate average consumption
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const recentFeedRecords = await db
-      .select()
-      .from(dailyRecords)
-      .where(
-        and(
-          gte(dailyRecords.recordDate, fourteenDaysAgo),
-          isNotNull(dailyRecords.feedConsumed)
-        )
-      );
+    const recentFeedRecords = flockIds.length > 0
+      ? await db
+          .select()
+          .from(dailyRecords)
+          .where(
+            and(
+              sql`${dailyRecords.flockId} IN (${sql.join(flockIds.map(id => sql`${id}`), sql`, `)})`,
+              gte(dailyRecords.recordDate, fourteenDaysAgo),
+              isNotNull(dailyRecords.feedConsumed)
+            )
+          )
+      : [];
 
     // Calculate average daily feed consumption (industry standard: 0.11kg per bird)
     let averageDailyConsumption = 0;
@@ -800,17 +822,35 @@ export class DatabaseStorage implements IStorage {
       ? Math.floor(totalFeedStock / averageDailyConsumption)
       : 0;
 
-    // Get current month revenue
+    // Get current month revenue for this farm
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
-    const monthlySales = await this.getSalesByDateRange(monthStart, monthEnd);
-    const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || '0'), 0);
+    const allMonthlySales = await db
+      .select()
+      .from(sales)
+      .where(
+        and(
+          eq(sales.farmId, farmId),
+          gte(sales.saleDate, monthStart),
+          lte(sales.saleDate, monthEnd)
+        )
+      );
+    const monthlyRevenue = allMonthlySales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || '0'), 0);
 
-    // Get last month revenue for comparison
+    // Get last month revenue for comparison for this farm
     const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0];
     const lastMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().split('T')[0];
-    const lastMonthSales = await this.getSalesByDateRange(lastMonthStart, lastMonthEnd);
-    const lastMonthRevenue = lastMonthSales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || '0'), 0);
+    const allLastMonthSales = await db
+      .select()
+      .from(sales)
+      .where(
+        and(
+          eq(sales.farmId, farmId),
+          gte(sales.saleDate, lastMonthStart),
+          lte(sales.saleDate, lastMonthEnd)
+        )
+      );
+    const lastMonthRevenue = allLastMonthSales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || '0'), 0);
 
     // Calculate percentage change
     const revenueChange = lastMonthRevenue > 0 
@@ -830,8 +870,20 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getRecentActivity(limit = 10): Promise<any[]> {
-    // Combine recent records from different tables
+  async getRecentActivity(farmId: string, limit = 10): Promise<any[]> {
+    // Get flockIds for this farm to filter daily records
+    const farmFlocks = await db
+      .select({ id: flocks.id })
+      .from(flocks)
+      .where(eq(flocks.farmId, farmId));
+    
+    const flockIds = farmFlocks.map(f => f.id);
+    
+    if (flockIds.length === 0) {
+      return [];
+    }
+
+    // Get recent records from daily records for this farm's flocks
     const recentRecords = await db
       .select({
         id: dailyRecords.id,
@@ -846,6 +898,7 @@ export class DatabaseStorage implements IStorage {
         userId: dailyRecords.userId
       })
       .from(dailyRecords)
+      .where(sql`${dailyRecords.flockId} IN (${sql.join(flockIds.map(id => sql`${id}`), sql`, `)})`)
       .orderBy(desc(dailyRecords.createdAt))
       .limit(limit);
 

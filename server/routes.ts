@@ -303,9 +303,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard routes
-  app.get('/api/dashboard/metrics', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/metrics', isAuthenticated, async (req: any, res) => {
     try {
-      const metrics = await storage.getDashboardMetrics();
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      if (!currentUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const farmId = await requireFarmContext(req, currentUser);
+      const metrics = await storage.getDashboardMetrics(farmId);
       res.json(metrics);
     } catch (error) {
       console.error("Error fetching dashboard metrics:", error);
@@ -313,10 +319,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/activity', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/activity', isAuthenticated, async (req: any, res) => {
     try {
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      if (!currentUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const farmId = await requireFarmContext(req, currentUser);
       const limit = parseInt(req.query.limit as string) || 10;
-      const activity = await storage.getRecentActivity(limit);
+      const activity = await storage.getRecentActivity(farmId, limit);
       res.json(activity);
     } catch (error) {
       console.error("Error fetching recent activity:", error);
