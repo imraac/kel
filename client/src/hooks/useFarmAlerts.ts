@@ -16,23 +16,43 @@ export function useFarmAlerts() {
 
   // Fetch required data for alert calculations
   const { data: metrics = {} } = useQuery<any>({
-    queryKey: ["/api/dashboard/metrics"],
-    enabled: hasActiveFarm,
+    queryKey: ["/api/dashboard/metrics", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/metrics?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch metrics');
+      return response.json();
+    },
+    enabled: hasActiveFarm && !!activeFarmId,
   });
 
   const { data: feedInventory = [] } = useQuery<any[]>({
-    queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`],
-    enabled: hasActiveFarm,
+    queryKey: ["/api/feed-inventory", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/feed-inventory?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch feed inventory');
+      return response.json();
+    },
+    enabled: hasActiveFarm && !!activeFarmId,
   });
 
   const { data: dailyRecords = [] } = useQuery<any[]>({
-    queryKey: ["/api/daily-records"],
-    enabled: hasActiveFarm,
+    queryKey: ["/api/daily-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch daily records');
+      return response.json();
+    },
+    enabled: hasActiveFarm && !!activeFarmId,
   });
 
   const { data: healthRecords = [] } = useQuery<any[]>({
-    queryKey: [`/api/health-records?limit=100`],
-    enabled: hasActiveFarm,
+    queryKey: ["/api/health-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/health-records?farmId=${activeFarmId}&limit=100`);
+      if (!response.ok) throw new Error('Failed to fetch health records');
+      return response.json();
+    },
+    enabled: hasActiveFarm && !!activeFarmId,
   });
 
   // Calculate dynamic alerts based on real farm data

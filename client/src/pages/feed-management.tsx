@@ -113,13 +113,23 @@ export default function FeedManagement() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: feedInventory, error: inventoryError } = useQuery({
-    queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`],
-    enabled: isAuthenticated && hasActiveFarm,
+    queryKey: ["/api/feed-inventory", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/feed-inventory?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch feed inventory');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: dailyRecords, error: recordsError } = useQuery({
-    queryKey: ["/api/daily-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/daily-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch daily records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Get unique suppliers for autocomplete

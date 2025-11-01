@@ -66,8 +66,13 @@ export default function Expenses() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: expenses = [], error: expensesError } = useQuery<any[]>({
-    queryKey: [`/api/expenses${activeFarmId ? `?farmId=${activeFarmId}` : ''}`, activeFarmId],
-    enabled: isAuthenticated && hasActiveFarm,
+    queryKey: ["/api/expenses", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/expenses?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch expenses');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Handle unauthorized errors
