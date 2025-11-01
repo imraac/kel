@@ -66,7 +66,7 @@ export function FarmRegistrationPage() {
       setIsSuccess(true);
       toast({
         title: "Farm registered successfully!",
-        description: `Welcome to RoblePoultryPilot! Your farm registration is complete.`,
+        description: `Welcome to KukuHub! Your farm registration is complete.`,
       });
     },
     onError: (error: any) => {
@@ -107,7 +107,7 @@ export function FarmRegistrationPage() {
               <div>
                 <h2 className="text-2xl font-bold text-green-600 mb-2">Farm Registration Successful!</h2>
                 <p className="text-gray-600 mb-4">
-                  Welcome to RoblePoultryPilot! Your farm "{registeredFarmName}" has been registered successfully.
+                  Welcome to KukuHub! Your farm "{registeredFarmName}" has been registered successfully.
                 </p>
               </div>
               
@@ -155,7 +155,7 @@ export function FarmRegistrationPage() {
             <h1 className="text-4xl font-bold text-gray-900">Farm Registration</h1>
           </div>
           <p className="text-xl text-gray-600">
-            Join the RoblePoultryPilot marketplace and start managing your poultry operations
+            Join the KukuHub marketplace and start managing your poultry operations
           </p>
         </div>
 

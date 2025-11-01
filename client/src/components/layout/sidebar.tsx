@@ -57,7 +57,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
               <Sprout className="text-primary-foreground text-lg" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-foreground">RoblePoultryPilot</h1>
+              <h1 className="text-lg font-semibold text-foreground">KukuHub</h1>
               <p className="text-sm text-muted-foreground">Track & Grow</p>
             </div>
           </div>

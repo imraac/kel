@@ -45,7 +45,7 @@ export default function WelcomePanel({ onDashboardClick }: WelcomePanelProps) {
       default:
         return {
           icon: Users,
-          description: "Welcome to RoblePoultryPilot! Your account is being set up.",
+          description: "Welcome to KukuHub! Your account is being set up.",
           color: "text-gray-600 dark:text-gray-400"
         };
     }

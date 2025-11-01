@@ -44,7 +44,7 @@ export default function CustomerSidebar({ isOpen }: CustomerSidebarProps) {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                RoblePoultryPilot
+                KukuHub
               </h2>
               <p className="text-sm text-muted-foreground">Customer Portal</p>
             </div>

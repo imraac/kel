@@ -70,7 +70,7 @@ export function FarmSetupPage() {
       setRegisteredFarmName((farm as any)?.name || 'your farm');
       setIsSuccess(true);
       toast({
-        title: "🎉 Welcome to RoblePoultryPilot!",
+        title: "🎉 Welcome to KukuHub!",
         description: `Your farm setup is complete. Let's start managing your poultry operations!`,
       });
     },
@@ -203,7 +203,7 @@ export function FarmSetupPage() {
             </div>
             <div className="text-left">
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
-                Welcome to RoblePoultryPilot!
+                Welcome to KukuHub!
               </h1>
               <p className="text-xl text-gray-600 dark:text-gray-300 mt-2">
                 Let's set up your farm and unlock powerful management tools
@@ -636,7 +636,7 @@ export function FarmSetupPage() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-normal">
-                            I'm ready to join RoblePoultryPilot and accept the Terms of Service and Privacy Policy *
+                            I'm ready to join KukuHub and accept the Terms of Service and Privacy Policy *
                           </FormLabel>
                           <p className="text-xs text-gray-500 dark:text-gray-500">
                             By setting up your farm, you're agreeing to our marketplace terms and data handling practices
