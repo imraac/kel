@@ -152,7 +152,7 @@ export default function CustomerDashboard() {
             <Card>
               <CardContent className="text-center py-12">
                 <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold mb-2">Welcome to RoblePoultryPilot</h2>
+                <h2 className="text-2xl font-semibold mb-2">Welcome to KukuHub</h2>
                 <p className="text-muted-foreground mb-6">
                   Complete your customer profile to start placing orders and tracking deliveries.
                 </p>

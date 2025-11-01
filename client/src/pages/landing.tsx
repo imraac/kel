@@ -22,7 +22,7 @@ export default function Landing() {
             </div>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
-            RoblePoultryPilot
+            KukuHub
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Comprehensive poultry farm management platform with integrated marketplace for tracking layers production from chicks to eggs, customer interactions, and order management.
@@ -110,8 +110,8 @@ export default function Landing() {
         {/* Key Benefits */}
         <Card className="max-w-4xl mx-auto" data-testid="card-benefits">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Why Choose RoblePoultryPilot?</CardTitle>
-            <CardDescription>Built specifically for Kenyan poultry farmers managing large-scale layer operations</CardDescription>
+            <CardTitle className="text-2xl">Why Choose KukuHub?</CardTitle>
+            <CardDescription>Built specifically for East African poultry farmers managing large-scale layer operations</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
