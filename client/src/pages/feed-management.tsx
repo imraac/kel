@@ -115,7 +115,9 @@ export default function FeedManagement() {
   const { data: feedInventory, error: inventoryError } = useQuery({
     queryKey: ["/api/feed-inventory", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/feed-inventory?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/feed-inventory?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch feed inventory');
       return response.json();
     },
@@ -125,7 +127,9 @@ export default function FeedManagement() {
   const { data: dailyRecords, error: recordsError } = useQuery({
     queryKey: ["/api/daily-records", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch daily records');
       return response.json();
     },
