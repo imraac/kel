@@ -70,6 +70,26 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Category Trends Chart Implementation (November 10, 2025)
+- **NEW FEATURE**: Implemented Category Trends stacked bar chart on Expenses page
+- **Visualization**: Stacked BarChart showing last 6 months of spending by category
+- **Categories**: Feed, Medication, Labor, Utilities, Equipment, Other (dynamically detected)
+- **Data Processing**:
+  - UTC-consistent date handling with `getMonthKey()` and `formatMonthDisplay()`
+  - Aggregates expenses by month AND category
+  - Zero-fills missing categories per month for continuous visualization
+  - Last 6 calendar months vs 12 months for Expense Trends
+- **Chart Features**:
+  - Stacked bars (stackId="a") with distinct colors per category
+  - Y-axis in thousands format (e.g., "100k", "1400k")
+  - X-axis shows month abbreviations (e.g., "Nov", "Dec")
+  - Interactive tooltip with currency formatting (KSh)
+  - Legend with capitalized category names
+  - Colors use theme CSS variables (chart-1 through chart-5, muted for "other")
+- **Empty State**: Displays helpful message when no expense data exists
+- **E2E Tested**: Playwright test verified chart rendering, stacking, tooltips, and data continuity
+- **Location**: Expenses page → Category tab (data-testid="card-category-trends")
+
 ### Expense Trends & Production Trends Charts Implementation (November 10, 2025)
 - **NEW FEATURE**: Implemented standalone chart visualizations for Expense Trends and Production Trends pages
 - **Expense Trends Chart (Expenses Page)**:
