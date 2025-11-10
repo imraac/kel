@@ -40,11 +40,20 @@ interface BreakEvenMetrics {
     dateRange: { startDate: string; endDate: string };
   };
   derivedValues?: {
-    averagePrice: number;
-    averageUnitVariableCost: number;
-    averageFixedCostsPerMonth: number;
-    averageMonthlyUnits: number;
-    calculatedGrowthRate: number;
+    price: number;
+    unitVariableCost: number;
+    fixedCostsPerMonth: number;
+    initialUnits: number;
+    growthRate: number;
+    seasonalityFactors: number[];
+  };
+  dataQuality?: {
+    hasSufficientData: boolean;
+    monthsWithSales: number;
+    monthsWithExpenses: number;
+    totalSales: number;
+    totalExpenses: number;
+    warnings: string[];
   };
   contributionMargin?: number;
   contributionMarginRatio?: number;
@@ -64,6 +73,23 @@ interface BreakEvenMetrics {
   }>;
 }
 
+// Adapter: Map API response to UI-friendly field names at component boundary
+function mapBreakEvenMetrics(raw: BreakEvenMetrics | undefined) {
+  if (!raw) return undefined;
+  
+  return {
+    ...raw,
+    derivedValues: raw.derivedValues ? {
+      ...raw.derivedValues,
+      averagePrice: raw.derivedValues.price,
+      averageUnitVariableCost: raw.derivedValues.unitVariableCost,
+      averageFixedCostsPerMonth: raw.derivedValues.fixedCostsPerMonth,
+      averageMonthlyUnits: raw.derivedValues.initialUnits,
+      calculatedGrowthRate: raw.derivedValues.growthRate,
+    } : undefined
+  };
+}
+
 export default function BreakEvenAnalysis() {
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -71,11 +97,14 @@ export default function BreakEvenAnalysis() {
   const { activeFarmId, hasActiveFarm } = useFarmContext();
 
   // Fetch auto-calculated metrics with rolling window
-  const { data: metrics, isLoading } = useQuery<BreakEvenMetrics>({
+  const { data: rawMetrics, isLoading } = useQuery<BreakEvenMetrics>({
     queryKey: [`/api/breakeven/metrics?months=${rollingWindow}&farmId=${activeFarmId}`],
     enabled: hasActiveFarm, // Only fetch when farm is selected
     refetchOnWindowFocus: true, // Auto-refresh when user returns from linked pages
   });
+  
+  // Map API response to UI-friendly field names
+  const metrics = mapBreakEvenMetrics(rawMetrics);
 
   // Download CSV
   const downloadCSV = () => {
@@ -110,11 +139,20 @@ export default function BreakEvenAnalysis() {
     if (metrics.derivedValues) {
       summaryRows.push(
         ["DERIVED VALUES"],
-        ["Average Price/Crate", `$${metrics.derivedValues.averagePrice.toFixed(2)}`],
-        ["Avg Variable Cost/Crate", `$${metrics.derivedValues.averageUnitVariableCost.toFixed(2)}`],
-        ["Avg Fixed Costs/Month", `$${metrics.derivedValues.averageFixedCostsPerMonth.toFixed(2)}`],
-        ["Avg Monthly Units", metrics.derivedValues.averageMonthlyUnits.toString()],
-        ["Calculated Growth Rate", `${metrics.derivedValues.calculatedGrowthRate.toFixed(2)}%`]
+        ["Average Price/Crate", `$${metrics.derivedValues.price.toFixed(2)}`],
+        ["Avg Variable Cost/Crate", `$${metrics.derivedValues.unitVariableCost.toFixed(2)}`],
+        ["Avg Fixed Costs/Month", `$${metrics.derivedValues.fixedCostsPerMonth.toFixed(2)}`],
+        ["Avg Monthly Units", metrics.derivedValues.initialUnits.toString()],
+        ["Calculated Growth Rate", `${metrics.derivedValues.growthRate.toFixed(2)}%`]
+      );
+    }
+    
+    // Add data quality warnings if they exist
+    if (metrics.dataQuality?.warnings && metrics.dataQuality.warnings.length > 0) {
+      summaryRows.push(
+        [""],
+        ["DATA QUALITY WARNINGS"],
+        ...metrics.dataQuality.warnings.map(w => ["⚠", w])
       );
     }
 
@@ -273,6 +311,23 @@ export default function BreakEvenAnalysis() {
                 <strong>Auto-Calculated:</strong> Analyzing {metrics.dataSource.monthsAnalyzed} months 
                 ({metrics.dataSource.salesRecords} sales records, {metrics.dataSource.expenseRecords} expense records)
                 from {new Date(metrics.dataSource.dateRange.startDate).toLocaleDateString()} to {new Date(metrics.dataSource.dateRange.endDate).toLocaleDateString()}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Data Quality Warnings */}
+          {metrics?.dataQuality?.warnings && metrics.dataQuality.warnings.length > 0 && (
+            <Alert variant="destructive" data-testid="alert-data-quality-warnings">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Data Quality Issues:</strong>
+                <ul className="mt-2 ml-4 list-disc space-y-1">
+                  {metrics.dataQuality.warnings.map((warning, idx) => (
+                    <li key={idx} data-testid={`text-warning-${idx}`}>
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
               </AlertDescription>
             </Alert>
           )}

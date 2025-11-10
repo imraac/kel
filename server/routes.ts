@@ -24,7 +24,7 @@ import {
 import { z } from "zod";
 import { normalizeNumericFields } from "./utils/numbers";
 import { safeDate } from "./utils/dates";
-import { aggregateByMonth, calculateBreakEven } from "./breakEvenUtils";
+import { aggregateByMonth, calculateBreakEven, autoCalculateBreakEvenParams } from "./breakEvenUtils";
 
 // Farm context resolution helper - handles admin vs non-admin users with flockId fallback
 async function requireFarmContext(req: any, currentUser: any): Promise<string> {
@@ -1014,11 +1014,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get rolling window period from query (default to 6 months)
-      const months = parseInt(req.query.months as string) || 6;
+      const timeframeMonths = parseInt(req.query.months as string) || 6;
       
       // Calculate date range for historical data
       const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(new Date().setMonth(new Date().getMonth() - months)).toISOString().split('T')[0];
+      const startDate = new Date(new Date().setMonth(new Date().getMonth() - timeframeMonths)).toISOString().split('T')[0];
       
       // Fetch farm-scoped sales and expenses
       const sales = await storage.getSalesByDateRange(startDate, endDate);
@@ -1039,37 +1039,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Aggregate by month
-      const monthlyData = aggregateByMonth(farmSales, farmExpenses);
-
-      // Calculate auto-derived metrics from real data
-      const totalRevenue = monthlyData.reduce((sum, m) => sum + m.revenue, 0);
-      const totalUnits = monthlyData.reduce((sum, m) => sum + m.unitsSold, 0);
-      const totalVariableCosts = monthlyData.reduce((sum, m) => sum + m.variableCosts, 0);
-      const totalFixedCosts = monthlyData.reduce((sum, m) => sum + m.fixedCosts, 0);
-
-      // Calculate averages
-      const avgPrice = totalUnits > 0 ? totalRevenue / totalUnits : 0;
-      const avgUnitVariableCost = totalUnits > 0 ? totalVariableCosts / totalUnits : 0;
-      const avgFixedCostsPerMonth = monthlyData.length > 0 ? totalFixedCosts / monthlyData.length : 0;
-      const avgMonthlyUnits = monthlyData.length > 0 ? totalUnits / monthlyData.length : 0;
-
-      // Calculate growth rate (CAGR from monthly data)
-      let growthRate = 0;
-      if (monthlyData.length >= 2) {
-        const firstMonthUnits = monthlyData[0].unitsSold || 1;
-        const lastMonthUnits = monthlyData[monthlyData.length - 1].unitsSold || 1;
-        const monthsElapsed = monthlyData.length - 1;
-        growthRate = monthsElapsed > 0 ? Math.pow(lastMonthUnits / firstMonthUnits, 1 / monthsElapsed) - 1 : 0;
-      }
+      // Auto-calculate break-even parameters from historical data
+      const autoParams = autoCalculateBreakEvenParams(farmSales, farmExpenses, timeframeMonths);
 
       // Calculate break-even metrics using auto-derived values
       const metrics = calculateBreakEven({
-        price: avgPrice,
-        unitVariableCost: avgUnitVariableCost,
-        fixedCostsPerMonth: avgFixedCostsPerMonth,
-        initialUnits: avgMonthlyUnits,
-        growthRate,
+        price: autoParams.price,
+        unitVariableCost: autoParams.unitVariableCost,
+        fixedCostsPerMonth: autoParams.fixedCostsPerMonth,
+        initialUnits: autoParams.initialUnits,
+        growthRate: autoParams.growthRate,
         projectionMonths: 12,
       });
       
@@ -1077,18 +1056,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasData: true,
         autoCalculated: true,
         dataSource: {
-          monthsAnalyzed: months,
+          monthsAnalyzed: timeframeMonths,
           salesRecords: farmSales.length,
           expenseRecords: farmExpenses.length,
           dateRange: { startDate, endDate }
         },
         derivedValues: {
-          averagePrice: Math.round(avgPrice * 100) / 100,
-          averageUnitVariableCost: Math.round(avgUnitVariableCost * 100) / 100,
-          averageFixedCostsPerMonth: Math.round(avgFixedCostsPerMonth * 100) / 100,
-          averageMonthlyUnits: Math.round(avgMonthlyUnits),
-          calculatedGrowthRate: Math.round(growthRate * 10000) / 100, // As percentage
+          price: Math.round(autoParams.price * 100) / 100,
+          unitVariableCost: Math.round(autoParams.unitVariableCost * 100) / 100,
+          fixedCostsPerMonth: Math.round(autoParams.fixedCostsPerMonth * 100) / 100,
+          initialUnits: Math.round(autoParams.initialUnits),
+          growthRate: Math.round(autoParams.growthRate * 10000) / 100, // As percentage
+          seasonalityFactors: autoParams.seasonalityFactors,
         },
+        dataQuality: autoParams.dataQuality,
         ...metrics
       });
     } catch (error) {
