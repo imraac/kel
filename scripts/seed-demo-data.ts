@@ -82,7 +82,7 @@ async function seed() {
     // 4. Generate 365 days of Daily Records
     console.log("📝 Generating 365 days of production records...");
     
-    const dailyRecordsData = [];
+    const dailyRecordsData: any[] = [];
     const startDay = 365; // Start from 365 days ago
     
     for (let daysAgo = startDay; daysAgo >= 0; daysAgo--) {
@@ -125,8 +125,8 @@ async function seed() {
       const feedConsumed = (currentBirds * feedPerBird).toFixed(2);
       
       // Temperature and lighting (only relevant during brooding)
-      let temperature = null;
-      let lightingHours = null;
+      let temperature: number | null = null;
+      let lightingHours: number | null = null;
       
       if (flockAgeInDays < 120) {
         // Brooding phase temperatures
@@ -147,8 +147,8 @@ async function seed() {
       const mortalityCount = Math.random() < 0.05 ? Math.floor(Math.random() * 3) : 0;
       
       // Weight tracking (sample every 7 days)
-      let averageWeight = null;
-      let sampleSize = null;
+      let averageWeight: number | null = null;
+      let sampleSize: number | null = null;
       
       if (daysAgo % 7 === 0 && flockAgeInDays >= 7) {
         sampleSize = 50;
@@ -158,7 +158,7 @@ async function seed() {
         } else {
           averageWeight = 1800 + ((flockAgeInDays - 126) / 274) * 200;
         }
-        averageWeight = addVariance(averageWeight, 3).toFixed(2);
+        averageWeight = addVariance(averageWeight, 3);
       }
       
       dailyRecordsData.push({
@@ -172,9 +172,9 @@ async function seed() {
         mortalityReason: mortalityCount > 0 ? "Natural causes / health issues" : null,
         feedConsumed,
         feedType: "Layer Mash",
-        temperature: temperature ? temperature.toFixed(2) : null,
-        lightingHours: lightingHours ? lightingHours.toFixed(2) : null,
-        averageWeight: averageWeight,
+        temperature: temperature !== null ? temperature.toFixed(2) : null,
+        lightingHours: lightingHours !== null ? lightingHours.toFixed(2) : null,
+        averageWeight: averageWeight !== null ? averageWeight.toFixed(2) : null,
         sampleSize: sampleSize,
         notes: null,
         reviewStatus: "approved",
@@ -192,7 +192,7 @@ async function seed() {
     // 5. Generate Sales Records (12 months)
     console.log("💰 Generating 12 months of sales records...");
     
-    const salesData = [];
+    const salesData: any[] = [];
     const customers = [
       "Metro Supermarket",
       "Naivas Stores",
@@ -242,7 +242,7 @@ async function seed() {
     // 6. Generate Expense Records (12 months)
     console.log("💸 Generating 12 months of expense records...");
     
-    const expensesData = [];
+    const expensesData: any[] = [];
     
     for (let monthsAgo = 12; monthsAgo >= 0; monthsAgo--) {
       const expenseDate = getDateDaysAgo(monthsAgo * 30);
@@ -369,7 +369,7 @@ async function seed() {
     // 8. Health Records
     console.log("💉 Creating health records...");
     
-    const healthRecordsData = [
+    const healthRecordsData: any[] = [
       {
         flockId: demoFlock.id,
         recordDate: getDateDaysAgo(350),
