@@ -92,7 +92,9 @@ export default function Reports() {
   const { data: dailyRecords, error: recordsError } = useQuery({
     queryKey: ["/api/daily-records", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch daily records');
       return response.json();
     },
@@ -102,7 +104,9 @@ export default function Reports() {
   const { data: sales, error: salesError } = useQuery({
     queryKey: ["/api/sales", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/sales?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/sales?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch sales');
       return response.json();
     },
@@ -112,7 +116,9 @@ export default function Reports() {
   const { data: expenses, error: expensesError } = useQuery({
     queryKey: ["/api/expenses", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/expenses?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/expenses?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch expenses');
       return response.json();
     },
@@ -122,7 +128,9 @@ export default function Reports() {
   const { data: feedInventory, error: feedError } = useQuery({
     queryKey: ["/api/feed-inventory", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/feed-inventory?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/feed-inventory?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch feed inventory');
       return response.json();
     },
@@ -133,7 +141,9 @@ export default function Reports() {
   const { data: breakEvenMetrics, isLoading: breakEvenLoading } = useQuery<BreakEvenMetrics>({
     queryKey: ["/api/breakeven/metrics", rollingWindow, activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/breakeven/metrics?months=${rollingWindow}&farmId=${activeFarmId}`);
+      const response = await fetch(`/api/breakeven/metrics?months=${rollingWindow}&farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch break-even metrics');
       return response.json();
     },

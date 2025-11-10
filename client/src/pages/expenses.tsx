@@ -80,7 +80,9 @@ export default function Expenses() {
   const { data: expenses = [], error: expensesError } = useQuery<any[]>({
     queryKey: ["/api/expenses", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/expenses?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/expenses?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch expenses');
       return response.json();
     },
@@ -121,8 +123,9 @@ export default function Expenses() {
       await apiRequest("POST", "/api/expenses", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/expenses${activeFarmId ? `?farmId=${activeFarmId}` : ''}`, activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses", activeFarmId] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity", activeFarmId] });
       toast({
         title: "Success",
         description: "Expense recorded successfully",
