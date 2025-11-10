@@ -23,10 +23,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 
@@ -277,6 +280,75 @@ export default function Expenses() {
       month: formatMonthDisplay(monthKey),
       amount: monthlyData[monthKey] || 0,
     }));
+  }, [expenses]);
+
+  // Category trends aggregation (last 6 months by category)
+  const categoryTrendsData = useMemo(() => {
+    const getMonthKey = (date: Date): string => {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      return `${year}-${month}`;
+    };
+
+    const formatMonthDisplay = (monthKey: string): string => {
+      const [year, month] = monthKey.split('-');
+      const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, 1));
+      return date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+    };
+
+    // Calculate last 6 calendar months in UTC
+    const now = new Date();
+    const nowUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const startDate = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth() - 5, 1));
+    
+    const monthKeys: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      const monthDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + i, 1));
+      monthKeys.push(getMonthKey(monthDate));
+    }
+    
+    const startOfTrailingPeriod = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+    const endOfCurrentMonth = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
+    // Aggregate by month AND category
+    const monthCategoryData: { [key: string]: { [category: string]: number } } = {};
+    const allCategories = new Set<string>();
+    
+    if (expenses && expenses.length > 0) {
+      expenses.forEach((expense: any) => {
+        const dateStr = expense.expenseDate;
+        const expenseDate = dateStr.includes('T') 
+          ? new Date(dateStr)
+          : new Date(`${dateStr}T00:00:00Z`);
+        
+        if (expenseDate >= startOfTrailingPeriod && expenseDate <= endOfCurrentMonth) {
+          const monthKey = getMonthKey(expenseDate);
+          const category = expense.category || 'other';
+          allCategories.add(category);
+          
+          if (!monthCategoryData[monthKey]) {
+            monthCategoryData[monthKey] = {};
+          }
+          monthCategoryData[monthKey][category] = 
+            (monthCategoryData[monthKey][category] || 0) + parseFloat(expense.amount || '0');
+        }
+      });
+    }
+
+    // Build final dataset with all categories for each month
+    return monthKeys.map(monthKey => {
+      const dataPoint: any = {
+        monthKey,
+        month: formatMonthDisplay(monthKey),
+      };
+      
+      // Add each category as a separate field
+      allCategories.forEach(category => {
+        dataPoint[category] = monthCategoryData[monthKey]?.[category] || 0;
+      });
+      
+      return dataPoint;
+    });
   }, [expenses]);
 
   return (
@@ -612,13 +684,49 @@ export default function Expenses() {
                     <CardTitle>Category Trends</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-sm text-muted-foreground">Category spending trends</p>
-                        <p className="text-xs text-muted-foreground mt-2">Monthly comparison by category</p>
+                    {categoryTrendsData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <BarChart data={categoryTrendsData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis 
+                            dataKey="month" 
+                            className="text-xs"
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <YAxis 
+                            className="text-xs"
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => `KSh ${value.toLocaleString()}`}
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '6px',
+                            }}
+                          />
+                          <Legend 
+                            wrapperStyle={{ paddingTop: '20px' }}
+                            formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                          />
+                          <Bar dataKey="feed" stackId="a" fill="hsl(var(--chart-1))" />
+                          <Bar dataKey="medication" stackId="a" fill="hsl(var(--chart-2))" />
+                          <Bar dataKey="labor" stackId="a" fill="hsl(var(--chart-3))" />
+                          <Bar dataKey="utilities" stackId="a" fill="hsl(var(--chart-4))" />
+                          <Bar dataKey="equipment" stackId="a" fill="hsl(var(--chart-5))" />
+                          <Bar dataKey="other" stackId="a" fill="hsl(var(--muted))" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-sm text-muted-foreground">No expense data available</p>
+                          <p className="text-xs text-muted-foreground mt-2">Add expenses to see category trends</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
