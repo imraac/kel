@@ -24,6 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Bell, Menu, Plus, ClipboardList, AlertCircle, RefreshCw, Thermometer, Sun, Utensils, Scale } from "lucide-react";
 import { z } from "zod";
 import SimpleQuickEggForm from "@/components/forms/simple-quick-egg-form";
+import SalesForm from "@/components/forms/SalesForm";
 
 // Schema for quick egg entry
 const eggEntrySchema = z.object({
@@ -42,6 +43,7 @@ export default function Home() {
   const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [eggDialogOpen, setEggDialogOpen] = useState(false);
+  const [salesDialogOpen, setSalesDialogOpen] = useState(false);
   const [dailyRecordDialogOpen, setDailyRecordDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -458,6 +460,35 @@ export default function Home() {
                       </DialogDescription>
                     </DialogHeader>
                     <SimpleQuickEggForm onSuccess={() => setEggDialogOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={salesDialogOpen} onOpenChange={setSalesDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="secondary" size="sm" data-testid="button-add-sales">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Quick Sale
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Quick Sales Entry</DialogTitle>
+                      <DialogDescription>
+                        Record a sale quickly from the dashboard
+                      </DialogDescription>
+                    </DialogHeader>
+                    <SalesForm 
+                      mode="dialog"
+                      compact={true}
+                      customerNameRequired={false}
+                      showNotes={false}
+                      onSuccess={() => {
+                        setSalesDialogOpen(false);
+                        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity", activeFarmId] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/sales", activeFarmId] });
+                      }}
+                    />
                   </DialogContent>
                 </Dialog>
                 
