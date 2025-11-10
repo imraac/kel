@@ -167,3 +167,22 @@ Preferred communication style: Simple, everyday language.
 - **Frontend Context Fix**: Fixed FarmContext useEffect dependency array - removed `activeFarmId` to prevent infinite loops when `setActiveFarmId` is called
 - **Proper Multi-Tenant Scoping**: Admin users can now switch farms via dropdown and immediately see data update for the selected farm
 - **Architect Validated**: Comprehensive review confirmed dashboard metrics and activity properly scope to selected farm with no stale data issues
+
+### Complete Farm Switching Fix - All Pages (November 10, 2025)
+- **CRITICAL BUG FIX**: Systematically resolved farm switching not refreshing data across ALL application pages
+- **Root Cause**: Frontend queries missing `activeFarmId` in query keys and `credentials: 'include'` in fetch calls
+- **Complete Fix Applied to 7 Pages**:
+  1. **Egg Production**: All queries now include activeFarmId in keys, credentials in fetches, proper enabled guards
+  2. **Chick Brooding**: Queries and mutation invalidations updated with activeFarmId scoping + credentials
+  3. **Health Records**: Queries and mutation invalidations updated with activeFarmId scoping + credentials
+  4. **Feed Management**: Queries and mutation invalidations updated with activeFarmId scoping + credentials
+  5. **Body Weights**: Queries and mutation invalidations updated with activeFarmId scoping + credentials
+  6. **Expenses**: Queries and mutation invalidations updated with activeFarmId scoping + credentials
+  7. **Reports**: All 5 queries (dailyRecords, sales, expenses, feedInventory, breakEvenMetrics) include activeFarmId + credentials
+- **Consistent Pattern Applied Across All Pages**:
+  - Query keys: `["/api/endpoint", activeFarmId]` for proper cache scoping
+  - Fetch calls: `credentials: 'include'` for session cookie transmission
+  - Enabled conditions: `isAuthenticated && hasActiveFarm && !!activeFarmId`
+  - Mutation invalidations: `{ queryKey: ["/api/endpoint", activeFarmId] }` matching query keys exactly
+- **Impact**: Admin users can now switch farms via dropdown and ALL pages immediately refresh with correct farm-scoped data
+- **Architect Validated**: Comprehensive multi-iteration review confirmed all 7 pages have complete, consistent farm switching support with no credential omissions or typos
