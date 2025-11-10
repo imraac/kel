@@ -70,6 +70,30 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Production Trends & Forecasts Charts Implementation (November 2025)
+- **NEW FEATURE**: Fully implemented Production Trends and Trends & Forecasts charts with actual data visualizations
+- **Production Trends Chart**: 
+  - LineChart showing daily egg production and crates over selected period (30/60/90 days)
+  - Filters data by selectedPeriod using stable date processing
+  - Empty state displayed when no production data available
+- **Trends & Forecasts Tab**:
+  - Production Trend Analysis: BarChart displaying monthly egg production (last 12 months)
+  - Revenue Forecasting: LineChart with revenue/expenses/profit including 3-month forecast
+  - Forecast data marked with dashed lines for clear distinction
+  - Dynamic Key Insights section with calculated metrics
+- **Data Processing Enhancements**:
+  - Normalized month keys to stable yyyy-mm format for reliable sorting
+  - Added division-by-zero guards for production change calculation
+  - Growth rate calculation protects against zero/missing revenue
+  - Monthly aggregation from daily records, sales, and expenses
+- **Demo Data Improvements (seed script)**:
+  - Gradual price growth: 380 → 405 KES over 52 weeks (6.5% annual growth)
+  - Reduced price variance to ±5% for stability
+  - Reduced feed expenses from 250k to 220k per week with tighter variance
+  - Ensures consistently profitable trends with positive break-even projections
+- **Architect Validated**: Comprehensive review confirmed data processing correctness, chart implementations, and profitability logic
+- **E2E Tested**: Playwright tests passed verifying chart rendering, tab navigation, and no NaN/Infinity values in UI
+
 ### Farm Selector Multi-Tenant Data Isolation Fix (November 2025)
 - **CRITICAL BUG FIX**: Resolved farm selector not updating dashboard data when admins switch farms
 - **Backend Storage Updates**: Updated `getDashboardMetrics()` and `getRecentActivity()` to require and filter by farmId parameter
