@@ -254,9 +254,9 @@ export default function FeedManagement() {
       await apiRequest("POST", "/api/feed-inventory", feedDataWithFarm);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/feed-inventory?farmId=${activeFarmId}`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/feed-inventory", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity", activeFarmId] });
       toast({
         title: "Success",
         description: "Feed inventory added successfully",
