@@ -33,10 +33,26 @@ interface FarmProviderProps {
   children: React.ReactNode;
 }
 
+const FARM_SELECTION_KEY = 'kukuhub_selected_farm_id';
+
 export function FarmProvider({ children }: FarmProviderProps) {
   const { user, isAuthenticated } = useAuth();
+  // Don't hydrate from localStorage on initial load to prevent unauthorized access
+  // The useEffect will restore it after role validation
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Wrapper for setActiveFarmId that persists to localStorage
+  const setActiveFarmIdWithPersistence = (farmId: string | null) => {
+    setActiveFarmId(farmId);
+    if (typeof window !== 'undefined') {
+      if (farmId) {
+        localStorage.setItem(FARM_SELECTION_KEY, farmId);
+      } else {
+        localStorage.removeItem(FARM_SELECTION_KEY);
+      }
+    }
+  };
 
   // Fetch farms for admin users or user's farm for non-admin users
   const { data: farms = [], isLoading } = useQuery<Farm[]>({
@@ -47,38 +63,51 @@ export function FarmProvider({ children }: FarmProviderProps) {
   // Automatically set active farm based on user role
   useEffect(() => {
     if (!user || !isAuthenticated) {
-      setActiveFarmId(null);
+      setActiveFarmIdWithPersistence(null);
       setError(null);
       return;
     }
 
     if (user.role === 'admin') {
-      // Admin users: only auto-select if no farm is selected
+      // Admin users: restore from localStorage or auto-select
       if (!activeFarmId && farms.length > 0) {
-        // Auto-select the first available farm for admin users
-        setActiveFarmId(farms[0].id);
-        setError(null);
-      } else if (activeFarmId && !farms.some(farm => farm.id === activeFarmId)) {
-        // Selected farm no longer exists, reset to first farm
-        if (farms.length > 0) {
-          setActiveFarmId(farms[0].id);
+        // Try to restore last selected farm from localStorage
+        const savedFarmId = typeof window !== 'undefined' ? localStorage.getItem(FARM_SELECTION_KEY) : null;
+        
+        // Validate saved farm exists in current farm list
+        if (savedFarmId && farms.some(f => f.id === savedFarmId)) {
+          setActiveFarmIdWithPersistence(savedFarmId);
+          setError(null);
         } else {
-          setActiveFarmId(null);
+          // No valid saved farm, prefer Demo Farm or first farm
+          const demoFarm = farms.find(f => f.name.includes('Demo Farm'));
+          const selectedFarm = demoFarm || farms[0];
+          setActiveFarmIdWithPersistence(selectedFarm.id);
+          setError(null);
+        }
+      } else if (activeFarmId && !farms.some(farm => farm.id === activeFarmId)) {
+        // Selected farm no longer exists (e.g., deleted), reset to Demo Farm or first farm
+        if (farms.length > 0) {
+          const demoFarm = farms.find(f => f.name.includes('Demo Farm'));
+          const selectedFarm = demoFarm || farms[0];
+          setActiveFarmIdWithPersistence(selectedFarm.id);
+        } else {
+          setActiveFarmIdWithPersistence(null);
         }
         setError(null);
       }
     } else if (user.role === 'customer') {
-      // Customer users: no farm needed
-      setActiveFarmId(null);
+      // Customer users: no farm needed, clear any persisted farm
+      setActiveFarmIdWithPersistence(null);
       setError(null);
     } else {
       // Non-admin farm users: use their assigned farmId
       if (user.farmId) {
-        setActiveFarmId(user.farmId);
+        setActiveFarmIdWithPersistence(user.farmId);
         setError(null);
       } else {
         setError('You are not associated with any farm. Please contact an administrator.');
-        setActiveFarmId(null);
+        setActiveFarmIdWithPersistence(null);
       }
     }
     // Note: activeFarmId intentionally NOT in dependency array to prevent loops
@@ -89,7 +118,7 @@ export function FarmProvider({ children }: FarmProviderProps) {
 
   const contextValue: FarmContextValue = {
     activeFarmId,
-    setActiveFarmId,
+    setActiveFarmId: setActiveFarmIdWithPersistence,
     farms,
     isLoading,
     error,
