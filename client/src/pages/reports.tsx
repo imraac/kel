@@ -266,7 +266,7 @@ export default function Reports() {
         ["Avg Variable Cost/Crate", `${formatCurrency(breakEvenMetrics.derivedValues.averageUnitVariableCost)}`],
         ["Avg Fixed Costs/Month", `${formatCurrency(breakEvenMetrics.derivedValues.averageFixedCostsPerMonth)}`],
         ["Avg Monthly Units", breakEvenMetrics.derivedValues.averageMonthlyUnits.toString()],
-        ["Calculated Growth Rate", `${breakEvenMetrics.derivedValues.calculatedGrowthRate.toFixed(2)}%`]
+        ["Calculated Growth Rate", `${(breakEvenMetrics.derivedValues.calculatedGrowthRate ?? 0).toFixed(2)}%`]
       );
     }
 
@@ -1106,7 +1106,7 @@ export default function Reports() {
                             </CardHeader>
                             <CardContent>
                               <div className="text-xl font-bold" data-testid="text-growth-rate">
-                                {breakEvenMetrics.derivedValues.calculatedGrowthRate.toFixed(2)}%
+                                {(breakEvenMetrics.derivedValues.calculatedGrowthRate ?? 0).toFixed(2)}%
                               </div>
                             </CardContent>
                           </Card>

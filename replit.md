@@ -102,6 +102,15 @@ Preferred communication style: Simple, everyday language.
 - **Architect Validated**: Both chart implementations reviewed and approved with UTC consistency patterns
 - **Visual Consistency**: Charts use HSL CSS variables, ResponsiveContainer, CartesianGrid, proper tooltips and legends
 
+### Authentication Fix - Email Unique Constraint Removed (November 10, 2025)
+- **CRITICAL BUG FIX**: Removed `.unique()` constraint from `users.email` field
+- **Root Cause**: OIDC identity is determined by `sub` claim (maps to `users.id`), not email
+- **Issue**: Multiple OIDC identities with same email caused duplicate key violation and server crash
+- **Solution**: Email can now be duplicated; `users.id` (OIDC sub) is sole unique identifier
+- **Migration**: Applied via `npm run db:push --force`
+- **Impact**: Prevents authentication crashes, aligns with OIDC best practices
+- **Storage**: `upsertUser` already correctly used `target: users.id` (no changes needed)
+
 ### Production Trends & Forecasts Charts Implementation (November 2025)
 - **NEW FEATURE**: Fully implemented Production Trends and Trends & Forecasts charts with actual data visualizations
 - **Production Trends Chart**: 
