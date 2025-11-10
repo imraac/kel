@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useFarmContext } from "@/contexts/FarmContext";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import SimpleFlockForm from "@/components/forms/simple-flock-form";
 export default function ChickBrooding() {
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { activeFarmId, hasActiveFarm } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const [flockDialogOpen, setFlockDialogOpen] = useState(false);
@@ -52,8 +54,8 @@ export default function ChickBrooding() {
         description: "The flock has been successfully deactivated and hidden from the list.",
       });
       // Invalidate queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/flocks", { includeDeactivated: true }] });
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks", { includeDeactivated: true }, activeFarmId] });
     },
     onError: (error: any) => {
       toast({
@@ -79,8 +81,8 @@ export default function ChickBrooding() {
         description: "The flock has been successfully reactivated and restored to active status.",
       });
       // Invalidate queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/flocks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/flocks", { includeDeactivated: true }] });
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/flocks", { includeDeactivated: true }, activeFarmId] });
     },
     onError: (error: any) => {
       toast({
@@ -111,15 +113,22 @@ export default function ChickBrooding() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: flocks = [], error: flocksError } = useQuery<any[]>({
-    queryKey: ["/api/flocks"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/flocks", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch flocks');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Query for deactivated flocks (admin only)
   const { data: deactivatedFlocks = [], error: deactivatedFlocksError } = useQuery<any[]>({
-    queryKey: ["/api/flocks", { includeDeactivated: true }],
+    queryKey: ["/api/flocks", { includeDeactivated: true }, activeFarmId],
     queryFn: async () => {
-      const response = await fetch('/api/flocks?includeDeactivated=true', {
+      const response = await fetch(`/api/flocks?includeDeactivated=true&farmId=${activeFarmId}`, {
         credentials: 'include',
       });
       if (!response.ok) {
@@ -127,12 +136,19 @@ export default function ChickBrooding() {
       }
       return response.json();
     },
-    enabled: isAuthenticated && user?.role === 'admin',
+    enabled: isAuthenticated && user?.role === 'admin' && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: dailyRecords = [], error: recordsError } = useQuery<any[]>({
-    queryKey: ["/api/daily-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/daily-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch daily records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Handle unauthorized errors

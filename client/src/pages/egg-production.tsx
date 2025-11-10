@@ -43,7 +43,9 @@ export default function EggProduction() {
   const { data: dailyRecords = [], error: recordsError } = useQuery<any[]>({
     queryKey: ["/api/daily-records", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch daily records');
       return response.json();
     },
@@ -53,7 +55,9 @@ export default function EggProduction() {
   const { data: sales = [], error: salesError } = useQuery<any[]>({
     queryKey: ["/api/sales", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/sales?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/sales?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch sales');
       return response.json();
     },
