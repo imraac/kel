@@ -710,12 +710,12 @@ export default function Expenses() {
                             wrapperStyle={{ paddingTop: '20px' }}
                             formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
                           />
-                          <Bar dataKey="feed" stackId="a" fill="hsl(var(--chart-1))" />
-                          <Bar dataKey="medication" stackId="a" fill="hsl(var(--chart-2))" />
-                          <Bar dataKey="labor" stackId="a" fill="hsl(var(--chart-3))" />
-                          <Bar dataKey="utilities" stackId="a" fill="hsl(var(--chart-4))" />
-                          <Bar dataKey="equipment" stackId="a" fill="hsl(var(--chart-5))" />
-                          <Bar dataKey="other" stackId="a" fill="hsl(var(--muted))" />
+                          <Bar dataKey="feed" stackId="a" fill="hsl(25, 95%, 53%)" />
+                          <Bar dataKey="medication" stackId="a" fill="hsl(0, 84%, 60%)" />
+                          <Bar dataKey="labor" stackId="a" fill="hsl(221, 83%, 53%)" />
+                          <Bar dataKey="utilities" stackId="a" fill="hsl(142, 76%, 36%)" />
+                          <Bar dataKey="equipment" stackId="a" fill="hsl(262, 83%, 58%)" />
+                          <Bar dataKey="other" stackId="a" fill="hsl(215, 20%, 65%)" />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
