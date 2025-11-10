@@ -41,13 +41,23 @@ export default function EggProduction() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: dailyRecords = [], error: recordsError } = useQuery<any[]>({
-    queryKey: ["/api/daily-records"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/daily-records", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/daily-records?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch daily records');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   const { data: sales = [], error: salesError } = useQuery<any[]>({
-    queryKey: [`/api/sales?farmId=${activeFarmId}`],
-    enabled: isAuthenticated && hasActiveFarm,
+    queryKey: ["/api/sales", activeFarmId],
+    queryFn: async () => {
+      const response = await fetch(`/api/sales?farmId=${activeFarmId}`);
+      if (!response.ok) throw new Error('Failed to fetch sales');
+      return response.json();
+    },
+    enabled: isAuthenticated && hasActiveFarm && !!activeFarmId,
   });
 
   // Handle unauthorized errors
