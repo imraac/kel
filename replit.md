@@ -70,6 +70,38 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Expense Trends & Production Trends Charts Implementation (November 10, 2025)
+- **NEW FEATURE**: Implemented standalone chart visualizations for Expense Trends and Production Trends pages
+- **Expense Trends Chart (Expenses Page)**:
+  - AreaChart showing monthly expenses for last 12 calendar months
+  - Full UTC consistency using `getUTCFullYear()` and `getUTCMonth()` for date processing
+  - Date range filtering with explicit start/end boundaries in UTC
+  - Zero-filling for missing months to ensure continuous 12-month view
+  - Conditional date parsing handling both YYYY-MM-DD and ISO timestamp formats
+  - Empty state displayed when no expense data available
+  - Data Structure: `{ monthKey: string, month: string, amount: number }`
+- **Production Trends Chart (Egg Production Page)**:
+  - LineChart showing daily egg collection and crate production for last 30 days
+  - Dual-metric visualization: "Eggs Collected" (primary color) and "Crates Produced" (chart-2 color)
+  - Full UTC consistency for daily date processing using `getUTCDate()` in addition to year/month
+  - Daily aggregation: Sums multiple records per day before charting
+  - Zero-filling for missing days in 30-day window
+  - Explicit `hasProductionActivity` flag to detect all-zero data
+  - Empty state with informative message when no production data exists
+  - Data Structure: `{ dateKey: string, date: string, eggs: number, crates: number }`
+- **UTC Consistency Pattern** (applied to both charts after multiple iterations):
+  - All Date objects created with `Date.UTC()` for boundary calculations
+  - All getters use UTC versions: `getUTCFullYear()`, `getUTCMonth()`, `getUTCDate()`
+  - Date parsing differentiates: `dateStr.includes('T') ? new Date(dateStr) : new Date(\`${dateStr}T00:00:00Z\`)`
+  - Display formatting uses explicit `timeZone: 'UTC'` option
+  - Prevents timezone drift, boundary exclusion, and cross-timezone inconsistencies
+- **Authentication Bug Fix**:
+  - Fixed `upsertUser` function to use `target: users.id` instead of `users.email`
+  - Prevents duplicate key errors when same OIDC user logs in multiple times
+  - OIDC `sub` claim maps to primary key `users.id`
+- **Architect Validated**: Both chart implementations reviewed and approved with UTC consistency patterns
+- **Visual Consistency**: Charts use HSL CSS variables, ResponsiveContainer, CartesianGrid, proper tooltips and legends
+
 ### Production Trends & Forecasts Charts Implementation (November 2025)
 - **NEW FEATURE**: Fully implemented Production Trends and Trends & Forecasts charts with actual data visualizations
 - **Production Trends Chart**: 
