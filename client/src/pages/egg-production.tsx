@@ -457,18 +457,18 @@ export default function EggProduction() {
                           <Line 
                             type="monotone" 
                             dataKey="eggs" 
-                            stroke="hsl(var(--primary))" 
-                            strokeWidth={2}
+                            stroke="hsl(221, 83%, 53%)" 
+                            strokeWidth={2.5}
                             name="Eggs Collected"
-                            dot={{ fill: 'hsl(var(--primary))' }}
+                            dot={false}
                           />
                           <Line 
                             type="monotone" 
                             dataKey="crates" 
-                            stroke="hsl(var(--chart-2))" 
-                            strokeWidth={2}
+                            stroke="hsl(142, 76%, 36%)" 
+                            strokeWidth={2.5}
                             name="Crates Produced"
-                            dot={{ fill: 'hsl(var(--chart-2))' }}
+                            dot={false}
                           />
                         </LineChart>
                       </ResponsiveContainer>
