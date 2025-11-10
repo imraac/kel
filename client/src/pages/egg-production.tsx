@@ -19,7 +19,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 export default function EggProduction() {
   const { toast } = useToast();
   const { isLoading, isAuthenticated } = useAuth();
-  const { activeFarmId, hasActiveFarm } = useFarmContext();
+  const { activeFarmId, hasActiveFarm, farms, setActiveFarmId } = useFarmContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
@@ -119,6 +119,10 @@ export default function EggProduction() {
   });
   const weekRevenue = weekSales.reduce((sum: number, sale: any) => sum + parseFloat(sale.totalAmount || '0'), 0);
 
+  // Get current farm name and demo farm info for empty state guidance
+  const currentFarm = farms.find(f => f.id === activeFarmId);
+  const demoFarm = farms.find(f => f.name.includes('Demo Farm'));
+
   // Daily production trends (last 30 days) with UTC consistency
   const dailyProductionTrends = useMemo(() => {
     // Helper to get stable date key (yyyy-mm-dd format) using UTC
@@ -215,7 +219,14 @@ export default function EggProduction() {
                 <Menu className="h-5 w-5" />
               </button>
               <div>
-                <h2 className="text-xl font-semibold text-foreground">Egg Production</h2>
+                <div className="flex items-center gap-3 mb-1">
+                  <h2 className="text-xl font-semibold text-foreground">Egg Production</h2>
+                  {currentFarm && (
+                    <Badge variant={currentFarm.name.includes('Demo') ? 'default' : 'outline'} className="text-xs" data-testid="badge-current-farm">
+                      {currentFarm.name}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">Track daily egg collection and sales</p>
               </div>
             </div>
@@ -393,8 +404,36 @@ export default function EggProduction() {
                   {recentSales.length === 0 ? (
                     <div className="text-center py-8">
                       <DollarSign className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No sales records found</p>
-                      <p className="text-sm text-muted-foreground mt-2">Start recording egg sales</p>
+                      <p className="text-lg font-medium text-muted-foreground mb-2">
+                        No Sales Records for {currentFarm?.name || 'Selected Farm'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-6">
+                        This farm doesn't have any sales data yet
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                        {demoFarm && demoFarm.id !== activeFarmId && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setActiveFarmId(demoFarm.id);
+                              toast({
+                                title: "Switched to Demo Farm",
+                                description: "You can now explore sample sales data",
+                              });
+                            }}
+                            data-testid="button-switch-demo"
+                          >
+                            View Demo Farm Data
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => setSaleDialogOpen(true)}
+                          data-testid="button-add-first-sale"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Record First Sale
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
