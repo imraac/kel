@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
 import {
   farms,
   users,
@@ -12,8 +12,8 @@ import {
   products,
 } from "../shared/schema";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle(pool);
+const sql = neon(process.env.DATABASE_URL!);
+const db = drizzle(sql);
 
 console.log("🌱 Starting demo data seed...");
 
@@ -501,8 +501,6 @@ async function seed() {
   } catch (error) {
     console.error("❌ Error seeding demo data:", error);
     throw error;
-  } finally {
-    await pool.end();
   }
 }
 
