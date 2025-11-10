@@ -206,27 +206,31 @@ async function seed() {
       "Grace Wanjiru",
     ];
     
-    // Generate weekly sales for 12 months (52 weeks)
+    // Generate frequent sales for 12 months (52 weeks)
     // Gradual price increase over time (5-8% growth)
     const basePrice = 380; // Starting price KES
     const totalWeeks = 52;
     
     for (let weeksAgo = 52; weeksAgo >= 0; weeksAgo--) {
-      const saleDate = getDateDaysAgo(weeksAgo * 7);
-      const flockAgeAtSale = 450 - (weeksAgo * 7);
+      const weekStartDay = weeksAgo * 7;
+      const flockAgeAtWeekStart = 450 - weekStartDay;
       
       // Skip sales before production starts
-      if (flockAgeAtSale < 140) continue;
+      if (flockAgeAtWeekStart < 140) continue;
       
       // Calculate progressive price (5-8% increase over the year)
       const weekNumber = totalWeeks - weeksAgo;
       const priceGrowthFactor = 1 + (weekNumber / totalWeeks) * 0.065; // 6.5% average growth
       const baseWeekPrice = basePrice * priceGrowthFactor;
       
-      // Number of sales per week (1-3)
-      const salesThisWeek = Math.floor(Math.random() * 3) + 1;
+      // Number of sales per week (2-4 for better distribution)
+      const salesThisWeek = Math.floor(Math.random() * 3) + 2;
       
       for (let s = 0; s < salesThisWeek; s++) {
+        // Spread sales across the week (days 0-6)
+        const dayOffset = Math.floor((s / salesThisWeek) * 7);
+        const saleDate = getDateDaysAgo(weekStartDay + dayOffset);
+        
         const cratesSold = Math.floor(50 + Math.random() * 150); // 50-200 crates
         const pricePerCrate = addVariance(baseWeekPrice, 5); // Only 5% variance to keep stable
         const totalAmount = cratesSold * pricePerCrate;
@@ -248,17 +252,30 @@ async function seed() {
     await db.insert(sales).values(salesData);
     console.log(`✅ Created ${salesData.length} sales records`);
 
-    // 6. Generate Expense Records (12 months)
-    console.log("💸 Generating 12 months of expense records...");
+    // 6. Generate Expense Records (13 months for gap-free coverage)
+    console.log("💸 Generating 13 months of expense records...");
     
     const expensesData: any[] = [];
     
-    for (let monthsAgo = 12; monthsAgo >= 0; monthsAgo--) {
-      const expenseDate = getDateDaysAgo(monthsAgo * 30);
+    // Helper to get first day of month N months ago in UTC
+    function getFirstDayOfMonthAgo(monthsAgo: number): string {
+      const date = new Date();
+      date.setUTCMonth(date.getUTCMonth() - monthsAgo);
+      date.setUTCDate(1);
+      return date.toISOString().split('T')[0];
+    }
+    
+    for (let monthsAgo = 13; monthsAgo >= 0; monthsAgo--) {
+      const monthStartDate = getFirstDayOfMonthAgo(monthsAgo);
       
       // Feed expenses (weekly) - reduced variance for stability
+      // Generate 4 weekly feed purchases within this calendar month
       for (let week = 0; week < 4; week++) {
-        const weekDate = getDateDaysAgo(monthsAgo * 30 + week * 7);
+        // Calculate date offset from month start (week 0, 7, 14, 21 days)
+        const date = new Date(monthStartDate);
+        date.setUTCDate(date.getUTCDate() + (week * 7));
+        const weekDate = date.toISOString().split('T')[0];
+        
         expensesData.push({
           farmId: demoFarm.id,
           expenseDate: weekDate,
@@ -275,7 +292,7 @@ async function seed() {
       // Labor costs (monthly)
       expensesData.push({
         farmId: demoFarm.id,
-        expenseDate,
+        expenseDate: monthStartDate,
         userId: demoUser.id,
         category: "labor",
         description: "Staff salaries - 5 workers",
@@ -288,7 +305,7 @@ async function seed() {
       // Utilities (monthly)
       expensesData.push({
         farmId: demoFarm.id,
-        expenseDate,
+        expenseDate: monthStartDate,
         userId: demoUser.id,
         category: "utilities",
         description: "Electricity and water bills",
@@ -302,7 +319,7 @@ async function seed() {
       if (monthsAgo % 3 === 0) {
         expensesData.push({
           farmId: demoFarm.id,
-          expenseDate,
+          expenseDate: monthStartDate,
           userId: demoUser.id,
           category: "medication",
           description: "Vaccination and veterinary supplies",
@@ -317,7 +334,7 @@ async function seed() {
       if (Math.random() < 0.3) {
         expensesData.push({
           farmId: demoFarm.id,
-          expenseDate,
+          expenseDate: monthStartDate,
           userId: demoUser.id,
           category: "equipment",
           description: "Equipment repair and maintenance",
@@ -332,7 +349,7 @@ async function seed() {
       if (Math.random() < 0.4) {
         expensesData.push({
           farmId: demoFarm.id,
-          expenseDate,
+          expenseDate: monthStartDate,
           userId: demoUser.id,
           category: "other",
           description: "Miscellaneous operational expenses",
