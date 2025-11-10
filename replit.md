@@ -69,3 +69,64 @@ Preferred communication style: Simple, everyday language.
 - **Development Platform**: Replit
 - **Font Services**: Google Fonts (Architects Daughter, DM Sans, Fira Code, Geist Mono)
 - **Build & Deployment**: Replit hosting
+
+## Recent Changes
+
+### Break-Even Analysis NaN Fix (November 10, 2025)
+- **CRITICAL BUG FIX**: Resolved "KshNaN" display in break-even analysis derived values
+- **Root Cause**: Property name mismatch between backend API response and frontend expectations
+  - Backend returned: `price`, `unitVariableCost`, `fixedCostsPerMonth`, `initialUnits`, `growthRate`
+  - Frontend expected: `averagePrice`, `averageUnitVariableCost`, `averageFixedCostsPerMonth`, `averageMonthlyUnits`, `calculatedGrowthRate`
+- **TypeScript Interface Updates** (client/src/pages/reports.tsx):
+  - Updated `BreakEvenMetrics` interface derivedValues to match backend API properties
+  - Added missing `seasonalityFactors: number[]` field
+  - Added complete `dataQuality` interface with all backend response fields
+- **Defensive Formatting** (formatCurrency function):
+  - Changed signature to accept `number | undefined | null`
+  - Added guard: `if (value == null || !isFinite(value)) return "N/A"`
+  - Prevents NaN, undefined, null, and Infinity from reaching currency formatter
+- **Property Reference Updates**:
+  - Fixed all display cards to use correct property names: `.price`, `.unitVariableCost`, `.fixedCostsPerMonth`, `.initialUnits`, `.growthRate`
+  - Updated CSV export to use correct properties and improved labels
+- **Auto-Recalculation**:
+  - Rolling window period selector properly wired with `setRollingWindow`
+  - Query key includes `rollingWindow`: `["/api/breakeven/metrics", rollingWindow, activeFarmId]`
+  - TanStack Query automatically refetches when period changes (3/6/12 months)
+- **Impact**: Break-even derived values now display actual currency and number values instead of "KshNaN", with automatic recalculation when switching time periods
+- **Architect Validated**: Comprehensive review confirmed interface matches backend contract, defensive guards prevent NaN display, and period selector triggers automatic refetch
+
+### Sales History Empty State & Farm Context UX Improvements (November 10, 2025)
+- **UX ENHANCEMENT**: Improved empty state messaging and farm selection experience for admin users
+- **Context-Aware Empty State** (client/src/pages/egg-production.tsx):
+  - Sales History tab now shows current farm name in empty state: "No Sales Records for [Farm Name]"
+  - Explains why data is missing: "This farm doesn't have any sales data yet"
+  - Provides actionable CTAs:
+    - "View Demo Farm Data" button - switches to Demo Farm and shows toast (only visible when demo farm exists and user is on different farm)
+    - "Record First Sale" button - opens sales dialog to add first sale
+  - Uses FarmContext to dynamically detect current farm and demo farm availability
+- **Farm Indicator Badge** (client/src/pages/egg-production.tsx):
+  - Added badge next to "Egg Production" page title showing current farm name
+  - Uses 'default' variant (highlighted) for Demo Farm
+  - Uses 'outline' variant for other farms
+  - Updates automatically when farm is switched via sidebar selector
+- **FarmContext Persistence & Auto-Selection** (client/src/contexts/FarmContext.tsx):
+  - **localStorage Persistence**: Admin farm selections now persist across page reloads
+  - **Demo Farm Preference**: New admin users automatically land on "🎯 Demo Farm - Sample Data" (if exists) to see example data
+  - **Returning User Experience**: Admin users see their last manually selected farm on subsequent logins
+  - **Security Hardening**:
+    - localStorage only read AFTER role validation (prevents unauthorized farm access during hydration)
+    - Saved farm validated against current farms list before restoration
+    - ALL setActiveFarmId calls use persistence wrapper to keep localStorage in sync
+    - Logout properly clears localStorage to prevent cross-session farm leakage
+  - **Persistence Key**: `kukuhub_selected_farm_id` in localStorage
+  - **Role Handling**:
+    - Admin: Restores last selection (if valid) or prefers Demo Farm, persists manual changes
+    - Customer: Clears localStorage, sets farm to null
+    - Non-admin farm users: Persists their assigned farmId
+- **Impact**: 
+  - Users always know which farm they're viewing (badge indicator)
+  - Clear guidance when viewing farms without data (context-aware empty state)
+  - New admins immediately see sample data instead of empty farms
+  - Farm selections survive page reloads and browser sessions
+  - No unauthorized farm access or stale data across user sessions
+- **Architect Validated**: Three-iteration review confirmed empty state, badge, and FarmContext changes meet requirements without security regressions
