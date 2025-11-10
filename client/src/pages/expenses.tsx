@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useFarmContext } from "@/contexts/FarmContext";
@@ -20,6 +20,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 // Expense form schema - use the actual database schema for consistency
 const expenseFormSchema = insertExpenseSchema.pick({
@@ -210,6 +219,65 @@ export default function Expenses() {
       default: return 'bg-gray-100 text-gray-600';
     }
   };
+
+  // Monthly expense aggregation for trend chart (last 12 calendar months)
+  const monthlyExpenseTrends = useMemo(() => {
+    // Helper to get stable month key (yyyy-mm format) using UTC
+    const getMonthKey = (date: Date): string => {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      return `${year}-${month}`;
+    };
+
+    // Helper to format month for display
+    const formatMonthDisplay = (monthKey: string): string => {
+      const [year, month] = monthKey.split('-');
+      const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, 1));
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', timeZone: 'UTC' });
+    };
+
+    // Calculate trailing 12 calendar months in UTC
+    const now = new Date();
+    const nowUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    
+    // Generate last 12 calendar months using UTC
+    const monthKeys: string[] = [];
+    const startDate = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth() - 11, 1));
+    
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + i, 1));
+      monthKeys.push(getMonthKey(monthDate));
+    }
+    
+    // Date range for filtering (start of first month to end of last month)
+    const startOfTrailingPeriod = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+    const endOfCurrentMonth = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
+    // Aggregate actual expenses by month with explicit date range filtering
+    const monthlyData: { [key: string]: number } = {};
+    if (expenses && expenses.length > 0) {
+      expenses.forEach((expense: any) => {
+        // Parse expense date - handle both date-only (YYYY-MM-DD) and ISO timestamp formats
+        const dateStr = expense.expenseDate;
+        const expenseDate = dateStr.includes('T') 
+          ? new Date(dateStr) // Already has time component
+          : new Date(`${dateStr}T00:00:00Z`); // Add UTC time for date-only strings
+        
+        // Only include if within trailing 12 months date range
+        if (expenseDate >= startOfTrailingPeriod && expenseDate <= endOfCurrentMonth) {
+          const monthKey = getMonthKey(expenseDate);
+          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + parseFloat(expense.amount || '0');
+        }
+      });
+    }
+
+    // Create final dataset with zero-filled months
+    return monthKeys.map(monthKey => ({
+      monthKey,
+      month: formatMonthDisplay(monthKey),
+      amount: monthlyData[monthKey] || 0,
+    }));
+  }, [expenses]);
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -603,13 +671,43 @@ export default function Expenses() {
                     <CardTitle>Expense Trends</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-sm text-muted-foreground">Expense trend analysis</p>
-                        <p className="text-xs text-muted-foreground mt-2">Monthly spending patterns</p>
+                    {monthlyExpenseTrends.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <AreaChart data={monthlyExpenseTrends}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="month" 
+                            tick={{ fontSize: 11 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                          />
+                          <YAxis 
+                            tick={{ fontSize: 11 }}
+                            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => [`KSh ${value.toLocaleString()}`, 'Expenses']}
+                            labelStyle={{ color: '#000' }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="amount" 
+                            stroke="#ef4444" 
+                            fill="#fca5a5" 
+                            name="Monthly Expenses"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-sm text-muted-foreground">No expense data available</p>
+                          <p className="text-xs text-muted-foreground mt-2">Add expenses to see monthly trends</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
