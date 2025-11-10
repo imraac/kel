@@ -299,6 +299,129 @@ export default function Reports() {
     });
   };
 
+  // Prepare daily production chart data (last 30 days)
+  const dailyProductionData = (dailyRecords || [])
+    .filter((record: any) => new Date(record.recordDate) >= periodStart)
+    .sort((a: any, b: any) => new Date(a.recordDate).getTime() - new Date(b.recordDate).getTime())
+    .map((record: any) => ({
+      date: new Date(record.recordDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      eggs: record.eggsCollected || 0,
+      crates: record.cratesProduced || 0,
+    }));
+
+  // Prepare monthly trends data (last 12 months)
+  const monthlyData: { [key: string]: { eggs: number; revenue: number; expenses: number; count: number } } = {};
+  
+  // Helper to get stable month key (yyyy-mm format)
+  const getMonthKey = (dateString: string): string => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  };
+
+  // Helper to format month for display
+  const formatMonthDisplay = (monthKey: string): string => {
+    const [year, month] = monthKey.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+  };
+  
+  // Process daily records for monthly aggregation
+  (dailyRecords || []).forEach((record: any) => {
+    const monthKey = getMonthKey(record.recordDate);
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = { eggs: 0, revenue: 0, expenses: 0, count: 0 };
+    }
+    monthlyData[monthKey].eggs += record.eggsCollected || 0;
+    monthlyData[monthKey].count += 1;
+  });
+
+  // Process sales for monthly revenue
+  (sales || []).forEach((sale: any) => {
+    const monthKey = getMonthKey(sale.saleDate);
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = { eggs: 0, revenue: 0, expenses: 0, count: 0 };
+    }
+    monthlyData[monthKey].revenue += parseFloat(sale.totalAmount || '0');
+  });
+
+  // Process expenses for monthly costs
+  (expenses || []).forEach((expense: any) => {
+    const monthKey = getMonthKey(expense.expenseDate);
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = { eggs: 0, revenue: 0, expenses: 0, count: 0 };
+    }
+    monthlyData[monthKey].expenses += parseFloat(expense.amount || '0');
+  });
+
+  // Convert to array and sort by date (last 12 months)
+  const monthlyTrendsData = Object.entries(monthlyData)
+    .map(([monthKey, data]) => ({
+      monthKey,
+      month: formatMonthDisplay(monthKey),
+      eggs: data.eggs,
+      revenue: data.revenue,
+      expenses: data.expenses,
+      profit: data.revenue - data.expenses,
+    }))
+    .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
+    .slice(-12); // Last 12 months
+
+  // Calculate revenue forecast (next 3 months based on average)
+  const avgMonthlyRevenue = monthlyTrendsData.length > 0 
+    ? monthlyTrendsData.reduce((sum, m) => sum + m.revenue, 0) / monthlyTrendsData.length 
+    : 0;
+  const avgMonthlyExpenses = monthlyTrendsData.length > 0
+    ? monthlyTrendsData.reduce((sum, m) => sum + m.expenses, 0) / monthlyTrendsData.length
+    : 0;
+  
+  // Guard against division by zero and missing data
+  let growthRate = 0.02; // Default 2% growth
+  if (monthlyTrendsData.length > 3) {
+    const firstRevenue = monthlyTrendsData[0].revenue;
+    const lastRevenue = monthlyTrendsData[monthlyTrendsData.length - 1].revenue;
+    if (firstRevenue > 0 && lastRevenue > firstRevenue) {
+      growthRate = ((lastRevenue - firstRevenue) / firstRevenue) / monthlyTrendsData.length;
+    }
+  }
+
+  const forecastData = [];
+  for (let i = 1; i <= 3; i++) {
+    const forecastMonth = new Date();
+    forecastMonth.setMonth(forecastMonth.getMonth() + i);
+    const year = forecastMonth.getFullYear();
+    const month = String(forecastMonth.getMonth() + 1).padStart(2, '0');
+    const monthKey = `${year}-${month}`;
+    
+    const forecastRevenue = avgMonthlyRevenue * (1 + growthRate * i);
+    const forecastExpenses = avgMonthlyExpenses * (1 + growthRate * i * 0.7); // Expenses grow slower
+    forecastData.push({
+      monthKey,
+      month: formatMonthDisplay(monthKey),
+      eggs: 0, // Not forecasting production
+      revenue: forecastRevenue,
+      expenses: forecastExpenses,
+      profit: forecastRevenue - forecastExpenses,
+      isForecast: true,
+    });
+  }
+
+  // Combine historical and forecast data
+  const trendsWithForecast = [
+    ...monthlyTrendsData.map(d => ({ ...d, isForecast: false })),
+    ...forecastData,
+  ];
+
+  // Calculate trend insights
+  const productionChange = monthlyTrendsData.length > 1 
+    ? ((monthlyTrendsData[monthlyTrendsData.length - 1].eggs - monthlyTrendsData[0].eggs) / monthlyTrendsData[0].eggs * 100)
+    : 0;
+  const avgProfit = monthlyTrendsData.length > 0
+    ? monthlyTrendsData.reduce((sum, m) => sum + m.profit, 0) / monthlyTrendsData.length
+    : 0;
+  const isProfitable = avgProfit > 0;
+
   return (
     <div className="min-h-screen flex bg-background">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
@@ -475,15 +598,48 @@ export default function Reports() {
                 <Card data-testid="card-production-trends">
                   <CardHeader>
                     <CardTitle>Production Trends</CardTitle>
+                    <CardDescription>Daily egg production over selected period</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-sm text-muted-foreground">Production trend chart</p>
-                        <p className="text-xs text-muted-foreground mt-2">Daily egg production over selected period</p>
+                    {dailyProductionData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <LineChart data={dailyProductionData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{ fontSize: 12 }}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip />
+                          <Legend />
+                          <Line 
+                            type="monotone" 
+                            dataKey="eggs" 
+                            stroke="#8884d8" 
+                            strokeWidth={2}
+                            name="Eggs Collected"
+                            dot={false}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="crates" 
+                            stroke="#82ca9d" 
+                            strokeWidth={2}
+                            name="Crates Produced"
+                            dot={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-sm text-muted-foreground">No production data available</p>
+                          <p className="text-xs text-muted-foreground mt-2">Add daily records to see trends</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -679,33 +835,113 @@ export default function Reports() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
-                        <div className="text-center">
-                          <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-sm text-muted-foreground">Production trend analysis</p>
-                          <p className="text-xs text-muted-foreground mt-2">Monthly production comparison</p>
+                    {monthlyTrendsData.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div>
+                            <h4 className="text-sm font-medium mb-4">Production Trend Analysis</h4>
+                            <ResponsiveContainer width="100%" height={280}>
+                              <BarChart data={monthlyTrendsData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis 
+                                  dataKey="month" 
+                                  tick={{ fontSize: 11 }}
+                                  angle={-45}
+                                  textAnchor="end"
+                                  height={80}
+                                />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar 
+                                  dataKey="eggs" 
+                                  fill="#8884d8" 
+                                  name="Eggs Produced"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+
+                          <div>
+                            <h4 className="text-sm font-medium mb-4">Revenue Forecasting</h4>
+                            <ResponsiveContainer width="100%" height={280}>
+                              <LineChart data={trendsWithForecast}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis 
+                                  dataKey="month" 
+                                  tick={{ fontSize: 11 }}
+                                  angle={-45}
+                                  textAnchor="end"
+                                  height={80}
+                                />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <Tooltip 
+                                  formatter={(value: number) => `KSh ${value.toLocaleString()}`}
+                                />
+                                <Legend />
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="revenue" 
+                                  stroke="#10b981" 
+                                  strokeWidth={2}
+                                  name="Revenue"
+                                  strokeDasharray={(entry) => entry.isForecast ? "5 5" : "0"}
+                                  dot={{ r: 3 }}
+                                />
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="expenses" 
+                                  stroke="#ef4444" 
+                                  strokeWidth={2}
+                                  name="Expenses"
+                                  strokeDasharray={(entry) => entry.isForecast ? "5 5" : "0"}
+                                  dot={{ r: 3 }}
+                                />
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="profit" 
+                                  stroke="#3b82f6" 
+                                  strokeWidth={2}
+                                  name="Profit"
+                                  strokeDasharray={(entry) => entry.isForecast ? "5 5" : "0"}
+                                  dot={{ r: 3 }}
+                                />
+                                <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                          <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Key Insights</h3>
+                          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                            <li>• Production has {productionChange >= 0 ? 'increased' : 'decreased'} by {Math.abs(productionChange).toFixed(1)}% compared to the first month</li>
+                            <li>• Average monthly profit: KSh {avgProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</li>
+                            <li>• {isProfitable ? 'Farm is operating profitably' : 'Focus on reducing costs to improve profitability'}</li>
+                            <li>• Forecasted revenue shows {growthRate > 0 ? 'positive growth' : 'stable performance'} for next 3 months</li>
+                          </ul>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                          <div className="text-center">
+                            <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <p className="text-sm text-muted-foreground">No production data available</p>
+                            <p className="text-xs text-muted-foreground mt-2">Add monthly records to see trends</p>
+                          </div>
+                        </div>
+
+                        <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                          <div className="text-center">
+                            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <p className="text-sm text-muted-foreground">No sales data available</p>
+                            <p className="text-xs text-muted-foreground mt-2">Add sales records to see forecasts</p>
+                          </div>
                         </div>
                       </div>
-
-                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
-                        <div className="text-center">
-                          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-sm text-muted-foreground">Revenue forecasting</p>
-                          <p className="text-xs text-muted-foreground mt-2">Projected income based on trends</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-                      <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Key Insights</h3>
-                      <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                        <li>• Production has increased by 12% compared to the previous period</li>
-                        <li>• Feed costs are trending downward, improving profit margins</li>
-                        <li>• Mortality rates are within acceptable ranges</li>
-                        <li>• Revenue per bird is above industry average</li>
-                      </ul>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
