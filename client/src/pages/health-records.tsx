@@ -73,7 +73,9 @@ export default function HealthRecords() {
   const { data: healthRecords = [], error: recordsError } = useQuery<any[]>({
     queryKey: ["/api/health-records", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/health-records?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/health-records?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch health records');
       return response.json();
     },
@@ -83,7 +85,9 @@ export default function HealthRecords() {
   const { data: flocks = [], error: flocksError } = useQuery<any[]>({
     queryKey: ["/api/flocks", activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch flocks');
       return response.json();
     },
@@ -127,9 +131,9 @@ export default function HealthRecords() {
       await apiRequest("POST", "/api/health-records", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/health-records"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/health-records", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/activity", activeFarmId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics", activeFarmId] });
       toast({
         title: "Success",
         description: "Health record added successfully",

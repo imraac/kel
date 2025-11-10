@@ -415,7 +415,9 @@ export default function BodyWeights() {
   const { data: flocks = [], isLoading: flocksLoading } = useQuery<Flock[]>({
     queryKey: ['/api/flocks', activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/flocks?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch flocks');
       return response.json();
     },
@@ -426,7 +428,9 @@ export default function BodyWeights() {
   const { data: weightRecords = [], isLoading: recordsLoading } = useQuery<WeightRecord[]>({
     queryKey: ['/api/weight-records', activeFarmId],
     queryFn: async () => {
-      const response = await fetch(`/api/weight-records?farmId=${activeFarmId}`);
+      const response = await fetch(`/api/weight-records?farmId=${activeFarmId}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch weight records');
       return response.json();
     },
@@ -542,7 +546,7 @@ export default function BodyWeights() {
       return apiRequest('POST', '/api/weight-records', payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/weight-records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/weight-records', activeFarmId] });
       toast({
         title: "Success",
         description: "Weight record created successfully",
