@@ -207,6 +207,10 @@ async function seed() {
     ];
     
     // Generate weekly sales for 12 months (52 weeks)
+    // Gradual price increase over time (5-8% growth)
+    const basePrice = 380; // Starting price KES
+    const totalWeeks = 52;
+    
     for (let weeksAgo = 52; weeksAgo >= 0; weeksAgo--) {
       const saleDate = getDateDaysAgo(weeksAgo * 7);
       const flockAgeAtSale = 450 - (weeksAgo * 7);
@@ -214,12 +218,17 @@ async function seed() {
       // Skip sales before production starts
       if (flockAgeAtSale < 140) continue;
       
+      // Calculate progressive price (5-8% increase over the year)
+      const weekNumber = totalWeeks - weeksAgo;
+      const priceGrowthFactor = 1 + (weekNumber / totalWeeks) * 0.065; // 6.5% average growth
+      const baseWeekPrice = basePrice * priceGrowthFactor;
+      
       // Number of sales per week (1-3)
       const salesThisWeek = Math.floor(Math.random() * 3) + 1;
       
       for (let s = 0; s < salesThisWeek; s++) {
         const cratesSold = Math.floor(50 + Math.random() * 150); // 50-200 crates
-        const pricePerCrate = 350 + Math.random() * 100; // 350-450 KES
+        const pricePerCrate = addVariance(baseWeekPrice, 5); // Only 5% variance to keep stable
         const totalAmount = cratesSold * pricePerCrate;
         
         salesData.push({
@@ -247,7 +256,7 @@ async function seed() {
     for (let monthsAgo = 12; monthsAgo >= 0; monthsAgo--) {
       const expenseDate = getDateDaysAgo(monthsAgo * 30);
       
-      // Feed expenses (weekly)
+      // Feed expenses (weekly) - reduced variance for stability
       for (let week = 0; week < 4; week++) {
         const weekDate = getDateDaysAgo(monthsAgo * 30 + week * 7);
         expensesData.push({
@@ -256,7 +265,7 @@ async function seed() {
           userId: demoUser.id,
           category: "feed",
           description: "Layer Mash - 50kg bags x 100",
-          amount: (addVariance(250000, 10)).toFixed(2), // ~250,000 KES per week
+          amount: (addVariance(220000, 5)).toFixed(2), // ~220,000 KES per week, only 5% variance
           supplier: "Unga Feeds Ltd",
           receiptNumber: `RCP-${Date.now()}-${week}`,
           notes: null,

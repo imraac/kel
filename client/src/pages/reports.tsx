@@ -414,9 +414,19 @@ export default function Reports() {
   ];
 
   // Calculate trend insights
-  const productionChange = monthlyTrendsData.length > 1 
-    ? ((monthlyTrendsData[monthlyTrendsData.length - 1].eggs - monthlyTrendsData[0].eggs) / monthlyTrendsData[0].eggs * 100)
-    : 0;
+  let productionChange = 0;
+  if (monthlyTrendsData.length > 1) {
+    const firstEggs = monthlyTrendsData[0].eggs;
+    const lastEggs = monthlyTrendsData[monthlyTrendsData.length - 1].eggs;
+    // Guard against division by zero - if first month has no eggs, use second month or skip calculation
+    if (firstEggs > 0) {
+      productionChange = ((lastEggs - firstEggs) / firstEggs) * 100;
+    } else if (monthlyTrendsData.length > 2 && monthlyTrendsData[1].eggs > 0) {
+      // Use second month as baseline if first has no production
+      productionChange = ((lastEggs - monthlyTrendsData[1].eggs) / monthlyTrendsData[1].eggs) * 100;
+    }
+  }
+  
   const avgProfit = monthlyTrendsData.length > 0
     ? monthlyTrendsData.reduce((sum, m) => sum + m.profit, 0) / monthlyTrendsData.length
     : 0;
