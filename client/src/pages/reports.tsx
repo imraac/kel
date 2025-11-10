@@ -42,11 +42,20 @@ interface BreakEvenMetrics {
     dateRange: { startDate: string; endDate: string };
   };
   derivedValues?: {
-    averagePrice: number;
-    averageUnitVariableCost: number;
-    averageFixedCostsPerMonth: number;
-    averageMonthlyUnits: number;
-    calculatedGrowthRate: number;
+    price: number;
+    unitVariableCost: number;
+    fixedCostsPerMonth: number;
+    initialUnits: number;
+    growthRate: number;
+    seasonalityFactors: number[];
+  };
+  dataQuality?: {
+    hasSufficientData: boolean;
+    monthsWithSales: number;
+    monthsWithExpenses: number;
+    totalSales: number;
+    totalExpenses: number;
+    warnings: string[];
   };
   contributionMargin?: number;
   contributionMarginRatio?: number;
@@ -233,7 +242,11 @@ export default function Reports() {
   };
 
   // Break-even utility functions
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | undefined | null) => {
+    // Guard against undefined, null, NaN, and Infinity
+    if (value == null || !isFinite(value)) {
+      return "N/A";
+    }
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
       currency: "KES",
@@ -272,11 +285,11 @@ export default function Reports() {
     if (breakEvenMetrics.derivedValues) {
       summaryRows.push(
         ["DERIVED VALUES"],
-        ["Average Price/Crate", `${formatCurrency(breakEvenMetrics.derivedValues.averagePrice)}`],
-        ["Avg Variable Cost/Crate", `${formatCurrency(breakEvenMetrics.derivedValues.averageUnitVariableCost)}`],
-        ["Avg Fixed Costs/Month", `${formatCurrency(breakEvenMetrics.derivedValues.averageFixedCostsPerMonth)}`],
-        ["Avg Monthly Units", breakEvenMetrics.derivedValues.averageMonthlyUnits.toString()],
-        ["Calculated Growth Rate", `${(breakEvenMetrics.derivedValues.calculatedGrowthRate ?? 0).toFixed(2)}%`]
+        ["Average Price/Crate", `${formatCurrency(breakEvenMetrics.derivedValues.price)}`],
+        ["Avg Variable Cost/Crate", `${formatCurrency(breakEvenMetrics.derivedValues.unitVariableCost)}`],
+        ["Avg Fixed Costs/Month", `${formatCurrency(breakEvenMetrics.derivedValues.fixedCostsPerMonth)}`],
+        ["Initial Monthly Units", breakEvenMetrics.derivedValues.initialUnits.toString()],
+        ["Growth Rate (CAGR)", `${(breakEvenMetrics.derivedValues.growthRate ?? 0).toFixed(2)}%`]
       );
     }
 
@@ -1064,7 +1077,7 @@ export default function Reports() {
                             </CardHeader>
                             <CardContent>
                               <div className="text-xl font-bold" data-testid="text-avg-price">
-                                {formatCurrency(breakEvenMetrics.derivedValues.averagePrice)}
+                                {formatCurrency(breakEvenMetrics.derivedValues.price)}
                               </div>
                             </CardContent>
                           </Card>
@@ -1077,7 +1090,7 @@ export default function Reports() {
                             </CardHeader>
                             <CardContent>
                               <div className="text-xl font-bold" data-testid="text-avg-variable-cost">
-                                {formatCurrency(breakEvenMetrics.derivedValues.averageUnitVariableCost)}
+                                {formatCurrency(breakEvenMetrics.derivedValues.unitVariableCost)}
                               </div>
                             </CardContent>
                           </Card>
@@ -1090,7 +1103,7 @@ export default function Reports() {
                             </CardHeader>
                             <CardContent>
                               <div className="text-xl font-bold" data-testid="text-avg-fixed-costs">
-                                {formatCurrency(breakEvenMetrics.derivedValues.averageFixedCostsPerMonth)}
+                                {formatCurrency(breakEvenMetrics.derivedValues.fixedCostsPerMonth)}
                               </div>
                             </CardContent>
                           </Card>
@@ -1103,7 +1116,7 @@ export default function Reports() {
                             </CardHeader>
                             <CardContent>
                               <div className="text-xl font-bold" data-testid="text-avg-units">
-                                {breakEvenMetrics.derivedValues.averageMonthlyUnits} crates
+                                {breakEvenMetrics.derivedValues.initialUnits} crates
                               </div>
                             </CardContent>
                           </Card>
@@ -1116,7 +1129,7 @@ export default function Reports() {
                             </CardHeader>
                             <CardContent>
                               <div className="text-xl font-bold" data-testid="text-growth-rate">
-                                {(breakEvenMetrics.derivedValues.calculatedGrowthRate ?? 0).toFixed(2)}%
+                                {(breakEvenMetrics.derivedValues.growthRate ?? 0).toFixed(2)}%
                               </div>
                             </CardContent>
                           </Card>
