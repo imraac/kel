@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useFarmContext } from "@/contexts/FarmContext";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import SimpleEggProductionForm from "@/components/forms/simple-egg-production-form";
 import SalesForm from "@/components/forms/SalesForm";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export default function EggProduction() {
   const { toast } = useToast();
@@ -104,6 +105,75 @@ export default function EggProduction() {
   });
   const weekRevenue = weekSales.reduce((sum: number, sale: any) => sum + parseFloat(sale.totalAmount || '0'), 0);
 
+  // Daily production trends (last 30 days) with UTC consistency
+  const dailyProductionTrends = useMemo(() => {
+    // Helper to get stable date key (yyyy-mm-dd format) using UTC
+    const getDateKey = (date: Date): string => {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Helper to format date for display
+    const formatDateDisplay = (dateKey: string): string => {
+      const [year, month, day] = dateKey.split('-');
+      const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    };
+
+    // Calculate trailing 30 days in UTC
+    const now = new Date();
+    const nowUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    
+    // Generate last 30 days using UTC
+    const dateKeys: string[] = [];
+    const startDate = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth(), nowUTC.getUTCDate() - 29));
+    
+    for (let i = 0; i < 30; i++) {
+      const dayDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate() + i));
+      dateKeys.push(getDateKey(dayDate));
+    }
+    
+    // Date range for filtering
+    const startOfTrailingPeriod = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+    const endOfToday = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth(), nowUTC.getUTCDate(), 23, 59, 59, 999));
+
+    // Aggregate actual production by day with explicit date range filtering
+    const dailyData: { [key: string]: { eggs: number; crates: number } } = {};
+    if (dailyRecords && dailyRecords.length > 0) {
+      dailyRecords.forEach((record: any) => {
+        // Parse record date - handle both date-only (YYYY-MM-DD) and ISO timestamp formats
+        const dateStr = record.recordDate;
+        const recordDate = dateStr.includes('T') 
+          ? new Date(dateStr) // Already has time component
+          : new Date(`${dateStr}T00:00:00Z`); // Add UTC time for date-only strings
+        
+        // Only include if within trailing 30 days date range
+        if (recordDate >= startOfTrailingPeriod && recordDate <= endOfToday) {
+          const dateKey = getDateKey(recordDate);
+          if (!dailyData[dateKey]) {
+            dailyData[dateKey] = { eggs: 0, crates: 0 };
+          }
+          dailyData[dateKey].eggs += record.eggsCollected || 0;
+          dailyData[dateKey].crates += record.cratesProduced || 0;
+        }
+      });
+    }
+
+    // Create final dataset with zero-filled days
+    return dateKeys.map(dateKey => ({
+      dateKey,
+      date: formatDateDisplay(dateKey),
+      eggs: dailyData[dateKey]?.eggs || 0,
+      crates: dailyData[dateKey]?.crates || 0,
+    }));
+  }, [dailyRecords]);
+
+  // Check if there's any actual production data to display
+  const hasProductionActivity = useMemo(() => {
+    return dailyProductionTrends.some(d => d.eggs > 0 || d.crates > 0);
+  }, [dailyProductionTrends]);
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -358,13 +428,51 @@ export default function EggProduction() {
                     <CardTitle>Production Trends</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-sm text-muted-foreground">Production trend analysis</p>
-                        <p className="text-xs text-muted-foreground mt-2">Chart showing daily production over time</p>
+                    {!hasProductionActivity ? (
+                      <div className="h-80 bg-muted/20 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-sm text-muted-foreground">No production data available</p>
+                          <p className="text-xs text-muted-foreground mt-2">Start recording daily production to see trends</p>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <LineChart data={dailyProductionTrends}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis 
+                            dataKey="date" 
+                            className="text-xs"
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '6px'
+                            }}
+                          />
+                          <Legend />
+                          <Line 
+                            type="monotone" 
+                            dataKey="eggs" 
+                            stroke="hsl(var(--primary))" 
+                            strokeWidth={2}
+                            name="Eggs Collected"
+                            dot={{ fill: 'hsl(var(--primary))' }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="crates" 
+                            stroke="hsl(var(--chart-2))" 
+                            strokeWidth={2}
+                            name="Crates Produced"
+                            dot={{ fill: 'hsl(var(--chart-2))' }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </CardContent>
                 </Card>
 
