@@ -83,7 +83,7 @@ async function seed() {
     console.log("📝 Generating 365 days of production records...");
     
     const dailyRecordsData: any[] = [];
-    const startDay = 365; // Start from 365 days ago
+    const startDay = 364; // Start from 364 days ago (0-364 = 365 days total)
     
     for (let daysAgo = startDay; daysAgo >= 0; daysAgo--) {
       const recordDate = getDateDaysAgo(daysAgo);
