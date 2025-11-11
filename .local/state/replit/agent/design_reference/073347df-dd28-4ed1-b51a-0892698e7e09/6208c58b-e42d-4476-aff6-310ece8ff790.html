@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ali Roble Farm Manager - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                    chart: {
+                        "1": "var(--chart-1)",
+                        "2": "var(--chart-2)",
+                        "3": "var(--chart-3)",
+                        "4": "var(--chart-4)",
+                        "5": "var(--chart-5)",
+                    }
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                }
+            },
+        }
+    };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --background: hsl(0 0% 100%);
+            --foreground: hsl(240 10% 3.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(240 10% 3.9%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(240 10% 3.9%);
+            --primary: hsl(142 76% 36%);
+            --primary-foreground: hsl(355.7 100% 97.3%);
+            --secondary: hsl(240 4.8% 95.9%);
+            --secondary-foreground: hsl(240 5.9% 10%);
+            --muted: hsl(240 4.8% 95.9%);
+            --muted-foreground: hsl(240 3.8% 46.1%);
+            --accent: hsl(45 93% 47%);
+            --accent-foreground: hsl(240 5.9% 10%);
+            --destructive: hsl(0 84.2% 60.2%);
+            --destructive-foreground: hsl(0 0% 98%);
+            --border: hsl(240 5.9% 90%);
+            --input: hsl(240 5.9% 90%);
+            --ring: hsl(142 76% 36%);
+            --radius: 0.5rem;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --chart-1: hsl(142 76% 36%);
+            --chart-2: hsl(217 91% 60%);
+            --chart-3: hsl(45 93% 47%);
+            --chart-4: hsl(262 83% 58%);
+            --chart-5: hsl(12 76% 61%);
+        }
+        
+        body {
+            font-family: var(--font-sans);
+        }
+        
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar-closed {
+                transform: translateX(-100%);
+            }
+        }
+
+        .chart-container {
+            height: 300px;
+        }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: hsl(240 4.8% 95.9%);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: hsl(240 3.8% 46.1%);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: hsl(240 5.9% 10%);
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground">
+    <!-- @COMPONENT: Layout Container -->
+    <div class="min-h-screen flex">
+        <!-- @COMPONENT: Sidebar -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border sidebar-transition md:relative md:translate-x-0 sidebar-closed md:sidebar-open">
+            <div class="flex flex-col h-full">
+                <!-- Logo & Farm Info -->
+                <div class="p-6 border-b border-border">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-seedling text-primary-foreground text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-semibold text-foreground">Ali Roble Farm</h1>
+                            <p class="text-sm text-muted-foreground" data-bind="farm.totalBirds">5,300 Layers</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Navigation Menu -->
+                <nav class="flex-1 px-4 py-6 space-y-2 custom-scrollbar overflow-y-auto">
+                    <div class="space-y-1">
+                        <a href="#" class="flex items-center px-3 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground" data-active="dashboard">
+                            <i class="fas fa-chart-line mr-3 text-sm"></i>
+                            Dashboard
+                        </a>
+                        <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="chick-brooding">
+                            <i class="fas fa-baby text-sm mr-3"></i>
+                            Chick Brooding
+                        </a>
+                        <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="egg-production">
+                            <i class="fas fa-egg text-sm mr-3"></i>
+                            Egg Production
+                        </a>
+                        <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="feed-management">
+                            <i class="fas fa-wheat-awn text-sm mr-3"></i>
+                            Feed Management
+                        </a>
+                        <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="health-records">
+                            <i class="fas fa-heart-pulse text-sm mr-3"></i>
+                            Health Records
+                        </a>
+                        <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="reports">
+                            <i class="fas fa-chart-bar text-sm mr-3"></i>
+                            Reports
+                        </a>
+                        <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="expenses">
+                            <i class="fas fa-receipt text-sm mr-3"></i>
+                            Expenses
+                        </a>
+                    </div>
+                    
+                    <!-- User Management Section -->
+                    <div class="pt-4 border-t border-border">
+                        <h3 class="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Management</h3>
+                        <div class="mt-2 space-y-1">
+                            <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="users">
+                                <i class="fas fa-users text-sm mr-3"></i>
+                                Users & Permissions
+                            </a>
+                            <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md" data-nav="settings">
+                                <i class="fas fa-cog text-sm mr-3"></i>
+                                Settings
+                            </a>
+                        </div>
+                    </div>
+                </nav>
+                
+                <!-- User Profile -->
+                <div class="p-4 border-t border-border">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                            <span class="text-primary-foreground text-sm font-medium" data-bind="user.initials">AR</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-foreground" data-bind="user.name">Ali Roble</p>
+                            <p class="text-xs text-muted-foreground" data-bind="user.role">Farm Owner</p>
+                        </div>
+                        <button class="text-muted-foreground hover:text-foreground" data-event="click:logout">
+                            <i class="fas fa-sign-out-alt text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- @COMPONENT: Main Content Area -->
+        <main class="flex-1 flex flex-col min-h-screen md:ml-0">
+            <!-- Top Navigation Bar -->
+            <header class="bg-card border-b border-border px-4 py-3 md:px-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <button id="mobile-menu-btn" class="md:hidden text-muted-foreground hover:text-foreground">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        <div>
+                            <h2 class="text-xl font-semibold text-foreground">Farm Dashboard</h2>
+                            <p class="text-sm text-muted-foreground" data-bind="currentDate">Today, March 15, 2024</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Alerts/Notifications -->
+                        <div class="relative">
+                            <button class="p-2 text-muted-foreground hover:text-foreground relative">
+                                <i class="fas fa-bell text-lg"></i>
+                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full" data-bind="hasAlerts"></span>
+                            </button>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="hidden sm:flex items-center space-x-2">
+                            <button class="px-3 py-1.5 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80" data-event="click:addEggRecord">
+                                <i class="fas fa-plus mr-1"></i>
+                                Add Eggs
+                            </button>
+                            <button class="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90" data-event="click:dailyRecord">
+                                <i class="fas fa-clipboard mr-1"></i>
+                                Daily Record
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Content -->
+            <div class="flex-1 p-4 md:p-6 space-y-6">
+                <!-- Key Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- @COMPONENT: Metric Card - Total Birds -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Total Birds</p>
+                                <p class="text-2xl font-bold text-foreground" data-bind="metrics.totalBirds">5,284</p>
+                                <p class="text-xs text-muted-foreground">16 mortality this week</p>
+                            </div>
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-dove text-primary text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- @COMPONENT: Metric Card - Today's Eggs -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Today's Eggs</p>
+                                <p class="text-2xl font-bold text-foreground" data-bind="metrics.dailyEggs">4,756</p>
+                                <p class="text-xs text-green-600">↗ 90% laying rate</p>
+                            </div>
+                            <div class="w-12 h-12 bg-chart-3/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-egg text-chart-3 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- @COMPONENT: Metric Card - Feed Stock -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Feed Stock</p>
+                                <p class="text-2xl font-bold text-foreground" data-bind="metrics.feedStock">2.3 tons</p>
+                                <p class="text-xs text-orange-600">⚠ 5 days remaining</p>
+                            </div>
+                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-wheat-awn text-orange-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- @COMPONENT: Metric Card - Monthly Revenue -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Monthly Revenue</p>
+                                <p class="text-2xl font-bold text-foreground" data-bind="metrics.monthlyRevenue">KSh 342,750</p>
+                                <p class="text-xs text-green-600">↗ +12% from last month</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-coins text-green-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Alerts & Quick Actions -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- @COMPONENT: Alerts Panel -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-card rounded-lg border border-border p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-foreground">Farm Alerts</h3>
+                                <span class="text-sm text-muted-foreground" data-bind="alertsCount">3 active</span>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <!-- Alert Item 1 -->
+                                <div class="flex items-start space-x-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                    <i class="fas fa-exclamation-triangle text-orange-600 mt-0.5"></i>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-foreground">Feed Stock Running Low</p>
+                                        <p class="text-xs text-muted-foreground">Current stock will last approximately 5 days. Consider ordering soon.</p>
+                                        <p class="text-xs text-orange-600 mt-1">Priority: Medium</p>
+                                    </div>
+                                    <button class="text-xs text-orange-600 hover:text-orange-800" data-event="click:dismissAlert">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Alert Item 2 -->
+                                <div class="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                    <i class="fas fa-skull text-red-600 mt-0.5"></i>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-foreground">Mortality Rate Above Normal</p>
+                                        <p class="text-xs text-muted-foreground">8 birds lost yesterday vs average of 2-3. Check for signs of disease.</p>
+                                        <p class="text-xs text-red-600 mt-1">Priority: High</p>
+                                    </div>
+                                    <button class="text-xs text-red-600 hover:text-red-800" data-event="click:dismissAlert">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Alert Item 3 -->
+                                <div class="flex items-start space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <i class="fas fa-syringe text-blue-600 mt-0.5"></i>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-foreground">Vaccination Due</p>
+                                        <p class="text-xs text-muted-foreground">Newcastle Disease booster vaccination due in 3 days.</p>
+                                        <p class="text-xs text-blue-600 mt-1">Priority: Medium</p>
+                                    </div>
+                                    <button class="text-xs text-blue-600 hover:text-blue-800" data-event="click:dismissAlert">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- @COMPONENT: Quick Actions -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
+                        <div class="space-y-3">
+                            <button class="w-full flex items-center space-x-3 p-3 text-left hover:bg-muted rounded-lg transition-colors" data-event="click:recordEggs">
+                                <div class="w-10 h-10 bg-chart-3/10 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-egg text-chart-3"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-foreground">Record Eggs</p>
+                                    <p class="text-xs text-muted-foreground">Daily egg collection</p>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full flex items-center space-x-3 p-3 text-left hover:bg-muted rounded-lg transition-colors" data-event="click:addMortality">
+                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-skull text-red-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-foreground">Record Mortality</p>
+                                    <p class="text-xs text-muted-foreground">Track bird losses</p>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full flex items-center space-x-3 p-3 text-left hover:bg-muted rounded-lg transition-colors" data-event="click:updateFeed">
+                                <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-wheat-awn text-orange-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-foreground">Update Feed</p>
+                                    <p class="text-xs text-muted-foreground">Log feed consumption</p>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full flex items-center space-x-3 p-3 text-left hover:bg-muted rounded-lg transition-colors" data-event="click:recordSale">
+                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-coins text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-foreground">Record Sale</p>
+                                    <p class="text-xs text-muted-foreground">Log egg sales</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- @COMPONENT: Egg Production Chart -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-foreground">Egg Production Trend</h3>
+                            <select class="text-sm border border-border rounded-md px-3 py-1 bg-background" data-bind="chartPeriod">
+                                <option>Last 7 days</option>
+                                <option>Last 30 days</option>
+                                <option>Last 3 months</option>
+                            </select>
+                        </div>
+                        <!-- Chart placeholder -->
+                        <div class="chart-container bg-muted/20 rounded-lg flex items-center justify-center">
+                            <!-- @FUNCTIONALITY: Implement egg production line chart showing daily production over selected time period -->
+                            <div class="text-center">
+                                <i class="fas fa-chart-line text-4xl text-muted-foreground mb-2"></i>
+                                <p class="text-sm text-muted-foreground">Egg Production Chart</p>
+                                <p class="text-xs text-muted-foreground">Daily production: 4,200-4,800 eggs</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- @COMPONENT: Feed Consumption Chart -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-foreground">Feed Consumption</h3>
+                            <select class="text-sm border border-border rounded-md px-3 py-1 bg-background" data-bind="feedChartPeriod">
+                                <option>Last 7 days</option>
+                                <option>Last 30 days</option>
+                            </select>
+                        </div>
+                        <!-- Chart placeholder -->
+                        <div class="chart-container bg-muted/20 rounded-lg flex items-center justify-center">
+                            <!-- @FUNCTIONALITY: Implement feed consumption bar chart showing daily vs planned consumption -->
+                            <div class="text-center">
+                                <i class="fas fa-chart-bar text-4xl text-muted-foreground mb-2"></i>
+                                <p class="text-sm text-muted-foreground">Feed Consumption Chart</p>
+                                <p class="text-xs text-muted-foreground">Daily average: 530kg</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity & Performance Summary -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- @COMPONENT: Recent Activity -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-card rounded-lg border border-border p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-foreground">Recent Activity</h3>
+                                <button class="text-sm text-primary hover:text-primary/80" data-event="click:viewAllActivity">
+                                    View all
+                                </button>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <!-- Activity Item 1 -->
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-chart-3/10 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-egg text-chart-3 text-xs"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-foreground">
+                                            <span class="font-medium" data-bind="user.name">John Mwangi</span> recorded 4,756 eggs
+                                        </p>
+                                        <p class="text-xs text-muted-foreground" data-bind="activity.timestamp">2 hours ago</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Activity Item 2 -->
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-skull text-red-600 text-xs"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-foreground">
+                                            <span class="font-medium" data-bind="user.name">Mary Wanjiku</span> reported 8 bird mortality
+                                        </p>
+                                        <p class="text-xs text-muted-foreground" data-bind="activity.timestamp">4 hours ago</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Activity Item 3 -->
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-wheat-awn text-orange-600 text-xs"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-foreground">
+                                            <span class="font-medium" data-bind="user.name">Ali Roble</span> updated feed inventory
+                                        </p>
+                                        <p class="text-xs text-muted-foreground" data-bind="activity.timestamp">6 hours ago</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Activity Item 4 -->
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-coins text-green-600 text-xs"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-foreground">
+                                            Sale recorded: 158 crates @ KSh 550 each
+                                        </p>
+                                        <p class="text-xs text-muted-foreground" data-bind="activity.timestamp">Yesterday</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- @COMPONENT: Performance Summary -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">This Week's Performance</h3>
+                        
+                        <div class="space-y-4">
+                            <!-- Laying Rate -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-muted-foreground">Laying Rate</span>
+                                    <span class="text-sm font-medium text-foreground" data-bind="performance.layingRate">89.4%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-primary h-2 rounded-full" style="width: 89.4%"></div>
+                                </div>
+                                <p class="text-xs text-muted-foreground mt-1">Target: 90%</p>
+                            </div>
+                            
+                            <!-- Feed Efficiency -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-muted-foreground">Feed Efficiency</span>
+                                    <span class="text-sm font-medium text-foreground" data-bind="performance.feedEfficiency">92.1%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-chart-2 h-2 rounded-full" style="width: 92.1%"></div>
+                                </div>
+                                <p class="text-xs text-muted-foreground mt-1">Excellent</p>
+                            </div>
+                            
+                            <!-- Mortality Rate -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-muted-foreground">Mortality Rate</span>
+                                    <span class="text-sm font-medium text-foreground" data-bind="performance.mortalityRate">0.31%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-orange-400 h-2 rounded-full" style="width: 31%"></div>
+                                </div>
+                                <p class="text-xs text-orange-600 mt-1">Above average</p>
+                            </div>
+                            
+                            <!-- Revenue Target -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-muted-foreground">Revenue Target</span>
+                                    <span class="text-sm font-medium text-foreground" data-bind="performance.revenueTarget">78.2%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-chart-3 h-2 rounded-full" style="width: 78.2%"></div>
+                                </div>
+                                <p class="text-xs text-muted-foreground mt-1">KSh 268,450 / KSh 343,000</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data Tables Section -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <!-- @COMPONENT: Recent Egg Records Table -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-foreground">Recent Egg Records</h3>
+                            <button class="text-sm text-primary hover:text-primary/80" data-event="click:viewAllEggRecords">
+                                View all
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="border-b border-border">
+                                    <tr class="text-left">
+                                        <th class="pb-3 font-medium text-muted-foreground">Date</th>
+                                        <th class="pb-3 font-medium text-muted-foreground">Eggs</th>
+                                        <th class="pb-3 font-medium text-muted-foreground">Crates</th>
+                                        <th class="pb-3 font-medium text-muted-foreground">Broken</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="space-y-2" data-mock="true">
+                                    <tr class="border-b border-border/50">
+                                        <td class="py-3 text-foreground">Mar 15, 2024</td>
+                                        <td class="py-3 text-foreground font-medium">4,756</td>
+                                        <td class="py-3 text-foreground">158</td>
+                                        <td class="py-3 text-orange-600">24</td>
+                                    </tr>
+                                    <tr class="border-b border-border/50">
+                                        <td class="py-3 text-foreground">Mar 14, 2024</td>
+                                        <td class="py-3 text-foreground font-medium">4,812</td>
+                                        <td class="py-3 text-foreground">160</td>
+                                        <td class="py-3 text-orange-600">18</td>
+                                    </tr>
+                                    <tr class="border-b border-border/50">
+                                        <td class="py-3 text-foreground">Mar 13, 2024</td>
+                                        <td class="py-3 text-foreground font-medium">4,693</td>
+                                        <td class="py-3 text-foreground">156</td>
+                                        <td class="py-3 text-orange-600">31</td>
+                                    </tr>
+                                    <tr class="border-b border-border/50">
+                                        <td class="py-3 text-foreground">Mar 12, 2024</td>
+                                        <td class="py-3 text-foreground font-medium">4,784</td>
+                                        <td class="py-3 text-foreground">159</td>
+                                        <td class="py-3 text-orange-600">16</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- @COMPONENT: Feed Inventory Table -->
+                    <div class="bg-card rounded-lg border border-border p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-foreground">Feed Inventory</h3>
+                            <button class="text-sm text-primary hover:text-primary/80" data-event="click:manageFeedInventory">
+                                Manage
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="border-b border-border">
+                                    <tr class="text-left">
+                                        <th class="pb-3 font-medium text-muted-foreground">Feed Type</th>
+                                        <th class="pb-3 font-medium text-muted-foreground">Stock</th>
+                                        <th class="pb-3 font-medium text-muted-foreground">Days Left</th>
+                                        <th class="pb-3 font-medium text-muted-foreground">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="space-y-2" data-mock="true">
+                                    <tr class="border-b border-border/50">
+                                        <td class="py-3 text-foreground">Layer Mash</td>
+                                        <td class="py-3 text-foreground font-medium">2.1 tons</td>
+                                        <td class="py-3 text-foreground">5</td>
+                                        <td class="py-3">
+                                            <span class="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">Low</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b border-border/50">
+                                        <td class="py-3 text-foreground">Layer Pellets</td>
+                                        <td class="py-3 text-foreground font-medium">0.2 tons</td>
+                                        <td class="py-3 text-foreground">1</td>
+                                        <td class="py-3">
+                                            <span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">Critical</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b border-border/50">
+                                        <td class="py-3 text-foreground">Chick Starter</td>
+                                        <td class="py-3 text-foreground font-medium">0.8 tons</td>
+                                        <td class="py-3 text-foreground">15</td>
+                                        <td class="py-3">
+                                            <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Good</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- @COMPONENT: Mobile Menu Overlay -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden">
+        <!-- This overlay will be shown/hidden via JavaScript when mobile menu is toggled -->
+    </div>
+
+    <script>
+        (function() {
+            // Mobile menu functionality
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const sidebar = document.getElementById('sidebar');
+            const mobileOverlay = document.getElementById('mobile-overlay');
+            
+            mobileMenuBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('sidebar-closed');
+                mobileOverlay.classList.toggle('hidden');
+            });
+            
+            mobileOverlay.addEventListener('click', function() {
+                sidebar.classList.add('sidebar-closed');
+                mobileOverlay.classList.add('hidden');
+            });
+            
+            // TODO: Implement navigation state management
+            // TODO: Implement real-time data updates
+            // TODO: Implement alert dismissal functionality
+            // TODO: Implement quick action modal forms
+            // TODO: Implement chart rendering with Chart.js or similar library
+            // TODO: Implement table sorting and filtering
+            // TODO: Implement form validation for data entry
+            // TODO: Implement WebSocket connection for live updates
+            // TODO: Implement offline capabilities with service worker
+            // TODO: Implement data export functionality
+        })();
+    </script>
+</body>
+</html>
