@@ -130,3 +130,16 @@ Preferred communication style: Simple, everyday language.
   - Farm selections survive page reloads and browser sessions
   - No unauthorized farm access or stale data across user sessions
 - **Architect Validated**: Three-iteration review confirmed empty state, badge, and FarmContext changes meet requirements without security regressions
+
+### Body Weight Histogram Zero-Range Bug Fix (November 11, 2025)
+- **CRITICAL BUG FIX**: Resolved runtime error "Cannot read properties of undefined (reading 'frequency')" in body weight histogram
+- **Root Cause**: When all weight records had identical values, the histogram calculation failed
+  - `range = max - min = 0`
+  - `binWidth = range / binCount = 0`
+  - `binIndex = (weight - min) / binWidth = NaN` (division by zero)
+  - `bins[NaN]` = undefined → error when accessing `.frequency` property
+- **The Fix** (client/src/pages/body-weights.tsx):
+  - **Zero-range guard** (lines 195-204): Detects when all weights are identical and returns a single bin with all frequencies
+  - **StdDev guard** (lines 225-233): Only calculates normal distribution density when `stdDev > 0` to prevent division by zero
+- **Impact**: Weight records with uniform values (e.g., all birds weigh 1kg) now render correctly with a single histogram bar instead of crashing
+- **Architect Validated**: Confirmed fix properly handles edge cases, prevents NaN bin indices, and downstream chart components handle single-bin datasets gracefully

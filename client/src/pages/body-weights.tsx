@@ -188,6 +188,18 @@ const generateHistogramData = (weights: number[], mean: number, stdDev: number) 
   const min = Math.min(...weights);
   const max = Math.max(...weights);
   const range = max - min;
+  
+  // Handle edge case: all weights are identical (range = 0)
+  if (range === 0) {
+    return [{
+      x: min,
+      frequency: weights.length,
+      normalDensity: 0, // No distribution when stdDev = 0
+      binStart: min,
+      binEnd: min,
+    }];
+  }
+  
   const binCount = Math.min(10, Math.ceil(Math.sqrt(weights.length))); // Optimal bin count
   const binWidth = range / binCount;
   
@@ -206,14 +218,16 @@ const generateHistogramData = (weights: number[], mean: number, stdDev: number) 
     bins[binIndex].frequency++;
   });
   
-  // Calculate normal distribution density for each bin
-  bins.forEach(bin => {
-    // Normal distribution probability density function
-    const exponent = -0.5 * Math.pow((bin.x - mean) / stdDev, 2);
-    const density = (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
-    // Scale density to match frequency scale
-    bin.normalDensity = density * weights.length * binWidth;
-  });
+  // Calculate normal distribution density for each bin (only if stdDev > 0)
+  if (stdDev > 0) {
+    bins.forEach(bin => {
+      // Normal distribution probability density function
+      const exponent = -0.5 * Math.pow((bin.x - mean) / stdDev, 2);
+      const density = (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+      // Scale density to match frequency scale
+      bin.normalDensity = density * weights.length * binWidth;
+    });
+  }
   
   return bins;
 };
